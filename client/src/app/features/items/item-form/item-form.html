@@ -1,0 +1,424 @@
+<div class="page-banner d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h2 class="mb-1 h4 fw-bold">
+      @if (isNew()) {
+        New Item
+      } @else {
+        {{ item()?.code }} — {{ item()?.name }}
+      }
+    </h2>
+    <p class="text-muted mb-0 small">
+      @if (isNew()) {
+        Create a new product master with variants, pricing, images, and documents.
+      } @else {
+        Manage item catalog details, variant-specific pricing, attachments, and approvals.
+      }
+    </p>
+  </div>
+  <button type="button" mat-button (click)="cancel()">
+    <mat-icon>arrow_back</mat-icon> Back to Items
+  </button>
+</div>
+
+@if (isLoading()) {
+  <p class="text-muted py-4">Loading item details…</p>
+} @else {
+  @if (errorMessage(); as message) {
+    <div class="alert alert-danger py-2 small mb-3">{{ message }}</div>
+  }
+
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <mat-tab-group animationDuration="0ms">
+            <!-- TAB 1: General Details -->
+            <mat-tab label="General Details">
+              <div class="pt-3">
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Item Code <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="code" placeholder="e.g. ITM-001" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Item Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="name" placeholder="e.g. Premium Cotton T-Shirt" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Barcode / UPC</label>
+                    <input type="text" class="form-control" [(ngModel)]="barcode" placeholder="e.g. 890123456789" />
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Category <span class="text-danger">*</span></label>
+                    <select class="form-select" [ngModel]="categoryId" (ngModelChange)="onCategoryChange($event)">
+                      <option value="" disabled>Select a category</option>
+                      @for (category of categories(); track category.id) {
+                        <option [value]="category.id">{{ category.name }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Unit of Measurement</label>
+                    <select class="form-select" [(ngModel)]="unitOfMeasurement">
+                      @for (uom of unitOptions; track uom) {
+                        <option [value]="uom">{{ uom }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" role="switch" id="item-active" [(ngModel)]="isActive" />
+                      <label class="form-check-label" for="item-active">{{ isActive ? 'Active' : 'Inactive' }}</label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Base Selling Price</label>
+                    <div class="input-group">
+                      <span class="input-group-text">$</span>
+                      <input type="number" step="0.01" min="0" class="form-control" [(ngModel)]="price" />
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Base Cost Price</label>
+                    <div class="input-group">
+                      <span class="input-group-text">$</span>
+                      <input type="number" step="0.01" min="0" class="form-control" [(ngModel)]="costPrice" />
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Base Stock Quantity</label>
+                    <input type="number" min="0" class="form-control" [(ngModel)]="stockQuantity" />
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="3" [(ngModel)]="description" placeholder="Product details and specifications…"></textarea>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+            <!-- TAB 2: Variants & Pricing -->
+            <mat-tab label="Variants & Pricing">
+              <div class="pt-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                  <div>
+                    <h6 class="mb-0 fw-semibold">Item Variants & Pricing Matrix</h6>
+                    <p class="text-muted small mb-0">
+                      Configure custom prices, costs, barcodes, and inventory for each variant (Color, Size, etc.).
+                    </p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="button" mat-stroked-button color="primary" (click)="generateVariantsFromCategory()">
+                      <mat-icon>auto_awesome</mat-icon> Generate from Category
+                    </button>
+                    <button type="button" mat-stroked-button (click)="addManualVariant()">
+                      <mat-icon>add</mat-icon> Add Variant
+                    </button>
+                  </div>
+                </div>
+
+                @if (!variants().length) {
+                  <div class="text-center text-muted p-4 border rounded bg-light-subtle">
+                    <mat-icon class="fs-1">layers</mat-icon>
+                    <p class="mb-1">No variants configured for this item.</p>
+                    <p class="small text-muted mb-0">
+                      Click <strong>Generate from Category</strong> to auto-build variants based on available colors/sizes, or add them manually.
+                    </p>
+                  </div>
+                } @else {
+                  <div class="table-responsive border rounded">
+                    <table class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>SKU</th>
+                          <th>Variant Name & Attributes</th>
+                          <th>Barcode</th>
+                          <th style="min-width: 140px;">Variant Price ($)</th>
+                          <th style="min-width: 140px;">Cost Price ($)</th>
+                          <th style="min-width: 110px;">Stock</th>
+                          <th>Status</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (variant of variants(); track variant.sku; let i = $index) {
+                          <tr>
+                            <td>
+                              <input
+                                type="text"
+                                class="form-control form-control-sm font-monospace"
+                                [ngModel]="variant.sku"
+                                (ngModelChange)="updateVariant(i, { sku: $event })"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                class="form-control form-control-sm mb-1"
+                                [ngModel]="variant.name"
+                                (ngModelChange)="updateVariant(i, { name: $event })"
+                                placeholder="e.g. Red / XL"
+                              />
+                              <div class="d-flex flex-wrap gap-1">
+                                @for (attr of parseVariantAttributes(variant.attributesJson); track attr.name) {
+                                  <span class="badge text-bg-light border text-dark small">
+                                    {{ attr.name }}: <strong>{{ attr.value }}</strong>
+                                  </span>
+                                }
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                class="form-control form-control-sm font-monospace"
+                                [ngModel]="variant.barcode"
+                                (ngModelChange)="updateVariant(i, { barcode: $event })"
+                                placeholder="Barcode"
+                              />
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm">
+                                <span class="input-group-text">$</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  class="form-control"
+                                  [ngModel]="variant.price"
+                                  (ngModelChange)="updateVariant(i, { price: +$event })"
+                                />
+                              </div>
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm">
+                                <span class="input-group-text">$</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  class="form-control"
+                                  [ngModel]="variant.costPrice"
+                                  (ngModelChange)="updateVariant(i, { costPrice: +$event })"
+                                />
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="0"
+                                class="form-control form-control-sm"
+                                [ngModel]="variant.stockQuantity"
+                                (ngModelChange)="updateVariant(i, { stockQuantity: +$event })"
+                              />
+                            </td>
+                            <td>
+                              <div class="form-check form-switch mb-0">
+                                <input
+                                  class="form-check-input"
+                                  type="checkbox"
+                                  role="switch"
+                                  [id]="'variant-active-' + i"
+                                  [ngModel]="variant.isActive"
+                                  (ngModelChange)="updateVariant(i, { isActive: $event })"
+                                />
+                              </div>
+                            </td>
+                            <td class="text-end">
+                              <button type="button" mat-icon-button color="warn" (click)="removeVariant(i)" aria-label="Remove variant">
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            </mat-tab>
+
+            <!-- TAB 3: Images (1:N) -->
+            <mat-tab label="Images ({{ images().length }})">
+              <div class="pt-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h6 class="mb-0 fw-semibold">Item Product Images</h6>
+                    <p class="text-muted small mb-0">Upload local image files or link external photo URLs.</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <label class="btn btn-outline-primary btn-sm mb-0">
+                      <mat-icon class="align-middle">cloud_upload</mat-icon> Upload Image
+                      <input type="file" accept="image/*" multiple (change)="onImageFileSelected($event)" hidden />
+                    </label>
+                    <button type="button" mat-stroked-button (click)="addImageByUrl()">
+                      <mat-icon>link</mat-icon> Add URL
+                    </button>
+                  </div>
+                </div>
+
+                @if (!images().length) {
+                  <div class="text-center text-muted p-4 border rounded bg-light-subtle">
+                    <mat-icon class="fs-1">photo_library</mat-icon>
+                    <p class="mb-0">No images added yet. Click Upload Image or Add URL to attach photos.</p>
+                  </div>
+                } @else {
+                  <div class="row g-3">
+                    @for (img of images(); track img.url; let i = $index) {
+                      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="card h-100 image-card shadow-sm" [class.border-primary]="img.isPrimary">
+                          <img [src]="img.url" class="card-img-top image-preview" alt="" />
+                          <div class="card-body p-2">
+                            <input
+                              type="text"
+                              class="form-control form-control-sm mb-2"
+                              [(ngModel)]="img.caption"
+                              placeholder="Caption"
+                            />
+                            <div class="d-flex justify-content-between align-items-center">
+                              <div class="form-check mb-0">
+                                <input
+                                  class="form-check-input"
+                                  type="radio"
+                                  name="primaryImageGroup"
+                                  [id]="'primary-img-' + i"
+                                  [checked]="img.isPrimary"
+                                  (change)="setPrimaryImage(i)"
+                                />
+                                <label class="form-check-label small" [for]="'primary-img-' + i">Primary</label>
+                              </div>
+                              <button type="button" mat-icon-button color="warn" (click)="removeImage(i)" aria-label="Delete image">
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-tab>
+
+            <!-- TAB 4: Documents (1:N) -->
+            <mat-tab label="Documents ({{ documents().length }})">
+              <div class="pt-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h6 class="mb-0 fw-semibold">Item Attachments & Documents</h6>
+                    <p class="text-muted small mb-0">Attach specification sheets, warranty cards, manuals, or certificates.</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <label class="btn btn-outline-primary btn-sm mb-0">
+                      <mat-icon class="align-middle">upload_file</mat-icon> Upload Document
+                      <input type="file" multiple (change)="onDocumentFileSelected($event)" hidden />
+                    </label>
+                    <button type="button" mat-stroked-button (click)="addDocumentByUrl()">
+                      <mat-icon>link</mat-icon> Add Doc URL
+                    </button>
+                  </div>
+                </div>
+
+                @if (!documents().length) {
+                  <div class="text-center text-muted p-4 border rounded bg-light-subtle">
+                    <mat-icon class="fs-1">description</mat-icon>
+                    <p class="mb-0">No documents attached yet. Click Upload Document or Add Doc URL to attach files.</p>
+                  </div>
+                } @else {
+                  <div class="table-responsive border rounded">
+                    <table class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>File Name</th>
+                          <th>Type</th>
+                          <th>Size</th>
+                          <th>Description</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (doc of documents(); track doc.url; let i = $index) {
+                          <tr>
+                            <td>
+                              <div class="d-flex align-items-center gap-2">
+                                <mat-icon class="text-secondary">description</mat-icon>
+                                <span class="fw-semibold">{{ doc.fileName }}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span class="badge text-bg-secondary">{{ doc.documentType || 'DOC' }}</span>
+                            </td>
+                            <td>{{ formatFileSize(doc.fileSizeBytes) }}</td>
+                            <td>
+                              <input
+                                type="text"
+                                class="form-control form-control-sm"
+                                [(ngModel)]="doc.description"
+                                placeholder="Description"
+                              />
+                            </td>
+                            <td>
+                              <div class="d-flex gap-1">
+                                <a [href]="doc.url" target="_blank" [download]="doc.fileName" mat-icon-button matTooltip="View / Download">
+                                  <mat-icon>open_in_new</mat-icon>
+                                </a>
+                                <button type="button" mat-icon-button color="warn" (click)="removeDocument(i)" aria-label="Remove document">
+                                  <mat-icon>delete</mat-icon>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+
+          <!-- Bottom Action Buttons -->
+          <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+            <div>
+              @if (!isNew()) {
+                <button type="button" mat-stroked-button color="warn" (click)="remove()">
+                  <mat-icon>delete</mat-icon> Delete Item
+                </button>
+              }
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
+              <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
+                @if (isSaving()) {
+                  Saving…
+                } @else {
+                  <ng-container><mat-icon>save</mat-icon> Save Item</ng-container>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approvals & Activity Logs (Only for existing item) -->
+    @if (!isNew() && item()) {
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <app-approval-panel [entityType]="entityType" [entityId]="item()!.id" requestTitle="Item change approval" />
+          </div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <app-activity-log-panel [entityType]="entityType" [entityId]="item()!.id" />
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+}

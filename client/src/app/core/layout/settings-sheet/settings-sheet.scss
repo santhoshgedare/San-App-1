@@ -1,0 +1,20 @@
+.sheet-container {
+  padding: 0.5rem 1rem 1rem;
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  margin: 0.5rem 0 0.25rem;
+}

@@ -1,0 +1,136 @@
+<div class="page-banner d-flex justify-content-between align-items-start mb-1">
+  <div>
+    <h2 class="mb-1 h4 fw-bold">Items</h2>
+    <p class="text-muted mb-0 small">Master catalog of products, images, documents, and variant-based pricing.</p>
+  </div>
+  <button mat-flat-button color="primary" type="button" class="text-nowrap" (click)="create()">
+    <mat-icon>add</mat-icon> New Item
+  </button>
+</div>
+
+<div class="row g-2 my-3">
+  <div class="col-12 col-md-4">
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search by code, name, barcode…"
+      [ngModel]="searchTerm()"
+      (ngModelChange)="onSearchInput($event)"
+    />
+  </div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event); onFilterChange()">
+      <option value="">All Categories</option>
+      @for (category of categories(); track category.id) {
+        <option [value]="category.id">{{ category.name }}</option>
+      }
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <select class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()">
+      <option value="">All Statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+  </div>
+</div>
+
+<p class="text-muted small mb-2">{{ totalCount() }} item(s)</p>
+
+<div class="card shadow-sm">
+  <div class="table-responsive scroll-body" #scrollContainer (scroll)="onScroll()">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light sticky-header">
+        <tr>
+          <th style="width: 56px;"></th>
+          <th>Item Code</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>UoM</th>
+          <th>Base Price</th>
+          <th>Variants</th>
+          <th>Media</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading()) {
+          <tr>
+            <td colspan="10" class="text-center text-muted py-4">Loading items…</td>
+          </tr>
+        } @else if (!items().length) {
+          <tr>
+            <td colspan="10" class="text-center text-muted py-4">No items match your criteria.</td>
+          </tr>
+        } @else {
+          @for (item of items(); track item.id) {
+            <tr class="clickable-row" (click)="openDetail(item)">
+              <td>
+                @if (getPrimaryImage(item); as img) {
+                  <img [src]="img.url" alt="" class="rounded item-thumbnail border" />
+                } @else {
+                  <div class="item-thumbnail-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
+                    <mat-icon class="small-icon">image</mat-icon>
+                  </div>
+                }
+              </td>
+              <td>
+                <span class="font-monospace fw-semibold">{{ item.code }}</span>
+                @if (item.barcode) {
+                  <div class="text-muted small font-monospace">{{ item.barcode }}</div>
+                }
+              </td>
+              <td>
+                <div class="fw-medium">{{ item.name }}</div>
+                @if (item.description) {
+                  <div class="text-muted small text-truncate" style="max-width: 250px;">{{ item.description }}</div>
+                }
+              </td>
+              <td>
+                <span class="badge text-bg-light border">{{ item.categoryName }}</span>
+              </td>
+              <td>{{ item.unitOfMeasurement }}</td>
+              <td>
+                <span class="fw-semibold">{{ item.price | currency }}</span>
+                <div class="text-muted small">Cost: {{ item.costPrice | currency }}</div>
+              </td>
+              <td>
+                @if (item.variants?.length) {
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                    {{ item.variants.length }} variant(s)
+                  </span>
+                } @else {
+                  <span class="text-muted small">None</span>
+                }
+              </td>
+              <td>
+                <div class="d-flex gap-2 text-muted small">
+                  <span title="Images"><i class="bi bi-image me-1"></i>{{ item.images?.length ?? 0 }}</span>
+                  <span title="Documents"><i class="bi bi-file-earmark-text me-1"></i>{{ item.documents?.length ?? 0 }}</span>
+                </div>
+              </td>
+              <td>
+                @if (item.isActive) {
+                  <span class="badge text-bg-success">Active</span>
+                } @else {
+                  <span class="badge text-bg-secondary">Inactive</span>
+                }
+              </td>
+              <td class="text-end">
+                <button type="button" mat-icon-button matTooltip="View / Edit" (click)="openDetail(item)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+          @if (isLoadingMore()) {
+            <tr>
+              <td colspan="10" class="text-center text-muted py-3">Loading more…</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

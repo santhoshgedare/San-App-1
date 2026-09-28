@@ -1,0 +1,13 @@
+.image-card {
+  transition: transform 0.15s ease-in-out;
+}
+
+.image-card:hover {
+  transform: translateY(-2px);
+}
+
+.image-preview {
+  height: 160px;
+  object-fit: cover;
+  background-color: var(--bs-secondary-bg);
+}

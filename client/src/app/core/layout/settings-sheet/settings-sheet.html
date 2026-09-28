@@ -1,0 +1,30 @@
+<section class="sheet-container">
+  <div class="sheet-header">
+    <h4 class="mb-0">Settings</h4>
+    <button type="button" mat-icon-button (click)="dismiss()" aria-label="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  @for (group of groups(); track group.category) {
+    <p class="group-label">{{ group.category }}</p>
+    <mat-nav-list class="mb-2">
+      @for (option of group.options; track option.link) {
+        <a mat-list-item (click)="navigate(option)">
+          <mat-icon matListItemIcon>{{ option.icon }}</mat-icon>
+          <span matListItemTitle>{{ option.name }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  }
+
+  @if (auth.isAdmin()) {
+    <p class="group-label">ADMINISTRATION</p>
+    <mat-nav-list class="mb-2">
+      <a mat-list-item (click)="navigateToWorkflows()">
+        <mat-icon matListItemIcon>fact_check</mat-icon>
+        <span matListItemTitle>Approval Workflows</span>
+      </a>
+    </mat-nav-list>
+  }
+</section>

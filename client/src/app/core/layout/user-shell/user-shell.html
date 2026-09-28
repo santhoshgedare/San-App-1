@@ -1,0 +1,92 @@
+<mat-toolbar color="primary" class="app-toolbar mat-elevation-z4">
+  <a routerLink="/catalog" class="brand">
+    <img
+      src="logo.png"
+      alt="SRIVIDIKA"
+      class="brand-logo"
+      #brandImg
+      (error)="brandImg.classList.add('d-none'); brandFallback.classList.remove('d-none')"
+    />
+    <span class="brand-text d-none" #brandFallback>SRIVIDIKA</span>
+  </a>
+
+  @if (!isCompact()) {
+    <nav class="top-nav">
+      @for (link of navLinks(); track link.path) {
+        <a
+          mat-button
+          [routerLink]="link.path"
+          routerLinkActive="link-active"
+          [routerLinkActiveOptions]="{ exact: link.exact }"
+        >
+          <mat-icon>{{ link.icon }}</mat-icon>
+          {{ link.label }}
+        </a>
+      }
+    </nav>
+  }
+
+  <span class="flex-spacer"></span>
+
+  <a mat-icon-button routerLink="/cart" matTooltip="Shopping Cart" aria-label="Shopping Cart" class="cart-btn">
+    <mat-icon [matBadge]="cartCount()" [matBadgeHidden]="cartCount() === 0" matBadgeColor="warn">
+      shopping_cart
+    </mat-icon>
+  </a>
+
+  @if (auth.isAuthenticated()) {
+    <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="Account">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      @if (auth.currentUser(); as user) {
+        <div class="px-3 py-2">
+          <div class="fw-semibold">{{ user.firstName }} {{ user.lastName }}</div>
+          <div class="text-muted small">{{ user.email }}</div>
+        </div>
+        <mat-divider />
+      }
+      @if (isCompact()) {
+        <button mat-menu-item routerLink="/orders">
+          <mat-icon>receipt_long</mat-icon>
+          <span>My Orders</span>
+        </button>
+      }
+      <button mat-menu-item routerLink="/profile">
+        <mat-icon>person</mat-icon>
+        <span>My Profile</span>
+      </button>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  } @else {
+    <a mat-button routerLink="/login" class="auth-link">
+      <mat-icon>login</mat-icon>
+      <span>Login</span>
+    </a>
+    <a mat-flat-button color="accent" routerLink="/register" class="auth-link">
+      Sign Up
+    </a>
+  }
+</mat-toolbar>
+
+@if (isCompact() && navLinks().length > 1) {
+  <nav class="mobile-tab-bar mat-elevation-z2">
+    @for (link of navLinks(); track link.path) {
+      <a
+        [routerLink]="link.path"
+        routerLinkActive="link-active"
+        [routerLinkActiveOptions]="{ exact: link.exact }"
+      >
+        <mat-icon>{{ link.icon }}</mat-icon>
+        <span>{{ link.label }}</span>
+      </a>
+    }
+  </nav>
+}
+
+<main class="user-content" [class.with-tab-bar]="isCompact() && navLinks().length > 1">
+  <router-outlet />
+</main>

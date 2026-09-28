@@ -1,0 +1,157 @@
+<div class="approval-panel">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="text-uppercase text-muted small mb-0 d-flex align-items-center gap-1">
+      <mat-icon inline class="small-icon">fact_check</mat-icon> Approvals
+    </h6>
+    <button
+      type="button"
+      mat-stroked-button
+      color="primary"
+      [disabled]="isBusy() || hasPendingApproval()"
+      [matTooltip]="hasPendingApproval() ? 'An approval is already pending for this item' : ''"
+      (click)="toggleRequestForm()"
+    >
+      <mat-icon inline class="small-icon">add</mat-icon> Request
+    </button>
+  </div>
+
+  @if (requestError()) {
+    <div class="alert alert-danger py-1 px-2 small mb-2">{{ requestError() }}</div>
+  }
+
+  @if (showRequestForm()) {
+    <div class="request-form mb-3 p-2 border rounded">
+      <label class="form-label small text-muted mb-1">Describe what needs approval (optional)</label>
+      <textarea class="form-control form-control-sm mb-2" rows="2" [(ngModel)]="requestDetails"></textarea>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" mat-button (click)="toggleRequestForm()">Cancel</button>
+        <button type="button" mat-flat-button color="primary" [disabled]="isBusy()" (click)="submitRequest()">Send</button>
+      </div>
+    </div>
+  }
+
+  @if (isLoading()) {
+    <p class="text-muted small">Loading approvals…</p>
+  } @else if (!approvals().length) {
+    <p class="text-muted small">No approval requests yet.</p>
+  } @else {
+    @for (approval of approvals(); track approval.id) {
+      <div class="approval-card mb-3 p-2 border rounded">
+        <div class="d-flex justify-content-between align-items-start">
+          <span class="fw-semibold">{{ approval.title }} <span class="text-muted small fw-normal">(Rev {{ approval.revisionNumber }})</span></span>
+          <span class="badge rounded-pill" [class]="statusClass(approval.status)">{{ approval.status }}</span>
+        </div>
+        @if (approval.details) {
+          <div class="text-muted small">{{ approval.details }}</div>
+        }
+        <div class="text-muted fst-italic small">
+          requested by {{ approval.requestedByEmail }} on {{ approval.requestedAt | date: 'medium' }}
+        </div>
+        @if (approval.decidedByEmail) {
+          <div class="text-muted fst-italic small">
+            {{ approval.status.toLowerCase() }} by {{ approval.decidedByEmail }} on {{ approval.decidedAt | date: 'medium' }}
+          </div>
+        }
+        @if (approval.decisionComment) {
+          <div class="text-muted small">"{{ approval.decisionComment }}"</div>
+        }
+
+        @if (approval.stageDecisions?.length) {
+          <div class="table-responsive mt-2">
+            <table class="table table-sm align-middle mb-0 approval-stage-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Approver</th>
+                  <th>Designation</th>
+                  <th>Status</th>
+                  <th>Action Date</th>
+                  <th>Remark</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of approval.stageDecisions; track row.stageIndex) {
+                  <tr [class.table-active]="row.stageIndex === approval.currentStageIndex && approval.status === 'Pending'">
+                    <td>{{ row.stageIndex + 1 }}. {{ row.stageName }}</td>
+                    <td>
+                      @if (reassigningStage()?.approvalId === approval.id && reassigningStage()?.stageIndex === row.stageIndex) {
+                        <div class="d-flex align-items-center gap-1">
+                          <select class="form-select form-select-sm" style="max-width: 220px" [(ngModel)]="reassignUserId">
+                            <option value="" disabled>Select approver</option>
+                            @for (user of eligibleUsersForStage(approval, row.stageIndex); track user.id) {
+                              <option [value]="user.id">{{ user.email }}</option>
+                            }
+                          </select>
+                          <button
+                            type="button"
+                            mat-icon-button
+                            matTooltip="Save"
+                            [disabled]="isBusy() || !reassignUserId"
+                            (click)="confirmReassign(approval)"
+                          >
+                            <mat-icon class="text-success small-icon">check</mat-icon>
+                          </button>
+                          <button type="button" mat-icon-button matTooltip="Cancel" (click)="cancelReassign()">
+                            <mat-icon class="small-icon">close</mat-icon>
+                          </button>
+                        </div>
+                      } @else {
+                        <div class="d-flex align-items-center gap-1">
+                          <span>{{ row.assignedApproverEmail || '—' }}</span>
+                          @if (canReassign(approval, row)) {
+                            <button
+                              type="button"
+                              mat-icon-button
+                              matTooltip="Reassign approver"
+                              [disabled]="isBusy()"
+                              (click)="startReassign(approval, row)"
+                            >
+                              <mat-icon class="small-icon">edit</mat-icon>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </td>
+                    <td>{{ row.designation || '—' }}</td>
+                    <td>
+                      <span class="badge rounded-pill" [class]="statusClass(row.decision)">{{ row.decision }}</span>
+                    </td>
+                    <td>{{ row.decidedAt ? (row.decidedAt | date: 'medium') : '—' }}</td>
+                    <td>{{ row.comment || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (canDecide(approval) && approval.status === 'Pending') {
+          @if (decidingId() === approval.id) {
+            <div class="decision-form mt-2 p-2 border rounded">
+              <label class="form-label small text-muted mb-1">Remark (optional)</label>
+              <textarea class="form-control form-control-sm mb-2" rows="2" [(ngModel)]="decisionComment"></textarea>
+              <div class="d-flex justify-content-end gap-2">
+                <button type="button" mat-button (click)="cancelDecision()">Cancel</button>
+                <button type="button" mat-stroked-button color="warn" [disabled]="isBusy()" (click)="confirmReject(approval)">
+                  Reject
+                </button>
+                <button type="button" mat-flat-button color="primary" [disabled]="isBusy()" (click)="confirmApprove(approval)">
+                  Approve
+                </button>
+              </div>
+            </div>
+          } @else {
+            <div class="d-flex justify-content-end gap-2 mt-2">
+              <button type="button" mat-stroked-button color="warn" [disabled]="isBusy()" (click)="startDecision(approval)">
+                <mat-icon inline class="small-icon">cancel</mat-icon> Reject
+              </button>
+              <button type="button" mat-flat-button color="primary" [disabled]="isBusy()" (click)="startDecision(approval)">
+                <mat-icon inline class="small-icon">check_circle</mat-icon> Approve
+              </button>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+</div>

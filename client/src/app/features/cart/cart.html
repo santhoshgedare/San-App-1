@@ -1,0 +1,136 @@
+<div class="cart-page">
+  <div class="cart-header">
+    <div class="title-wrap">
+      <a routerLink="/catalog" class="back-link">
+        <mat-icon>arrow_back</mat-icon>
+        <span>Continue Shopping</span>
+      </a>
+      <h1 class="page-title">Shopping Cart</h1>
+      <p class="subtitle">Review your selected items and configure checkout quantities.</p>
+    </div>
+
+    @if (items().length > 0) {
+      <button mat-stroked-button color="warn" (click)="clearCart()" class="btn-clear-cart">
+        <mat-icon>delete_sweep</mat-icon>
+        <span>Clear Cart</span>
+      </button>
+    }
+  </div>
+
+  @if (items().length === 0) {
+    <div class="empty-cart-card">
+      <mat-icon class="empty-icon">remove_shopping_cart</mat-icon>
+      <h2>Your Cart is Empty</h2>
+      <p>Looks like you haven't added any products or variants to your cart yet.</p>
+      <a routerLink="/catalog" mat-flat-button color="primary" class="browse-btn">
+        <mat-icon>storefront</mat-icon>
+        <span>Explore Catalog</span>
+      </a>
+    </div>
+  } @else {
+    <div class="cart-layout">
+      <!-- Line Items List -->
+      <div class="cart-lines-list">
+        @for (line of items(); track line.id) {
+          <div class="cart-line-card">
+            <!-- Thumbnail -->
+            <div class="item-thumbnail">
+              @if (getPrimaryImageUrl(line); as imgUrl) {
+                <img [src]="imgUrl" [alt]="line.item.name" />
+              } @else {
+                <div class="placeholder-thumb">
+                  <mat-icon>image_not_supported</mat-icon>
+                </div>
+              }
+            </div>
+
+            <!-- Details -->
+            <div class="item-details">
+              <a [routerLink]="['/catalog', line.item.id]" class="item-title">{{ line.item.name }}</a>
+              <span class="item-sku">SKU: {{ line.variant?.sku || line.item.code }}</span>
+
+              @if (line.selectedAttributesText) {
+                <div class="variant-badge">
+                  <mat-icon>tune</mat-icon>
+                  <span>{{ line.selectedAttributesText }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- Unit Price -->
+            <div class="unit-price">
+              <span class="label">Unit Price</span>
+              <span class="amount">{{ line.unitPrice | currency }}</span>
+            </div>
+
+            <!-- Quantity Controls -->
+            <div class="qty-controller">
+              <button type="button" class="qty-btn" (click)="updateQuantity(line, -1)" aria-label="Decrease quantity">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="qty-value">{{ line.quantity }}</span>
+              <button type="button" class="qty-btn" (click)="updateQuantity(line, 1)" aria-label="Increase quantity">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+
+            <!-- Line Total -->
+            <div class="line-total">
+              <span class="label">Total</span>
+              <span class="total-amount">{{ (line.unitPrice * line.quantity) | currency }}</span>
+            </div>
+
+            <!-- Remove Button -->
+            <button type="button" class="btn-remove" (click)="removeItem(line)" matTooltip="Remove from cart">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Order Summary Card -->
+      <div class="order-summary-card">
+        <h3 class="summary-title">Order Summary</h3>
+
+        <div class="summary-rows">
+          <div class="summary-row">
+            <span>Items Count</span>
+            <span>{{ totalItemsCount() }} items</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>{{ subtotal() | currency }}</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Estimated Shipping</span>
+            <span class="text-success">Free</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Estimated Tax</span>
+            <span>Calculated at checkout</span>
+          </div>
+
+          <div class="summary-divider"></div>
+
+          <div class="summary-row total-row">
+            <span>Estimated Total</span>
+            <span class="grand-total">{{ subtotal() | currency }}</span>
+          </div>
+        </div>
+
+        <button type="button" class="btn-checkout" (click)="checkout()">
+          <mat-icon>lock</mat-icon>
+          <span>Proceed to Checkout</span>
+        </button>
+
+        <div class="secure-badge">
+          <mat-icon>security</mat-icon>
+          <span>Enterprise Secure & Verified Checkout</span>
+        </div>
+      </div>
+    </div>
+  }
+</div>

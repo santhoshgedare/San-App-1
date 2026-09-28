@@ -1,0 +1,139 @@
+<div class="page-banner d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h2 class="mb-1 h4 fw-bold">Approval Workflows</h2>
+    <p class="text-muted mb-0 small">Configure the approval stages and eligible roles used for each entity type.</p>
+  </div>
+  <button type="button" mat-button (click)="cancel()">
+    <mat-icon>arrow_back</mat-icon> Back
+  </button>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>list</mat-icon></span>
+          <span>Entity Types</span>
+        </div>
+        <div class="list-group">
+          @for (entityType of entityTypes; track entityType) {
+            <button
+              type="button"
+              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              [class.active]="selectedEntityType === entityType"
+              (click)="loadEntityType(entityType)"
+            >
+              {{ entityType }}
+              @if (workflows().find((w) => w.entityType === entityType); as configured) {
+                <span class="badge rounded-pill" [class.bg-success]="configured.isActive" [class.bg-secondary]="!configured.isActive">
+                  {{ configured.isActive ? 'Configured' : 'Inactive' }}
+                </span>
+              } @else {
+                <span class="badge rounded-pill bg-light text-muted">Not set</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-9">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        @if (errorMessage(); as message) {
+          <div class="alert alert-danger py-2 small">{{ message }}</div>
+        }
+
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>fact_check</mat-icon></span>
+          <span>{{ selectedEntityType }} Workflow</span>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-8">
+            <label class="form-label">Workflow name</label>
+            <input type="text" class="form-control" [(ngModel)]="workflowName" />
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input type="checkbox" class="form-check-input" id="isActive" [(ngModel)]="isActive" />
+              <label class="form-check-label" for="isActive">Active</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="text-uppercase text-muted small mb-0">Stages (in order)</h6>
+          <button type="button" mat-stroked-button color="primary" (click)="addStage()">
+            <mat-icon inline>add</mat-icon> Add stage
+          </button>
+        </div>
+
+        @for (stage of stages; track $index) {
+          <div class="stage-card mb-2 p-3 border rounded">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="flex-grow-1 me-2">
+                <label class="form-label small text-muted mb-1">Stage {{ $index + 1 }} name</label>
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="stage.name" />
+              </div>
+              <button type="button" mat-icon-button color="warn" (click)="removeStage($index)" matTooltip="Remove stage">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <label class="form-label small text-muted mb-1">Eligible roles (any one approver from these roles advances this stage)</label>
+            <div>
+              @for (role of allRoles(); track role.id) {
+                <div class="form-check form-check-inline">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    [id]="'stage-' + $index + '-role-' + role.id"
+                    [checked]="isRoleSelected(stage, role.name)"
+                    (change)="toggleStageRole(stage, role.name, $any($event.target).checked)"
+                  />
+                  <label class="form-check-label" [for]="'stage-' + $index + '-role-' + role.id">{{ role.name }}</label>
+                </div>
+              }
+            </div>
+
+            <label class="form-label small text-muted mb-1 mt-2">
+              Default approver (pre-populated on new requests; the requester/approver can still reassign it)
+            </label>
+            <select class="form-select form-select-sm" style="max-width: 320px" [(ngModel)]="stage.defaultApproverUserId">
+              <option [ngValue]="null">— No default (pick per-request) —</option>
+              @for (user of usersForStage(stage); track user.id) {
+                <option [ngValue]="user.id">{{ user.email }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (!stages.length) {
+          <p class="text-muted small">No stages yet. Add at least one stage above.</p>
+        }
+
+        <div class="d-flex justify-content-between mt-4">
+          <div>
+            @if (editingId) {
+              <button type="button" mat-stroked-button color="warn" (click)="remove()">
+                <mat-icon>delete</mat-icon> Delete Workflow
+              </button>
+            }
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
+            <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
+              @if (isSaving()) {
+                Saving…
+              } @else {
+                <ng-container><mat-icon>save</mat-icon> Save</ng-container>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

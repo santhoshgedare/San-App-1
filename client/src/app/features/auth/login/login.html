@@ -1,0 +1,53 @@
+<div class="auth-wrapper d-flex align-items-center justify-content-center">
+  <div class="card auth-card shadow-sm">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <img
+          src="logo.png"
+          alt="SRIVIDIKA Logo"
+          class="auth-logo mb-2"
+          #authImg
+          (error)="authImg.classList.add('d-none'); authFallback.classList.remove('d-none')"
+        />
+        <h3 class="mt-2 mb-0 d-none" #authFallback>SRIVIDIKA</h3>
+        <p class="text-muted small">Sign in to your account</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" formControlName="email" autocomplete="email" placeholder="you@example.com" />
+          @if (form.controls.email.invalid && form.controls.email.touched) {
+            <div class="form-text text-danger">A valid email is required.</div>
+          }
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" formControlName="password" autocomplete="current-password" placeholder="��������" />
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <div class="form-text text-danger">Password is required.</div>
+          }
+        </div>
+
+        @if (errorMessage(); as message) {
+          <div class="alert alert-danger py-2 small">{{ message }}</div>
+        }
+
+        <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
+          @if (isSubmitting()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          {{ isSubmitting() ? 'Signing in�' : 'Sign In' }}
+        </button>
+      </form>
+
+      <p class="text-center small mt-3 mb-0">
+        Don't have an account? <a routerLink="/register" [queryParams]="{ returnUrl: returnUrl() }">Create one</a>
+      </p>
+      <p class="text-center text-muted mt-2 mb-0" style="font-size: 0.75rem;">
+        Demo admin: admin&#64;identityhub.local / Admin&#64;12345
+      </p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,174 @@
+<div class="catalog-page">
+  <header class="catalog-hero">
+    <div class="hero-heading">
+      <div>
+        <h1 class="hero-title">Product Catalog</h1>
+        <p class="hero-subtitle">Browse products, choose an option, and add items to your cart.</p>
+      </div>
+      <a routerLink="/cart" class="cart-floating-btn" matTooltip="View Shopping Cart">
+        <mat-icon [matBadge]="cartCount()" [matBadgeHidden]="cartCount() === 0" matBadgeColor="warn">
+          shopping_cart
+        </mat-icon>
+        <span class="cart-btn-label">Cart</span>
+      </a>
+    </div>
+    <div class="catalog-controls">
+      <div class="search-input-wrapper">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          placeholder="Search by name, SKU, or category..."
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearchInput($event)"
+        />
+        @if (searchTerm()) {
+          <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Clear search">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+
+      <div class="sort-wrapper">
+        <mat-icon class="sort-icon">sort</mat-icon>
+        <select [ngModel]="selectedSort()" (ngModelChange)="selectedSort.set($event); onSortChange()">
+          <option value="popular">Most Relevant</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="name">Product Name (A-Z)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <section class="category-filter-bar" aria-label="Filter products by category">
+    <button
+      type="button"
+      class="filter-chip"
+      [class.active]="selectedCategoryId() === ''"
+      (click)="selectCategory('')"
+    >
+      <mat-icon>apps</mat-icon>
+      <span>All</span>
+    </button>
+    @for (cat of categories(); track cat.id) {
+      <button
+        type="button"
+        class="filter-chip"
+        [class.active]="selectedCategoryId() === cat.id"
+        (click)="selectCategory(cat.id)"
+      >
+        <span>{{ cat.name }}</span>
+      </button>
+    }
+  </section>
+
+  <main class="catalog-grid-section">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading items...</p>
+      </div>
+    } @else if (items().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">inventory_2</mat-icon>
+        <h3>No Products Found</h3>
+        <p>We couldn't find any products matching your current search or category filter.</p>
+        <button mat-flat-button color="primary" (click)="selectCategory(''); onSearchInput('')">
+          Clear Filters
+        </button>
+      </div>
+    } @else {
+      <div class="catalog-grid">
+        @for (item of items(); track item.id) {
+          <article class="product-card" (click)="viewDetail(item)">
+            <div class="card-media">
+              @if (getPrimaryImage(item); as img) {
+                <img [src]="img.url" [alt]="img.caption || item.name" loading="lazy" class="product-img" />
+              } @else {
+                <div class="no-img-placeholder">
+                  <mat-icon>image_not_supported</mat-icon>
+                  <span>No image</span>
+                </div>
+              }
+
+              <div class="card-badges">
+                @if (item.categoryName) {
+                  <span class="badge category-badge">{{ item.categoryName }}</span>
+                }
+                @if (item.variants && item.variants.length > 0) {
+                  <span class="badge variant-badge">
+                    <mat-icon>tune</mat-icon> {{ item.variants.length }} Variants
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="card-header">
+                <span class="sku-code">{{ item.code }}</span>
+                <h3 class="product-title" [matTooltip]="item.name">{{ item.name }}</h3>
+              </div>
+
+              <p class="product-description">{{ item.description || 'No description available for this item.' }}</p>
+
+              @if (item.variants && item.variants.length > 1) {
+                <label class="variants-selector" (click)="$event.stopPropagation()">
+                  <span class="variant-label">Option</span>
+                  <div class="variant-select-wrap">
+                    <select
+                      [ngModel]="getSelectedVariant(item)?.id"
+                      (ngModelChange)="onVariantChange(item, $event)"
+                      (click)="$event.stopPropagation()"
+                      [attr.aria-label]="'Choose an option for ' + item.name"
+                    >
+                      @for (v of item.variants; track v.id) {
+                        <option [value]="v.id">{{ v.name || v.sku }} — {{ v.price | currency }}</option>
+                      }
+                    </select>
+                    <mat-icon>expand_more</mat-icon>
+                  </div>
+                </label>
+              }
+
+              <div class="card-footer">
+                <div class="price-container">
+                  <span class="price-tag">{{ getEffectivePrice(item) | currency }}</span>
+                  @if (getPriceRange(item).hasRange) {
+                    <span class="price-range-hint">
+                      ({{ getPriceRange(item).min | currency }} - {{ getPriceRange(item).max | currency }})
+                    </span>
+                  }
+                </div>
+
+                <div class="actions">
+                  <button
+                    type="button"
+                    class="btn-quick-add"
+                    (click)="addToCart(item, $event)"
+                    matTooltip="Add selected option to cart"
+                  >
+                    <mat-icon>add_shopping_cart</mat-icon>
+                    <span>Add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="load-more-section">
+        @if (isLoadingMore()) {
+          <div class="spinner-small"></div>
+          <span>Loading more products...</span>
+        } @else if (items().length < totalCount()) {
+          <button mat-stroked-button class="btn-load-more" (click)="loadMore()">
+            Load More Products ({{ items().length }} of {{ totalCount() }})
+          </button>
+        } @else {
+          <div class="all-loaded-text">Showing all {{ totalCount() }} products</div>
+        }
+      </div>
+    }
+  </main>
+</div>

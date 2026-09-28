@@ -1,0 +1,141 @@
+<div class="orders-page">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="header-left">
+      <div class="header-badge">
+        <mat-icon>receipt_long</mat-icon>
+        <span>Orders & Invoices</span>
+      </div>
+      <h1 class="page-title">
+        {{ auth.isAdmin() || auth.isManager() ? 'All Customer Orders' : 'My Purchase Orders' }}
+      </h1>
+      <p class="subtitle">
+        Track order fulfillment lifecycle, update statuses, and verify UPI payment settlements.
+      </p>
+    </div>
+
+    <div class="header-right">
+      <a routerLink="/catalog" mat-flat-button color="primary" class="btn-shop">
+        <mat-icon>storefront</mat-icon>
+        <span>Shop Catalog</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Filter Controls -->
+  <section class="controls-card">
+    <div class="status-tab-bar">
+      @for (tab of statusTabs; track tab.value) {
+        <button
+          type="button"
+          class="status-tab"
+          [class.active]="selectedStatus() === tab.value"
+          (click)="selectStatus(tab.value)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+
+    <div class="search-filter-row">
+      <div class="search-box">
+        <mat-icon>search</mat-icon>
+        <input
+          type="text"
+          placeholder="Search by Order #, customer name, email, or phone..."
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearch($event)"
+        />
+        @if (searchTerm()) {
+          <button type="button" class="clear-btn" (click)="onSearch('')">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+
+      <div class="total-badge">
+        <span>Total: <strong>{{ totalCount() }}</strong> orders</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Orders Content -->
+  <main class="orders-content">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading orders...</p>
+      </div>
+    } @else if (orders().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">shopping_bag</mat-icon>
+        <h3>No Orders Found</h3>
+        <p>No orders matched the selected filter criteria or you have not placed any orders yet.</p>
+        <a routerLink="/catalog" mat-stroked-button color="primary">Explore Product Catalog</a>
+      </div>
+    } @else {
+      <div class="orders-table-wrapper">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Order Number</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Payment Method</th>
+              <th>Payment</th>
+              <th>Fulfillment</th>
+              <th>Total Amount</th>
+              <th class="actions-col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ord of orders(); track ord.id) {
+              <tr class="order-row" (click)="viewOrder(ord)">
+                <td>
+                  <span class="order-num">{{ ord.orderNumber }}</span>
+                </td>
+                <td>
+                  <span class="order-date">{{ ord.createdAt | date: 'mediumDate' }}</span>
+                  <span class="order-time">{{ ord.createdAt | date: 'shortTime' }}</span>
+                </td>
+                <td>
+                  <div class="cust-info">
+                    <strong class="cust-name">{{ ord.customerName }}</strong>
+                    <span class="cust-email">{{ ord.customerEmail }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="items-count-badge">
+                    {{ ord.items.length }} {{ ord.items.length === 1 ? 'item' : 'items' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="pay-method-badge">UPI QR</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getPaymentStatusClass(ord.paymentStatus)">
+                    {{ ord.paymentStatus }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getStatusClass(ord.status)">
+                    {{ ord.status }}
+                  </span>
+                </td>
+                <td>
+                  <strong class="order-total">{{ ord.totalAmount | currency }}</strong>
+                </td>
+                <td class="actions-col" (click)="$event.stopPropagation()">
+                  <button mat-icon-button color="primary" (click)="viewOrder(ord)" matTooltip="View Details">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </main>
+</div>

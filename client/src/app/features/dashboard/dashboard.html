@@ -1,0 +1,88 @@
+<div class="page-banner mb-4">
+  <div>
+    <h1 class="mb-1 h4 fw-bold">Dashboard</h1>
+    <p class="text-muted mb-0 small">
+      @if (auth.currentUser(); as user) {
+        Welcome, {{ user.firstName }}. Here is an overview of categories, items, and customer orders.
+      } @else {
+        Overview of categories, items, and customer orders.
+      }
+    </p>
+  </div>
+</div>
+
+@if (isLoading()) {
+  <div class="dashboard-state card shadow-sm">
+    <div class="card-body">
+      <span class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
+      <span>Loading dashboard statistics...</span>
+    </div>
+  </div>
+} @else if (errorMessage(); as message) {
+  <div class="alert alert-danger d-flex align-items-center justify-content-between gap-3" role="alert">
+    <span>{{ message }}</span>
+    <button type="button" class="btn btn-outline-danger btn-sm" (click)="loadStatistics()">Retry</button>
+  </div>
+} @else if (statistics(); as stats) {
+  <div class="row g-3">
+    <div class="col-md-6 col-xl-4">
+      <a class="stat-card card h-100 shadow-sm" routerLink="/categories">
+        <div class="card-body">
+          <div class="stat-icon categories"><mat-icon>category</mat-icon></div>
+          <div>
+            <div class="stat-value">{{ stats.categories }}</div>
+            <div class="stat-label">Categories</div>
+            <div class="stat-detail">{{ stats.activeCategories }} active</div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-6 col-xl-4">
+      <a class="stat-card card h-100 shadow-sm" routerLink="/items">
+        <div class="card-body">
+          <div class="stat-icon items"><mat-icon>inventory_2</mat-icon></div>
+          <div>
+            <div class="stat-value">{{ stats.items }}</div>
+            <div class="stat-label">Items</div>
+            <div class="stat-detail">{{ stats.activeItems }} active</div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-6 col-xl-4">
+      <a class="stat-card card h-100 shadow-sm" routerLink="/orders">
+        <div class="card-body">
+          <div class="stat-icon orders"><mat-icon>receipt_long</mat-icon></div>
+          <div>
+            <div class="stat-value">{{ stats.orders }}</div>
+            <div class="stat-label">Orders</div>
+            <div class="stat-detail">{{ stats.pendingOrders }} pending</div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <section class="card shadow-sm mt-4">
+    <div class="card-body">
+      <div class="section-card-header">
+        <span class="icon-avatar"><mat-icon>insights</mat-icon></span>
+        <span>Order summary</span>
+      </div>
+      <div class="order-summary">
+        <div>
+          <span class="summary-value text-warning-emphasis">{{ stats.pendingOrders }}</span>
+          <span class="summary-label">Pending</span>
+        </div>
+        <div>
+          <span class="summary-value text-success">{{ stats.deliveredOrders }}</span>
+          <span class="summary-label">Delivered</span>
+        </div>
+        <div>
+          <span class="summary-value">{{ stats.orders - stats.pendingOrders - stats.deliveredOrders }}</span>
+          <span class="summary-label">In progress / other</span>
+        </div>
+      </div>
+    </div>
+  </section>
+}

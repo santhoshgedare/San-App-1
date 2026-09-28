@@ -1,0 +1,28 @@
+<div class="activity-log-panel">
+  <h6 class="text-uppercase text-muted small mb-2 d-flex align-items-center gap-1">
+    <mat-icon inline class="small-icon">history</mat-icon> Activity Log
+  </h6>
+
+  @if (isLoading()) {
+    <p class="text-muted small">Loading activity…</p>
+  } @else if (!entries().length) {
+    <p class="text-muted small">No activity recorded yet.</p>
+  } @else {
+    <ul class="list-unstyled mb-0">
+      @for (entry of entries(); track entry.id) {
+        <li class="mb-2 pb-2 border-bottom small">
+          <div class="d-flex justify-content-between">
+            <span class="fw-semibold">{{ entry.action }}</span>
+            <span class="text-muted">{{ entry.createdAt | date: 'medium' }}</span>
+          </div>
+          @if (entry.details) {
+            <div class="text-muted">{{ entry.details }}</div>
+          }
+          @if (entry.performedByEmail) {
+            <div class="text-muted fst-italic">by {{ entry.performedByEmail }}</div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

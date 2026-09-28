@@ -1,0 +1,57 @@
+<div class="auth-wrapper d-flex align-items-center justify-content-center">
+  <div class="card auth-card shadow-sm">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <img
+          src="logo.png"
+          alt="SRIVIDIKA Logo"
+          class="auth-logo mb-2"
+          onerror="this.style.display='none'"
+        />
+        <h3 class="mt-2 mb-0">Create an account</h3>
+        <p class="text-muted small">Join SRIVIDIKA in a few seconds</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label class="form-label">First name</label>
+            <input type="text" class="form-control" formControlName="firstName" placeholder="Jane" />
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label">Last name</label>
+            <input type="text" class="form-control" formControlName="lastName" placeholder="Doe" />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" formControlName="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" formControlName="password" autocomplete="new-password" placeholder="At least 8 characters" />
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <div class="form-text text-danger">Password must be at least 8 characters.</div>
+          }
+        </div>
+
+        @if (errorMessage(); as message) {
+          <div class="alert alert-danger py-2 small">{{ message }}</div>
+        }
+
+        <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
+          @if (isSubmitting()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          {{ isSubmitting() ? 'Creating account�' : 'Create Account' }}
+        </button>
+      </form>
+
+      <p class="text-center small mt-3 mb-0">
+        Already have an account? <a routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,88 @@
+<div class="payment-settings-page">
+  <header class="page-header">
+    <div class="header-icon">
+      <mat-icon>qr_code_2</mat-icon>
+    </div>
+    <div>
+      <h1 class="page-title">UPI Payment Settings</h1>
+      <p class="subtitle">Configure the UPI ID and QR code customers will use to pay at checkout.</p>
+    </div>
+  </header>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <mat-icon class="spin-icon">sync</mat-icon>
+      <span>Loading payment settings...</span>
+    </div>
+  } @else {
+    @if (errorMessage(); as err) {
+      <div class="alert-box error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ err }}</span>
+      </div>
+    }
+
+    <div class="settings-layout">
+      <section class="card">
+        <h2 class="card-title">QR Code Image</h2>
+        <p class="card-hint">Upload the UPI QR code image that customers will scan to pay.</p>
+
+        <div class="qr-upload-zone">
+          @if (qrCodeImageUrl) {
+            <div class="qr-preview">
+              <img [src]="qrCodeImageUrl" alt="UPI QR Code preview" />
+              <button type="button" class="remove-btn" (click)="removeQrImage()" title="Remove QR code">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          } @else {
+            <div class="qr-placeholder">
+              <mat-icon>qr_code_2</mat-icon>
+              <span>No QR code uploaded yet</span>
+            </div>
+          }
+
+          <label class="upload-btn">
+            <mat-icon>upload</mat-icon>
+            <span>{{ qrCodeImageUrl ? 'Replace QR Code' : 'Upload QR Code' }}</span>
+            <input type="file" accept="image/*" (change)="onQrFileSelected($event)" hidden />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">UPI Details</h2>
+
+        <div class="field-group">
+          <label for="upiId">UPI ID (VPA) *</label>
+          <input id="upiId" type="text" [(ngModel)]="upiId" placeholder="e.g. merchant@okhdfcbank" />
+        </div>
+
+        <div class="field-group">
+          <label for="payeeName">Payee Name (Optional)</label>
+          <input id="payeeName" type="text" [(ngModel)]="payeeName" placeholder="e.g. SRIVIDIKA Systems LLC" />
+        </div>
+
+        <div class="field-group">
+          <label for="instructions">Payment Instructions (Optional)</label>
+          <textarea
+            id="instructions"
+            rows="3"
+            [(ngModel)]="instructions"
+            placeholder="e.g. Scan the QR using any UPI app and enter the transaction reference number after payment."
+          ></textarea>
+        </div>
+
+        <button type="button" class="btn-save" [disabled]="isSaving()" (click)="save()">
+          @if (isSaving()) {
+            <mat-icon class="spin-icon">sync</mat-icon>
+            <span>Saving...</span>
+          } @else {
+            <mat-icon>save</mat-icon>
+            <span>Save Payment Settings</span>
+          }
+        </button>
+      </section>
+    </div>
+  }
+</div>

@@ -1,0 +1,36 @@
+.scroll-body {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.item-thumbnail {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+
+.item-thumbnail-placeholder {
+  width: 44px;
+  height: 44px;
+  background-color: var(--bs-secondary-bg);
+}
+
+.small-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
