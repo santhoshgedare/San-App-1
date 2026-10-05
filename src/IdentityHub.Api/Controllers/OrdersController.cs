@@ -10,6 +10,7 @@ using IdentityHub.Application.Features.Orders.Commands.UpdateOrderStatus;
 using IdentityHub.Application.Features.Orders.Commands.UpdatePaymentStatus;
 using IdentityHub.Application.Features.Orders.Queries.GetOrderById;
 using IdentityHub.Application.Features.Orders.Queries.GetOrders;
+using IdentityHub.Application.Features.PaymentSettings.Queries.GetPaymentSettings;
 using IdentityHub.Domain.Constants;
 using IdentityHub.Domain.Enums;
 using MediatR;
@@ -21,7 +22,7 @@ namespace IdentityHub.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public sealed class OrdersController(ISender sender, IModuleAccessService moduleAccess) : ControllerBase
+public sealed class OrdersController(ISender sender, IModuleAccessService moduleAccess, ISellerService sellers, IOrderService orderStore) : ControllerBase
 {
     /// <summary>Lists orders with filtering, search, status, and pagination. Admin/Manager see all, normal user sees own orders.</summary>
     [HttpGet]
@@ -39,13 +40,22 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
         if (!canViewAllOrders && !currentUserId.HasValue) return Unauthorized();
         Guid? customerId = canViewAllOrders ? null : currentUserId;
 
+        // Sellers (managers) only see orders placed for their own company.
+        Guid? sellerId = null;
+        if (canViewAllOrders && IsSellerScoped())
+        {
+            sellerId = await GetOwnSellerIdAsync(ct);
+            customerId = currentUserId;
+        }
+
         var result = await sender.Send(new GetOrdersPagedQuery(
             search,
             status,
             paymentStatus,
             customerId,
             page,
-            pageSize), ct);
+            pageSize,
+            sellerId), ct);
 
         return Ok(result);
     }
@@ -60,12 +70,49 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
 
         var canViewAllOrders = User.IsInRole(Roles.Admin) || await HasSectionAsync("section-orders-manage", ct);
         var currentUserId = GetCurrentUserId();
+        if (canViewAllOrders && IsSellerScoped() && order.CustomerId != currentUserId && order.SellerId != await GetOwnSellerIdAsync(ct))
+        {
+            return NotFound();
+        }
+
         if (!canViewAllOrders && (!currentUserId.HasValue || order.CustomerId != currentUserId))
         {
             return Forbid();
         }
 
+        order.CanManage = order.CustomerId != currentUserId && await HasSectionAsync("section-orders-manage", ct) && await CanActOnOrderAsync(id, ct);
         return Ok(order);
+    }
+
+    /// <summary>How the buyer pays for this order: the fulfilling seller's UPI/QR, or the platform's for platform-owned orders. Buyer only.</summary>
+    [HttpGet("{id:guid}/payment-info")]
+    [RequireSection("section-orders-view")]
+    public async Task<ActionResult<PaymentSettingsDto>> GetPaymentInfo(Guid id, CancellationToken ct)
+    {
+        var order = await sender.Send(new GetOrderByIdQuery(id), ct);
+        var me = GetCurrentUserId();
+        if (order is null || me is null || order.CustomerId != me) return NotFound();
+        if (order.Status is nameof(OrderStatus.Pending) or nameof(OrderStatus.Cancelled) || order.PaymentStatus is "Paid" or "Refunded")
+        {
+            return Conflict(new { errors = new[] { "Payment details are available only after confirmation and until payment is received." } });
+        }
+
+        if (order.SellerId is null) return Ok(await sender.Send(new GetPaymentSettingsQuery(), ct));
+
+        var seller = await sellers.GetByIdAsync(order.SellerId.Value, ct);
+        if (seller is null || (string.IsNullOrWhiteSpace(seller.UpiId) && string.IsNullOrWhiteSpace(seller.QrCodeImageUrl)))
+        {
+            return NotFound(new { errors = new[] { "This seller has not set up payment details yet. Please message them in the chat." } });
+        }
+
+        return Ok(new PaymentSettingsDto
+        {
+            Id = seller.Id,
+            UpiId = seller.UpiId ?? string.Empty,
+            PayeeName = seller.PayeeName ?? seller.CompanyName,
+            QrCodeImageUrl = seller.QrCodeImageUrl,
+            Instructions = seller.BankDetails
+        });
     }
 
     /// <summary>Places a new order with offline payment workflow.</summary>
@@ -111,6 +158,8 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
     [RequireSection("section-orders-manage")]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateOrderStatusRequest request, CancellationToken ct)
     {
+        if (!await CanActOnOrderAsync(id, ct)) return NotFound();
+
         var result = await sender.Send(new UpdateOrderStatusCommand(id, request.Status, request.TrackingNumber, request.ShippingCarrier), ct);
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
@@ -131,6 +180,8 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
     [RequireSection("section-orders-manage")]
     public async Task<IActionResult> SetShippingFee(Guid id, SetOrderShippingFeeRequest request, [FromServices] IOrderService orders, CancellationToken ct)
     {
+        if (!await CanActOnOrderAsync(id, ct)) return NotFound();
+
         var result = await orders.SetShippingFeeAsync(id, request.ShippingFee, request.Note, ct);
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
@@ -140,6 +191,8 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
     [RequireSection("section-orders-payment")]
     public async Task<IActionResult> UpdatePaymentStatus(Guid id, UpdateOrderPaymentStatusRequest request, CancellationToken ct)
     {
+        if (!await CanActOnOrderAsync(id, ct)) return NotFound();
+
         var result = await sender.Send(new UpdatePaymentStatusCommand(
             id,
             request.PaymentStatus,
@@ -154,6 +207,8 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
     [RequireSection("section-orders-refund")]
     public async Task<IActionResult> RecordRefund(Guid id, RecordOrderRefundRequest request, CancellationToken ct)
     {
+        if (!await CanActOnOrderAsync(id, ct)) return NotFound();
+
         var result = await sender.Send(new RecordOrderRefundCommand(
             id,
             request.RefundAmount,
@@ -188,6 +243,22 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
             request.OfflinePaymentNotes), ct);
 
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    private bool IsSellerScoped() => !User.IsInRole(Roles.Admin) && User.IsInRole(Roles.Manager);
+
+    private async Task<Guid?> GetOwnSellerIdAsync(CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        return userId.HasValue ? await sellers.GetSellerIdForUserAsync(userId.Value, ct) : null;
+    }
+
+    private async Task<bool> CanActOnOrderAsync(Guid orderId, CancellationToken ct)
+    {
+        // Only the fulfilling seller may act on an order; the platform admin acts only on platform-owned (no seller) orders.
+        var orderSeller = await orderStore.GetSellerIdAsync(orderId, ct);
+        if (orderSeller is null) return User.IsInRole(Roles.Admin);
+        return orderSeller == await GetOwnSellerIdAsync(ct);
     }
 
     private Guid? GetCurrentUserId()

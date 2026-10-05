@@ -1,4 +1,4 @@
-using IdentityHub.Application.Common.Interfaces;
+﻿using IdentityHub.Application.Common.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -6,7 +6,7 @@ using MimeKit;
 
 namespace IdentityHub.Infrastructure.Email;
 
-public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options) : IEmailSender
+public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options)
 {
     private readonly SmtpEmailOptions settings = options.Value;
 
@@ -16,15 +16,22 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options) : IEmail
         !string.IsNullOrWhiteSpace(settings.FromAddress) &&
         (string.IsNullOrWhiteSpace(settings.Username) == string.IsNullOrWhiteSpace(settings.Password));
 
-    public async Task SendAsync(string recipient, string subject, string htmlBody, string textBody, CancellationToken ct)
+    public async Task SendAsync(EmailMessage email, CancellationToken ct)
     {
         if (!IsConfigured) throw new InvalidOperationException("SMTP email settings are not configured.");
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(settings.FromName, settings.FromAddress));
-        message.To.Add(MailboxAddress.Parse(recipient));
-        message.Subject = subject;
-        message.Body = new BodyBuilder { HtmlBody = htmlBody, TextBody = textBody }.ToMessageBody();
+        foreach (var to in email.To) message.To.Add(MailboxAddress.Parse(to));
+        foreach (var cc in email.Cc) message.Cc.Add(MailboxAddress.Parse(cc));
+        message.Subject = email.Subject;
+
+        var builder = new BodyBuilder { HtmlBody = email.HtmlBody, TextBody = email.TextBody };
+        foreach (var file in email.Attachments)
+        {
+            builder.Attachments.Add(file.FileName, file.Content, ContentType.Parse(file.ContentType));
+        }
+        message.Body = builder.ToMessageBody();
 
         using var client = new SmtpClient();
         client.Timeout = Math.Clamp(settings.TimeoutSeconds, 1, 120) * 1000;

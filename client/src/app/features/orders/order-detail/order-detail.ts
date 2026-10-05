@@ -11,8 +11,8 @@ import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
 import { OrderService } from '../../../core/auth/order.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SectionAccessStore } from '../../../core/auth/section-access.store';
-import { PaymentSettingsService } from '../../../core/auth/payment-settings.service';
 import { ENTITY_TYPES } from '../../../core/models/constants';
+import { OrderChatPanel } from '../../../shared/order-chat/order-chat';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ReviewService } from '../../../core/auth/review.service';
@@ -36,6 +36,7 @@ import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
     MatSnackBarModule,
     MatSelectModule,
     ApprovalPanel,
+    OrderChatPanel,
     ActivityLogPanel,
     ReviewForm,
     StarRating,
@@ -50,7 +51,6 @@ export class OrderDetail implements OnInit {
   private readonly orderService = inject(OrderService);
   protected readonly auth = inject(AuthService);
   private readonly sectionAccess = inject(SectionAccessStore);
-  private readonly paymentSettingsService = inject(PaymentSettingsService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly reviewService = inject(ReviewService);
   private readonly confirmService = inject(ConfirmService);
@@ -61,6 +61,7 @@ export class OrderDetail implements OnInit {
   readonly reviews = signal<Record<string, ItemReviewDto>>({});
   readonly reviewingItemId = signal<string | null>(null);
   readonly isUpdating = signal(false);
+  readonly paymentUnavailable = signal<string | null>(null);
 
   readonly entityType = ENTITY_TYPES.order;
 
@@ -110,9 +111,13 @@ export class OrderDetail implements OnInit {
           });
         }
         if (!this.isPrivileged() && this.isPaymentAvailable(ord) && ['Pending', 'Failed'].includes(ord.paymentStatus) && !this.paymentSettings()) {
-          this.paymentSettingsService.get().subscribe({
+          this.paymentUnavailable.set(null);
+          this.orderService.getPaymentInfo(ord.id).subscribe({
             next: (settings) => this.paymentSettings.set(settings),
-            error: () => this.paymentSettings.set(null),
+            error: (err) => {
+              this.paymentSettings.set(null);
+              this.paymentUnavailable.set(err?.error?.errors?.[0] ?? 'Payment details are not available yet.');
+            },
           });
         } else if (this.isPrivileged() || ['Paid', 'Refunded'].includes(ord.paymentStatus)) {
           this.paymentSettings.set(null);
@@ -162,11 +167,28 @@ export class OrderDetail implements OnInit {
     this.reviewingItemId.set(null);
   }
 
+  /** Any staff member (admin or seller) viewing an order they placed themselves is treated as the buyer. */
+  private isBuyerOfOrder(order: OrderDto | null): boolean {
+    return !!order && order.customerId === this.auth.currentUser()?.id;
+  }
+
   isPrivileged(): boolean {
+    if (this.isBuyerOfOrder(this.order())) return false;
     return this.auth.isAdmin() ||
       this.sectionAccess.can('section-orders-manage') ||
       this.sectionAccess.can('section-orders-payment') ||
       this.sectionAccess.can('section-orders-refund');
+  }
+
+  /** Next valid statuses for the order (mirrors the server's forward-only rules), including the current one. */
+  statusOptions(order: OrderDto): string[] {
+    const next: Record<string, string[]> = {
+      Pending: ['Confirmed', 'Cancelled'],
+      Confirmed: ['Processing', 'Cancelled'],
+      Processing: ['Shipped', 'Cancelled'],
+      Shipped: ['Delivered'],
+    };
+    return [order.status, ...(next[order.status] ?? [])];
   }
 
   canCancelOwn(order: OrderDto | null): boolean {
@@ -223,15 +245,15 @@ export class OrderDetail implements OnInit {
   }
 
   canUpdatePaymentStatus(order: OrderDto | null): boolean {
-    return this.sectionAccess.can('section-orders-payment') && !!order && order.shippingFeeConfirmed && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
+    return !!order?.canManage && !this.isBuyerOfOrder(order) && this.sectionAccess.can('section-orders-payment') && !!order && order.shippingFeeConfirmed && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
   }
 
   canUpdateOrderStatus(order: OrderDto | null): boolean {
-    return this.sectionAccess.can('section-orders-manage') && !!order;
+    return !!order?.canManage && !this.isBuyerOfOrder(order) && this.sectionAccess.can('section-orders-manage') && !!order;
   }
 
   canRecordRefund(order: OrderDto | null): boolean {
-    return this.sectionAccess.can('section-orders-refund') && !!order && order.paymentStatus === 'Paid';
+    return !!order?.canManage && !this.isBuyerOfOrder(order) && this.sectionAccess.can('section-orders-refund') && !!order && order.paymentStatus === 'Paid';
   }
 
   isPaymentAvailable(order: OrderDto | null): boolean {

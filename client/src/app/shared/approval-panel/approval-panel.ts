@@ -63,6 +63,9 @@ export class ApprovalPanel implements OnChanges {
 
   /** True when the current user can decide the given approval's current stage (or, for legacy workflow-less approvals, is Admin/Manager). */
   canDecide(approval: ApprovalDto): boolean {
+    if (approval.entityType === 'Order' && approval.canDecide !== undefined) {
+      return approval.canDecide;
+    }
     if (this.auth.isAdmin()) {
       return true;
     }

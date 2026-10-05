@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using IdentityHub.Api.Contracts;
 using IdentityHub.Api.Authorization;
 using IdentityHub.Application.Common.Interfaces;
@@ -17,7 +18,7 @@ namespace IdentityHub.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public sealed class ItemsController(ISender sender, IItemService itemService) : ControllerBase
+public sealed class ItemsController(ISender sender, IItemService itemService, ISellerService sellers) : ControllerBase
 {
     /// <summary>Lists all active items. Public/anonymous access for catalog browsing.</summary>
     [HttpGet]
@@ -72,8 +73,10 @@ public sealed class ItemsController(ISender sender, IItemService itemService) : 
     [RequireSection("section-items-manage")]
     public async Task<ActionResult<ItemDto>> GetManagementById(Guid id, CancellationToken ct)
     {
+        var scope = await ResolveScopeAsync(ct);
         var item = await sender.Send(new GetItemByIdQuery(id), ct);
-        return item is null ? NotFound() : Ok(item);
+        if (item is null || (scope.Scoped && item.SellerId != scope.SellerId)) return NotFound();
+        return Ok(item);
     }
 
     /// <summary>Lists items including internal unit costs for inventory management.</summary>
@@ -86,13 +89,25 @@ public sealed class ItemsController(ISender sender, IItemService itemService) : 
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
-        => Ok(await sender.Send(new GetItemsPagedQuery(search, categoryId, isActive, page, pageSize), ct));
+    {
+        var scope = await ResolveScopeAsync(ct);
+        if (!scope.Scoped)
+        {
+            return Ok(await sender.Send(new GetItemsPagedQuery(search, categoryId, isActive, page, pageSize), ct));
+        }
+
+        if (scope.SellerId is null) return Ok(new PagedResult<ItemDto> { Page = page, PageSize = pageSize });
+        return Ok(await itemService.GetPagedAsync(new ItemListQuery(search, categoryId, isActive, page, pageSize, scope.SellerId), ct));
+    }
 
     /// <summary>Creates a new item master with 1:N images, documents, and variant-based pricing.</summary>
     [HttpPost]
     [RequireSection("section-items-manage")]
-    public async Task<ActionResult<ItemDto>> Create(CreateItemRequest request, CancellationToken ct)
+    public async Task<ActionResult<ItemDto>> Create(CreateItemRequest request, [FromQuery] Guid? sellerId, CancellationToken ct)
     {
+        var scope = await ResolveScopeAsync(ct);
+        if (scope.Scoped && scope.SellerId is null) return Forbid();
+
         var imageInputs = (request.Images ?? [])
             .Select(img => new ItemImageInput(img.Id, img.Url, img.FileName, img.Caption, img.IsPrimary, img.SortOrder))
             .ToList();
@@ -120,6 +135,15 @@ public sealed class ItemsController(ISender sender, IItemService itemService) : 
             documentInputs,
             variantInputs), ct);
 
+        if (result.Succeeded)
+        {
+            var owner = scope.Scoped ? scope.SellerId : sellerId;
+            if (owner.HasValue)
+            {
+                await itemService.AssignSellerAsync(result.Data!.Id, owner, ct);
+            }
+        }
+
         return result.Succeeded
             ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
             : BadRequest(new { errors = result.Errors });
@@ -130,6 +154,8 @@ public sealed class ItemsController(ISender sender, IItemService itemService) : 
     [RequireSection("section-items-manage")]
     public async Task<IActionResult> Update(Guid id, UpdateItemRequest request, CancellationToken ct)
     {
+        if (!await CanManageAsync(id, ct)) return NotFound();
+
         var imageInputs = (request.Images ?? [])
             .Select(img => new ItemImageInput(img.Id, img.Url, img.FileName, img.Caption, img.IsPrimary, img.SortOrder))
             .ToList();
@@ -166,13 +192,32 @@ public sealed class ItemsController(ISender sender, IItemService itemService) : 
     [RequireSection("section-items-manage")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        if (!await CanManageAsync(id, ct)) return NotFound();
+
         var result = await sender.Send(new DeleteItemCommand(id), ct);
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    private async Task<(bool Scoped, Guid? SellerId)> ResolveScopeAsync(CancellationToken ct)
+    {
+        if (User.IsInRole(Roles.Admin) || !User.IsInRole(Roles.Manager)) return (false, null);
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(raw, out var userId)) return (true, null);
+        return (true, await sellers.GetSellerIdForUserAsync(userId, ct));
+    }
+
+    private async Task<bool> CanManageAsync(Guid itemId, CancellationToken ct)
+    {
+        var scope = await ResolveScopeAsync(ct);
+        if (!scope.Scoped) return true;
+        return scope.SellerId is not null && await itemService.GetSellerIdAsync(itemId, ct) == scope.SellerId;
     }
 
     private static ItemDto HideInternalCosts(ItemDto item) => new()
     {
         Id = item.Id,
+        SellerId = item.SellerId,
+        SellerName = item.SellerName,
         Code = item.Code,
         Name = item.Name,
         Description = item.Description,

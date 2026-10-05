@@ -1,0 +1,47 @@
+<div class="compose">
+  <div class="compose-head">
+    <h2 class="title"><mat-icon>mail_outline</mat-icon> New message</h2>
+    <button type="button" mat-icon-button mat-dialog-close aria-label="Close"><mat-icon>close</mat-icon></button>
+  </div>
+
+  <div class="compose-body">
+    @if (error(); as message) {
+      <div class="alert alert-danger py-2 small m-2">{{ message }}</div>
+    }
+    <div class="field-row">
+      <label for="mail-to">To</label>
+      <input id="mail-to" type="text" [(ngModel)]="to" name="to" placeholder="name@company.com (separate several with commas)" />
+    </div>
+    <div class="field-row">
+      <label for="mail-cc">Cc</label>
+      <input id="mail-cc" type="text" [(ngModel)]="cc" name="cc" placeholder="Optional" />
+    </div>
+    <div class="field-row">
+      <label for="mail-subject">Subject</label>
+      <input id="mail-subject" type="text" [(ngModel)]="subject" name="subject" maxlength="200" />
+    </div>
+    <textarea class="message" [(ngModel)]="body" name="body" rows="12" aria-label="Message"></textarea>
+
+    @if (files().length) {
+      <div class="attachments">
+        @for (f of files(); track $index) {
+          <span class="chip"><mat-icon inline>attach_file</mat-icon>{{ f.name }} <small>({{ size(f) }})</small>
+            <button type="button" (click)="removeFile($index)" aria-label="Remove attachment"><mat-icon inline>close</mat-icon></button>
+          </span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="compose-actions">
+    <button type="button" mat-flat-button class="send-btn" (click)="send()" [disabled]="isSending()">
+      <mat-icon>send</mat-icon> {{ isSending() ? 'Sending…' : 'Send' }}
+    </button>
+    <label class="attach-btn">
+      <mat-icon>attach_file</mat-icon> Attach
+      <input type="file" multiple hidden (change)="onFilesSelected($event)" />
+    </label>
+    <span class="flex-grow-1"></span>
+    <button type="button" mat-button mat-dialog-close>Discard</button>
+  </div>
+</div>

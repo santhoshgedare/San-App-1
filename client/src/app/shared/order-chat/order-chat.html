@@ -1,0 +1,51 @@
+@if (chat(); as c) {
+<section class="oc">
+  <header class="oc-head">
+    <mat-icon>forum</mat-icon>
+    <div>
+      <h5>{{ c.myRole === 'Seller' ? 'Chat with buyer' : 'Chat with ' + c.sellerName }}</h5>
+      <small>{{ c.isClosed ? 'Closed' : c.myRole === 'Observer' ? 'Read-only view' : 'Ask a question or send a note about this order' }}</small>
+    </div>
+  </header>
+
+  <div class="oc-thread" #thread>
+    @for (m of c.messages; track m.id) {
+      <div class="oc-msg" [class.mine]="m.isMine" [class.auto]="m.senderRole === 'Auto'">
+        <div class="oc-bubble">
+          <div class="oc-name">{{ m.senderName }}</div>
+          <div class="oc-body">{{ m.body }}</div>
+          <div class="oc-time">{{ m.createdAt | date: 'MMM d, h:mm a' }}</div>
+        </div>
+      </div>
+    } @empty {
+      <div class="oc-empty">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>No messages yet.{{ c.faqs.length ? ' Tap a common question below to get started.' : '' }}</p>
+      </div>
+    }
+  </div>
+
+  @if (c.isClosed) {
+    <div class="oc-closed"><mat-icon>lock</mat-icon> This conversation is closed because the order is no longer active. Chat is open until the order is delivered.</div>
+  }
+  @if (c.canPost) {
+    @if (c.faqs.length) {
+      <div class="oc-chips" aria-label="Frequently asked questions">
+        @for (f of c.faqs; track f.id) {
+          <button type="button" class="oc-chip" [disabled]="isSending()" (click)="ask(f.id)">{{ f.question }}</button>
+        }
+      </div>
+    } @else if (c.myRole === 'Seller') {
+      <div class="oc-chips" aria-label="Quick replies">
+        @for (r of replies; track r) {
+          <button type="button" class="oc-chip" (click)="useReply(r)">{{ r }}</button>
+        }
+      </div>
+    }
+    <form class="oc-form" (ngSubmit)="send()">
+      <textarea rows="1" maxlength="1000" name="text" [(ngModel)]="text" placeholder="Type your message…" (keydown.enter)="onEnter($event)"></textarea>
+      <button type="submit" class="oc-send" [disabled]="isSending() || !text.trim()" aria-label="Send message"><mat-icon>send</mat-icon></button>
+    </form>
+  }
+</section>
+}

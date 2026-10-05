@@ -25,6 +25,11 @@ export class AuthService {
     return this.http.post<AuthResult>(`${this.baseUrl}/login`, request).pipe(tap((result) => this.persistSession(result)));
   }
 
+  /** Stores the session returned by an accepted seller invitation. */
+  startSession(result: AuthResult): void {
+    this.persistSession(result);
+  }
+
   register(request: RegisterRequest): Observable<AuthResult> {
     return this.http.post<AuthResult>(`${this.baseUrl}/register`, request).pipe(tap((result) => this.persistSession(result)));
   }

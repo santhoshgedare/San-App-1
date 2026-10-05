@@ -123,6 +123,7 @@ public sealed class ApprovalDto
 
     /// <summary>True only for the latest revision — only one approval per entity may be pending at a time.</summary>
     public bool IsCurrent { get; init; } = true;
+    public bool CanDecide { get; init; }
 
     /// <summary>Per-stage decision history, in stage order.</summary>
     public IReadOnlyList<ApprovalStageDecisionDto> StageDecisions { get; init; } = [];
@@ -265,6 +266,8 @@ public sealed record ItemVariantInput(
 public sealed class ItemDto
 {
     public Guid Id { get; init; }
+    public Guid? SellerId { get; init; }
+    public string SellerName { get; init; } = "SRIVIDIKA";
     public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
@@ -314,6 +317,10 @@ public sealed record OrderItemInput(
 
 public sealed class OrderDto
 {
+    /// <summary>True when the current user may change this order's status, delivery charge, payment or refund.</summary>
+    public bool CanManage { get; set; }
+    public Guid? SellerId { get; init; }
+    public string SellerName { get; init; } = "SRIVIDIKA";
     public Guid Id { get; init; }
     public string OrderNumber { get; init; } = string.Empty;
     public Guid? CustomerId { get; init; }
@@ -410,7 +417,101 @@ public sealed record ItemListQuery(
     Guid? CategoryId,
     bool? IsActive,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    Guid? SellerId = null);
+
+public sealed class SellerDto
+{
+    public Guid Id { get; init; }
+    public Guid? UserId { get; init; }
+    public string? UserEmail { get; init; }
+    public string CompanyName { get; init; } = string.Empty;
+    public string? Tagline { get; init; }
+    public string? Description { get; init; }
+    public string? LogoUrl { get; init; }
+    public string? ContactEmail { get; init; }
+    public string? ContactPhone { get; init; }
+    public string? Website { get; init; }
+    public string? AddressLine1 { get; init; }
+    public string? City { get; init; }
+    public string? State { get; init; }
+    public string? PostalCode { get; init; }
+    public string? Country { get; init; }
+    public int ItemCount { get; init; }
+    public string? UpiId { get; init; }
+    public string? PayeeName { get; init; }
+    public string? QrCodeImageUrl { get; init; }
+    public string? BankDetails { get; init; }
+    public string? InviteEmail { get; init; }
+    /// <summary>None, Pending, Expired or Accepted.</summary>
+    public string InviteStatus { get; init; } = "None";
+}
+
+public sealed record SellerInviteRequest(string Email);
+
+public sealed class SellerInviteResultDto
+{
+    public string InviteUrl { get; init; } = string.Empty;
+    public DateTimeOffset ExpiresAt { get; init; }
+    public string To { get; init; } = string.Empty;
+    public string Subject { get; init; } = string.Empty;
+    /// <summary>Plain-text draft the admin can edit before sending.</summary>
+    public string Body { get; init; } = string.Empty;
+}
+
+public sealed class EmailLogDto
+{
+    public Guid Id { get; init; }
+    public string ToAddresses { get; init; } = string.Empty;
+    public string? CcAddresses { get; init; }
+    public string Subject { get; init; } = string.Empty;
+    public string? HtmlBody { get; init; }
+    public string? TextBody { get; init; }
+    public string? Attachments { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string? Error { get; init; }
+    public string Category { get; init; } = string.Empty;
+    public string? RelatedEntityType { get; init; }
+    public string? RelatedEntityId { get; init; }
+    public string? CreatedByEmail { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? SentAt { get; init; }
+}
+
+public sealed class SellerInviteInfoDto
+{
+    public string Email { get; init; } = string.Empty;
+    public string CompanyName { get; init; } = string.Empty;
+    public string? Tagline { get; init; }
+    public string? LogoUrl { get; init; }
+}
+
+public sealed record SellerRegistrationInput(
+    string FirstName,
+    string LastName,
+    string Password,
+    string PhoneNumber,
+    AddressInput Address,
+    SellerInput Company);
+
+public sealed record SellerInput(
+    string CompanyName,
+    string? Tagline,
+    string? Description,
+    string? LogoUrl,
+    string? ContactEmail,
+    string? ContactPhone,
+    string? Website,
+    string? AddressLine1,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? Country,
+    Guid? UserId,
+    string? UpiId = null,
+    string? PayeeName = null,
+    string? BankDetails = null,
+    string? QrCodeImageUrl = null);
 
 
 

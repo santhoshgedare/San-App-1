@@ -785,3 +785,17 @@
 .review-meta { color: #716068; font-size: .8rem; }
 .review-photos { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; button { padding: 0; border: 0; background: none; cursor: zoom-in; } img { width: 72px; height: 72px; object-fit: cover; border-radius: .6rem; border: 1px solid #eadfd2; } }
 .lightbox { position: fixed; inset: 0; z-index: 2000; background: rgba(40, 20, 25, .85); display: flex; align-items: center; justify-content: center; padding: 1rem; cursor: zoom-out; img { max-width: 100%; max-height: 100%; border-radius: .75rem; } }.similar-more { flex: 0 0 8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; background: #fffdfa; border: 1.5px dashed #c9a45c; border-radius: 1rem; color: #76283a; font-weight: 600; cursor: pointer; scroll-snap-align: start; &:disabled { opacity: .6; } }
+
+.fulfilled-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 1rem;
+  font-size: 0.9rem;
+  color: #6b5a4e;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: #b8913f; }
+  strong { color: #5a1a2b; }
+  .fulfilled-meta { color: #8a7a6c; font-size: 0.82rem; }
+}

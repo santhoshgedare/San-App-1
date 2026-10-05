@@ -1,0 +1,64 @@
+<div class="auth-wrapper d-flex align-items-center justify-content-center">
+  <div class="card auth-card shadow-sm" style="max-width: 640px; width: 100%;">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <img src="logo.png" alt="SRIVIDIKA Logo" class="auth-logo mb-2" onerror="this.style.display='none'" />
+        <h3 class="mt-2 mb-0">Become a SRIVIDIKA seller</h3>
+        @if (invite(); as inv) {
+          <p class="text-muted small mb-0">You have been invited as <strong>{{ inv.companyName }}</strong> ({{ inv.email }})</p>
+        }
+      </div>
+
+      @if (isLoading()) {
+        <p class="text-center text-muted">Checking your invitation...</p>
+      } @else if (!invite()) {
+        <div class="alert alert-danger small">{{ errorMessage() }}</div>
+        <a routerLink="/login">Back to sign in</a>
+      } @else {
+        <form (ngSubmit)="submit()" #f="ngForm">
+          <h6>Your account</h6>
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label class="form-label">First name</label><input class="form-control" name="firstName" [(ngModel)]="firstName" /></div>
+            <div class="col-6"><label class="form-label">Last name</label><input class="form-control" name="lastName" [(ngModel)]="lastName" /></div>
+            <div class="col-12"><label class="form-label">Email</label><input class="form-control" [value]="invite()!.email" disabled /></div>
+            <div class="col-12"><label class="form-label">Phone number</label><input type="tel" class="form-control" name="phone" [(ngModel)]="phoneNumber" /></div>
+            <div class="col-md-6"><label class="form-label">Password</label><app-password-field name="password" [(ngModel)]="password" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+            <div class="col-md-6"><label class="form-label">Confirm password</label><app-password-field name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password" /></div>
+          </div>
+
+          <h6 class="mt-3">Your address</h6>
+          <div class="mb-3"><app-address-fields [model]="address" /></div>
+
+          <h6>Company profile</h6>
+          <div class="row g-2 mb-2">
+            <div class="col-md-6"><label class="form-label">Company name</label><input class="form-control" name="companyName" [(ngModel)]="company.companyName" /></div>
+            <div class="col-md-6"><label class="form-label">Tagline</label><input class="form-control" name="tagline" [(ngModel)]="company.tagline" /></div>
+            <div class="col-12"><label class="form-label">About the company</label><textarea class="form-control" rows="2" name="description" [(ngModel)]="company.description"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Website</label><input class="form-control" name="website" [(ngModel)]="company.website" /></div>
+            <div class="col-md-6"><label class="form-label">Contact phone</label><input class="form-control" name="contactPhone" [(ngModel)]="company.contactPhone" /></div>
+          </div>
+
+          <h6 class="mt-3">Payment details</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6"><label class="form-label">UPI ID</label><input class="form-control" name="upiId" [(ngModel)]="company.upiId" placeholder="name@bank" /></div>
+            <div class="col-md-6"><label class="form-label">Payee name</label><input class="form-control" name="payeeName" [(ngModel)]="company.payeeName" /></div>
+            <div class="col-12"><label class="form-label">Payment QR code</label>
+              @if (company.qrCodeImageUrl) { <img [src]="company.qrCodeImageUrl" alt="Payment QR code" width="120" height="120" class="rounded border d-block mb-2" style="object-fit: contain; background: #fff" /> }
+              <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onQrSelected($event)" />
+              @if (company.qrCodeImageUrl) { <button type="button" class="btn btn-link btn-sm text-danger px-0" (click)="company.qrCodeImageUrl = null">Remove QR</button> }
+            </div>
+            <div class="col-12"><label class="form-label">Bank details</label><textarea class="form-control" rows="2" name="bankDetails" [(ngModel)]="company.bankDetails" placeholder="Account holder, account number, IFSC"></textarea></div>
+          </div>
+
+          @if (errorMessage(); as message) {
+            <div class="alert alert-danger py-2 small">{{ message }}</div>
+          }
+
+          <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Creating your seller account...' : 'Complete registration' }}
+          </button>
+        </form>
+      }
+    </div>
+  </div>
+</div>

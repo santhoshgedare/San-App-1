@@ -39,6 +39,7 @@ public interface IEmailSender
 {
     bool IsConfigured { get; }
     Task SendAsync(string recipient, string subject, string htmlBody, string textBody, CancellationToken ct);
+    Task SendAsync(EmailMessage message, CancellationToken ct);
 }
 
 /// <summary>Search/filter/pagination parameters for the users list.</summary>

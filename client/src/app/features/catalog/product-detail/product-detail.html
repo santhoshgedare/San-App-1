@@ -67,6 +67,16 @@
         </button>
       </div>
 
+      <div class="fulfilled-by">
+        <mat-icon>storefront</mat-icon>
+        <span>Fulfilled by <strong>{{ itm.sellerName || 'SRIVIDIKA' }}</strong></span>
+        @if (seller(); as s) {
+          @if (s.tagline || s.city) {
+            <span class="fulfilled-meta">{{ s.tagline }}{{ s.tagline && s.city ? ' · ' : '' }}{{ s.city }}</span>
+          }
+        }
+      </div>
+
       <!-- Price block -->
       <div class="price-box">
         <div class="price-value">{{ getEffectivePrice() | currency }}</div>

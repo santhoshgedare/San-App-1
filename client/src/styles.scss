@@ -451,3 +451,6 @@ app-user-shell .user-content {
 @media (max-width: 575.98px) {
   .mat-mdc-snack-bar-container { margin-right: 0.5rem !important; margin-left: 0.5rem !important; }
 }
+
+.flush-dialog .mat-mdc-dialog-surface { overflow: hidden; border-radius: 14px; }
+

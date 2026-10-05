@@ -10,6 +10,7 @@ import type {
   SubmitOrderPaymentDetailsRequest,
   UpdateOrderPaymentStatusRequest,
   UpdateOrderStatusRequest,
+  PaymentSettingsDto,
 } from '../models/auth.models';
 import type { PagedResult } from '../models/pagination.models';
 
@@ -35,6 +36,10 @@ export class OrderService {
     if (filter.pageSize) params = params.set('pageSize', filter.pageSize);
 
     return this.http.get<PagedResult<OrderDto>>(this.baseUrl, { params });
+  }
+
+  getPaymentInfo(id: string): Observable<PaymentSettingsDto> {
+    return this.http.get<PaymentSettingsDto>(`${this.baseUrl}/${id}/payment-info`);
   }
 
   getById(id: string): Observable<OrderDto> {

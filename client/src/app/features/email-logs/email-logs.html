@@ -1,0 +1,48 @@
+<div class="page-banner mb-3">
+  <h2 class="mb-0 h4 fw-bold">Email Log</h2>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <input class="form-control" style="max-width: 280px" placeholder="Search recipient, subject, category" [(ngModel)]="search" (keyup.enter)="load()" />
+  <select class="form-select" style="max-width: 160px" [(ngModel)]="status" (change)="load()">
+    <option value="">All statuses</option>
+    <option value="Sent">Sent</option>
+    <option value="Failed">Failed</option>
+  </select>
+  <button class="btn btn-outline-primary" (click)="load()">Search</button>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr><th>When</th><th>Status</th><th>To</th><th>Subject</th><th>Category</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (l of logs(); track l.id) {
+          <tr role="button" (click)="open(l)">
+            <td class="text-nowrap small">{{ l.createdAt | date: 'dd MMM y, HH:mm' }}</td>
+            <td>
+              <span class="badge" [class.text-bg-success]="l.status === 'Sent'" [class.text-bg-danger]="l.status === 'Failed'">{{ l.status }}</span>
+            </td>
+            <td class="small text-break">{{ l.toAddresses }}</td>
+            <td class="small">{{ l.subject }}</td>
+            <td class="small text-muted">{{ l.category }}</td>
+            <td class="small text-muted">@if (l.attachments) { <mat-icon inline>attach_file</mat-icon> }</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="text-center text-muted py-4">{{ isLoading() ? 'Loading…' : 'No emails recorded yet.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer d-flex justify-content-between align-items-center small">
+    <span>{{ total() }} email(s)</span>
+    <span class="d-flex gap-2 align-items-center">
+      <button class="btn btn-sm btn-outline-secondary" [disabled]="page() <= 1" (click)="load(page() - 1)">Prev</button>
+      Page {{ page() }} / {{ totalPages() }}
+      <button class="btn btn-sm btn-outline-secondary" [disabled]="page() >= totalPages()" (click)="load(page() + 1)">Next</button>
+    </span>
+  </div>
+</div>
+

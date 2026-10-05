@@ -25,10 +25,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ItemDocument> ItemDocuments => Set<ItemDocument>();
     public DbSet<ItemVariant> ItemVariants => Set<ItemVariant>();
     public DbSet<ItemReview> ItemReviews => Set<ItemReview>();
+    public DbSet<SellerProfile> SellerProfiles => Set<SellerProfile>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PaymentSettings> PaymentSettings => Set<PaymentSettings>();
     public DbSet<Address> Addresses => Set<Address>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
+    public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -82,6 +85,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<RoleSectionAccess>(entity =>
         {
             entity.HasIndex(r => new { r.RoleId, r.SectionId }).IsUnique();
+        });
+
+        builder.Entity<OrderMessage>(entity =>
+        {
+            entity.Property(m => m.SenderRole).HasMaxLength(20).IsRequired();
+            entity.Property(m => m.SenderName).HasMaxLength(200).IsRequired();
+            entity.Property(m => m.Body).HasMaxLength(1000).IsRequired();
+            entity.HasOne(m => m.Order).WithMany().HasForeignKey(m => m.OrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(m => new { m.OrderId, m.CreatedAt });
+        });
+
+        builder.Entity<EmailLog>(entity =>
+        {
+            entity.Property(e => e.ToAddresses).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.CcAddresses).HasMaxLength(1000);
+            entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Attachments).HasMaxLength(2000);
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Error).HasMaxLength(2000);
+            entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.RelatedEntityType).HasMaxLength(100);
+            entity.Property(e => e.RelatedEntityId).HasMaxLength(100);
+            entity.Property(e => e.CreatedByEmail).HasMaxLength(256);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Status);
         });
 
         builder.Entity<ActivityLog>(entity =>
@@ -171,6 +199,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasMany(i => i.Documents).WithOne(doc => doc.Item).HasForeignKey(doc => doc.ItemId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(i => i.Variants).WithOne(v => v.Item).HasForeignKey(v => v.ItemId).OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasOne(i => i.Seller).WithMany().HasForeignKey(i => i.SellerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(i => i.SellerId);
             entity.HasIndex(i => i.Code).IsUnique();
             entity.HasIndex(i => i.Name);
             entity.HasIndex(i => i.CategoryId);
@@ -205,6 +235,28 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(v => v.CostPrice).HasPrecision(18, 2);
         });
 
+        builder.Entity<SellerProfile>(entity =>
+        {
+            entity.Property(s => s.CompanyName).HasMaxLength(200).IsRequired();
+            entity.Property(s => s.Tagline).HasMaxLength(200);
+            entity.Property(s => s.Description).HasMaxLength(2000);
+            entity.Property(s => s.ContactEmail).HasMaxLength(200);
+            entity.Property(s => s.ContactPhone).HasMaxLength(30);
+            entity.Property(s => s.Website).HasMaxLength(300);
+            entity.Property(s => s.AddressLine1).HasMaxLength(300);
+            entity.Property(s => s.City).HasMaxLength(100);
+            entity.Property(s => s.State).HasMaxLength(100);
+            entity.Property(s => s.PostalCode).HasMaxLength(20);
+            entity.Property(s => s.Country).HasMaxLength(100);
+            entity.Property(s => s.UpiId).HasMaxLength(100);
+            entity.Property(s => s.PayeeName).HasMaxLength(200);
+            entity.Property(s => s.BankDetails).HasMaxLength(1000);
+            entity.Property(s => s.InviteEmail).HasMaxLength(256);
+            entity.Property(s => s.InviteTokenHash).HasMaxLength(128);
+            entity.HasIndex(s => s.InviteTokenHash);
+            entity.HasIndex(s => s.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+        });
+
         builder.Entity<ItemReview>(entity =>
         {
             entity.HasQueryFilter(r => !r.Item!.IsDeleted);
@@ -222,6 +274,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             entity.HasQueryFilter(o => !o.IsDeleted);
             entity.Property(o => o.OrderNumber).HasMaxLength(50).IsRequired();
+            entity.HasOne(o => o.Seller).WithMany().HasForeignKey(o => o.SellerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(o => o.SellerId);
             entity.Property(o => o.CustomerName).HasMaxLength(200).IsRequired();
             entity.Property(o => o.CustomerEmail).HasMaxLength(200).IsRequired();
             entity.Property(o => o.CustomerPhone).HasMaxLength(50).IsRequired();

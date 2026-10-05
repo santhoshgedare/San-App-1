@@ -5,7 +5,7 @@ using MediatR;
 
 namespace IdentityHub.Application.Features.Auth.Commands.Register;
 
-public sealed record RegisterCommand(string Email, string Password, string FirstName, string LastName, string? PhoneNumber) : IRequest<Result<AuthResultDto>>;
+public sealed record RegisterCommand(string Email, string Password, string FirstName, string LastName, string PhoneNumber, AddressInput Address) : IRequest<Result<AuthResultDto>>;
 
 public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -15,14 +15,16 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
         RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.LastName).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.PhoneNumber).MaximumLength(30);
+        RuleFor(x => x.PhoneNumber).NotEmpty().WithMessage("Phone number is required.").MaximumLength(30);
+        RuleFor(x => x.Address).NotNull().WithMessage("An address is required.").SetValidator(new IdentityHub.Application.Common.Validation.AddressInputValidator());
     }
 }
 
 public sealed class RegisterCommandHandler(
     IIdentityService identityService,
     ITokenService tokenService,
-    IRefreshTokenService refreshTokenService) : IRequestHandler<RegisterCommand, Result<AuthResultDto>>
+    IRefreshTokenService refreshTokenService,
+    IAddressService addressService) : IRequestHandler<RegisterCommand, Result<AuthResultDto>>
 {
     public async Task<Result<AuthResultDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
@@ -33,6 +35,7 @@ public sealed class RegisterCommandHandler(
         }
 
         var user = result.Data!;
+        await addressService.CreateAsync(user.Id, request.Address with { IsDefault = true }, cancellationToken);
         var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
         var refreshToken = tokenService.GenerateRefreshToken();
         await refreshTokenService.StoreAsync(user.Id, refreshToken, DateTimeOffset.UtcNow.AddDays(7), cancellationToken);

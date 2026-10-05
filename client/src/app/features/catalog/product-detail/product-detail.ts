@@ -1,3 +1,4 @@
+import { SellerService, type SellerDto } from '../../../core/auth/seller.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -38,6 +39,8 @@ export class ProductDetail implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   protected readonly favourites = inject(FavouritesService);
   private readonly reviewService = inject(ReviewService);
+  private readonly sellerService = inject(SellerService);
+  protected readonly seller = signal<SellerDto | null>(null);
 
   readonly item = signal<ItemDto | null>(null);
   readonly isLoading = signal(true);
@@ -79,6 +82,10 @@ export class ProductDetail implements OnInit {
     this.itemService.getById(itemId).subscribe({
       next: (item) => {
         this.item.set(item);
+        this.seller.set(null);
+        if (item.sellerId) {
+          this.sellerService.getPublic(item.sellerId).subscribe({ next: (s) => this.seller.set(s), error: () => undefined });
+        }
         if (item.images && item.images.length > 0) {
           const primary = item.images.find((img) => img.isPrimary) ?? item.images[0];
           this.selectedImage.set(primary);

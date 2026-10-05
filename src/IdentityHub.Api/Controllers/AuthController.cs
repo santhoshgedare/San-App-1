@@ -117,7 +117,7 @@ public sealed class AuthController(ISender sender, IConfiguration configuration)
     [AllowAnonymous]
     public async Task<ActionResult<AuthResultDto>> Register(RegisterRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new RegisterCommand(request.Email, request.Password, request.FirstName, request.LastName, request.PhoneNumber), ct);
+        var result = await sender.Send(new RegisterCommand(request.Email, request.Password, request.FirstName, request.LastName, request.PhoneNumber, AddressesController.ToInput(request.Address)), ct);
         return result.Succeeded ? Ok(result.Data) : BadRequest(new { errors = result.Errors });
     }
 

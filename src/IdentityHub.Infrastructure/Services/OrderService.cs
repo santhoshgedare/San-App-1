@@ -20,10 +20,14 @@ public sealed class OrderService(
     {
         var order = await db.Orders
             .Include(o => o.Items)
+            .Include(o => o.Seller)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
         return order is null ? null : MapToDto(order);
     }
+
+    public Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct = default)
+        => db.Orders.Where(o => o.Id == id).Select(o => o.SellerId).FirstOrDefaultAsync(ct);
 
     public async Task<PagedResult<OrderDto>> GetPagedAsync(
         string? search,
@@ -32,11 +36,21 @@ public sealed class OrderService(
         Guid? customerId,
         int page,
         int pageSize,
+        Guid? sellerId = null,
         CancellationToken ct = default)
     {
         var query = db.Orders.AsQueryable();
 
-        if (customerId.HasValue)
+        if (sellerId.HasValue && customerId.HasValue)
+        {
+            // A seller sees orders for their company plus the orders they placed as a buyer.
+            query = query.Where(o => o.SellerId == sellerId.Value || o.CustomerId == customerId.Value);
+        }
+        else if (sellerId.HasValue)
+        {
+            query = query.Where(o => o.SellerId == sellerId.Value);
+        }
+        else if (customerId.HasValue)
         {
             query = query.Where(o => o.CustomerId == customerId.Value);
         }
@@ -65,6 +79,7 @@ public sealed class OrderService(
 
         var orders = await query
             .Include(o => o.Items)
+            .Include(o => o.Seller)
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -152,12 +167,23 @@ public sealed class OrderService(
 
         var itemIds = items.Select(i => i.ItemId).Distinct().OrderBy(id => id).ToArray();
         var products = await db.Items
+            .Include(i => i.Seller)
             .Include(i => i.Variants)
             .Include(i => i.Images)
             .Where(i => itemIds.Contains(i.Id) && i.IsActive)
             .OrderBy(i => i.Id)
             .ToListAsync(ct);
         var productsById = products.ToDictionary(i => i.Id);
+        var sellerIds = products.Select(p => p.SellerId).Distinct().ToList();
+        if (sellerIds.Count > 1)
+        {
+            return Result<OrderDto>.Failure("Items from different sellers must be ordered separately.");
+        }
+        var orderSeller = products.Select(p => p.Seller).FirstOrDefault(s => s is not null);
+        if (orderSeller?.UserId is { } sellerUserId && sellerUserId == customerId)
+        {
+            return Result<OrderDto>.Failure("You cannot order products from your own company.");
+        }
         var requestedQuantities = new Dictionary<(Guid ItemId, Guid? VariantId), long>();
 
         foreach (var itemInput in items)
@@ -264,6 +290,8 @@ public sealed class OrderService(
         var order = new Order
         {
             OrderNumber = orderNumber,
+            SellerId = sellerIds.FirstOrDefault(),
+            Seller = orderSeller,
             CustomerId = customerId,
             CustomerName = customerName.Trim(),
             CustomerEmail = customerEmail.Trim(),
@@ -334,6 +362,26 @@ public sealed class OrderService(
             return Result.Failure("A shipped or delivered order cannot be cancelled.");
         }
 
+        if (status != oldStatus && !IsValidTransition(oldStatus, status))
+        {
+            return Result.Failure($"An order cannot move from {oldStatus} to {status}.");
+        }
+
+        if (status != oldStatus && status is OrderStatus.Processing or OrderStatus.Shipped or OrderStatus.Delivered && !order.ShippingFeeConfirmed)
+        {
+            return Result.Failure("Confirm the delivery charge before processing the order.");
+        }
+
+        if (status != oldStatus && status is OrderStatus.Shipped or OrderStatus.Delivered && order.PaymentStatus != PaymentStatus.Paid)
+        {
+            return Result.Failure("Verify the buyer's payment before shipping the order.");
+        }
+
+        if (status == OrderStatus.Cancelled && oldStatus != OrderStatus.Cancelled && order.PaymentStatus == PaymentStatus.Paid)
+        {
+            return Result.Failure("This order is paid. Record a refund before cancelling it.");
+        }
+
         if (oldStatus != OrderStatus.Cancelled && status == OrderStatus.Cancelled)
         {
             var itemIds = order.Items.Select(i => i.ItemId).Distinct().ToArray();
@@ -375,6 +423,15 @@ public sealed class OrderService(
 
         return Result.Success();
     }
+
+    private static bool IsValidTransition(OrderStatus from, OrderStatus to) => from switch
+    {
+        OrderStatus.Pending => to is OrderStatus.Confirmed or OrderStatus.Cancelled,
+        OrderStatus.Confirmed => to is OrderStatus.Processing or OrderStatus.Cancelled,
+        OrderStatus.Processing => to is OrderStatus.Shipped or OrderStatus.Cancelled,
+        OrderStatus.Shipped => to is OrderStatus.Delivered,
+        _ => false,
+    };
 
     public async Task<Result> CancelOwnOrderAsync(Guid id, Guid customerId, CancellationToken ct = default)
     {
@@ -590,6 +647,8 @@ public sealed class OrderService(
 
     private static OrderDto MapToDto(Order o) => new()
     {
+        SellerId = o.SellerId,
+        SellerName = o.Seller?.CompanyName ?? "SRIVIDIKA",
         Id = o.Id,
         OrderNumber = o.OrderNumber,
         CustomerId = o.CustomerId,

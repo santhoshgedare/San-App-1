@@ -1,0 +1,138 @@
+<section class="sp-hero">
+  <div class="sp-profile">
+    @if (model.logoUrl) { <img class="sp-logo-lg" [src]="model.logoUrl" alt="Logo" /> }
+    @else { <div class="sp-logo-lg sp-logo-ph"><mat-icon>storefront</mat-icon></div> }
+    <div>
+      <h2>{{ model.companyName || (mine ? 'My Company Profile' : 'New Seller Company') }}</h2>
+      <p>{{ model.tagline || (mine ? 'Manage how your company appears to customers.' : isNew() ? 'Set up the company, then invite its manager.' : 'Edit company details, payment and invite.') }}</p>
+    </div>
+  </div>
+</section>
+
+@if (errorMessage(); as message) {
+  <div class="alert alert-danger py-2 small">{{ message }}</div>
+}
+
+@if (!isLoading() && (mine ? !errorMessage() : true)) {
+<div class="sp-layout">
+  <div>
+    <section class="sp-section">
+      <h5><mat-icon>storefront</mat-icon> Company</h5>
+      <div class="sp-sub">Shown to customers as &ldquo;Fulfilled by&rdquo; on your products.</div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label mb-1">Logo</label>
+          <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onLogoSelected($event)" />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Company name <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="model.companyName" name="companyName" />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Tagline</label>
+          <input class="form-control" [(ngModel)]="model.tagline" name="tagline" />
+        </div>
+        <div class="col-12">
+          <label class="form-label">About the company</label>
+          <textarea class="form-control" rows="4" [(ngModel)]="model.description" name="description"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="sp-section">
+      <h5><mat-icon>contact_mail</mat-icon> Contact &amp; address</h5>
+      <div class="sp-sub">How customers and the platform can reach you.</div>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Contact email</label><input class="form-control" type="email" [(ngModel)]="model.contactEmail" name="contactEmail" /></div>
+        <div class="col-md-4"><label class="form-label">Contact phone</label><input class="form-control" type="tel" [(ngModel)]="model.contactPhone" name="contactPhone" /></div>
+        <div class="col-md-4"><label class="form-label">Website</label><input class="form-control" [(ngModel)]="model.website" name="website" /></div>
+        <div class="col-12"><label class="form-label">Address</label><input class="form-control" [(ngModel)]="model.addressLine1" name="addressLine1" /></div>
+        <div class="col-md-3"><label class="form-label">City</label><input class="form-control" [(ngModel)]="model.city" name="city" /></div>
+        <div class="col-md-3"><label class="form-label">State</label><input class="form-control" [(ngModel)]="model.state" name="state" /></div>
+        <div class="col-md-3"><label class="form-label">Postal code</label><input class="form-control" [(ngModel)]="model.postalCode" name="postalCode" /></div>
+        <div class="col-md-3"><label class="form-label">Country</label><input class="form-control" [(ngModel)]="model.country" name="country" /></div>
+      </div>
+    </section>
+
+    <section class="sp-section">
+      <h5><mat-icon>account_balance_wallet</mat-icon> Payment details</h5>
+      <div class="sp-sub">Customers pay you directly using these details.</div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">UPI ID</label><input class="form-control" [(ngModel)]="model.upiId" name="upiId" placeholder="name@bank" /></div>
+        <div class="col-md-6"><label class="form-label">Payee name</label><input class="form-control" [(ngModel)]="model.payeeName" name="payeeName" /></div>
+        <div class="col-12">
+          <label class="form-label">Bank details</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="model.bankDetails" name="bankDetails" placeholder="Account holder, account number, IFSC"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Payment QR code</label>
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            @if (model.qrCodeImageUrl) { <img class="sp-qr" [src]="model.qrCodeImageUrl" alt="Payment QR code" /> }
+            <div>
+              <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onQrSelected($event)" />
+              @if (model.qrCodeImageUrl) {
+                <button type="button" class="btn btn-link btn-sm text-danger px-0" (click)="model.qrCodeImageUrl = null">Remove QR</button>
+              }
+              <div class="form-text">Customers see this QR when paying for your orders.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside>
+    @if (!mine) {
+    <section class="sp-section">
+      <h5><mat-icon>how_to_reg</mat-icon> Access</h5>
+      <div class="row g-3">
+      @if (!mine && !isNew() && status() !== 'Accepted') {
+      <div class="col-12">
+        <hr class="my-1" />
+        <h6>Invite seller to register</h6>
+        <div class="input-group">
+          <input type="email" class="form-control" [(ngModel)]="inviteEmail" name="inviteEmail" placeholder="seller@company.com" />
+          <button type="button" class="btn btn-outline-primary" (click)="sendInvite()" [disabled]="isInviting() || !inviteEmail">
+            {{ status() === 'Pending' || status() === 'Expired' ? 'Compose new invite' : 'Compose invite email' }}
+          </button>
+        </div>
+        <div class="form-text">Status: {{ status() }}. The seller sets their own name, password, address and payment details from the link (valid 7 days).</div>
+        @if (inviteLink(); as link) {
+          <div class="alert alert-success py-2 small mt-2 mb-0">
+            {{ inviteNote() }}
+            <div class="d-flex gap-2 mt-1"><code class="text-break flex-grow-1">{{ link }}</code><button type="button" class="btn btn-sm btn-outline-secondary" (click)="copyLink()">Copy</button><button type="button" class="btn btn-sm btn-outline-primary" (click)="composeAgain()">Compose email</button></div>
+          </div>
+        }
+      </div>
+      } @else if (!mine && status() === 'Accepted') {
+      <div class="col-12 small text-success">Seller has completed registration.</div>
+      }
+      @if (!mine) {
+      <div class="col-12">
+        <label class="form-label">Manager account</label>
+        <select class="form-select" [(ngModel)]="model.userId" name="userId">
+          <option [ngValue]="null">Not linked yet (invite later)</option>
+          @for (u of managers(); track u.id) {
+            <option [ngValue]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.email }})</option>
+          }
+        </select>
+        <div class="form-text">The linked manager sees only this company's items and orders.</div>
+      </div>
+      }
+      </div>
+    </section>
+    }
+    <section class="sp-section">
+      <h5><mat-icon>tips_and_updates</mat-icon> Tips</h5>
+      <div class="sp-sub mb-0">A clear logo, a short tagline and a working QR make customers trust the company and pay faster.</div>
+    </section>
+  </aside>
+</div>
+
+<div class="sp-actions">
+  <button class="btn btn-primary" (click)="save()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save' }}</button>
+  @if (!mine) {
+    <button class="btn btn-outline-secondary" (click)="router.navigate(['/sellers'])">Cancel</button>
+  }
+</div>
+}

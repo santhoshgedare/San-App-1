@@ -14,7 +14,7 @@
           <span class="badge status-badge">{{ ord.status }}</span>
         </div>
         <h1 class="page-title">Order Details</h1>
-        <span class="timestamp">Placed on {{ ord.createdAt | date: 'medium' }}</span>
+        <span class="timestamp">Placed on {{ ord.createdAt | date: 'medium' }} · Fulfilled by {{ ord.sellerName || 'SRIVIDIKA' }}</span>
       </div>
 
       <div class="header-total">
@@ -187,6 +187,8 @@
       </div>
     </section>
 
+    <app-order-chat [orderId]="ord.id" />
+
     <!-- Enterprise Workflow Approvals Panel -->
     <app-approval-panel [entityType]="entityType" [entityId]="ord.id" />
 
@@ -246,6 +248,8 @@
         <span class="info-val">{{ settings.instructions }}</span>
       </div>
       }
+      } @else if (paymentUnavailable(); as why) {
+      <div class="qr-missing-notice">{{ why }}</div>
       }
       }
 
@@ -385,6 +389,10 @@
       </div>
       }
 
+      @if (isPrivileged() && !ord.canManage) {
+      <div class="payment-waiting-notice">This order is fulfilled by {{ ord.sellerName }}. Only the fulfilling seller can update its status, delivery charge, payment or refund.</div>
+      }
+
       <!-- Admin Update Fulfillment Form -->
       @if (canUpdateOrderStatus(ord) && !["Shipped", "Delivered", "Cancelled"].includes(ord.status) && !["Paid", "Refunded"].includes(ord.paymentStatus)) {
       <div class="admin-action-box">
@@ -409,12 +417,9 @@
         <div class="field-row">
           <label>Order Status</label>
           <mat-select class="app-select" [(ngModel)]="newStatus" aria-label="Order status">
-            <mat-option value="Pending">Pending</mat-option>
-            <mat-option value="Confirmed">Confirmed</mat-option>
-            <mat-option value="Processing">Processing / Packaging</mat-option>
-            <mat-option value="Shipped">Shipped / In Transit</mat-option>
-            <mat-option value="Delivered">Delivered / Completed</mat-option>
-            <mat-option value="Cancelled">Cancelled</mat-option>
+            @for (s of statusOptions(ord); track s) {
+              <mat-option [value]="s">{{ s }}</mat-option>
+            }
           </mat-select>
         </div>
 

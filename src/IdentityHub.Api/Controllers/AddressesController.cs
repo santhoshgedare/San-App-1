@@ -83,7 +83,7 @@ public sealed class AddressesController(IAddressService addressService) : Contro
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
 
-    private static AddressInput ToInput(AddressRequest r) => new(
+    internal static AddressInput ToInput(AddressRequest? r) => r is null ? null! : new(
         r.Label,
         r.FullName,
         r.Phone,

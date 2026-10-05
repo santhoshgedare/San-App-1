@@ -1,0 +1,51 @@
+:host { display: block; }
+
+.sp-hero {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: 1.5rem 1.75rem; margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, #76283a 0%, #5a1c2b 100%);
+  color: #fffaf4; border-radius: 1.25rem; box-shadow: 0 10px 30px rgba(118, 40, 58, .18);
+  position: relative; overflow: hidden;
+  &::after { content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%;
+    border: 2px solid rgba(214, 178, 110, .45); box-shadow: 0 0 0 18px rgba(214, 178, 110, .12); }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.9rem; margin: 0; }
+  p { margin: .25rem 0 0; opacity: .85; font-size: .9rem; }
+  .btn { position: relative; z-index: 1; background: #d6b26e; border-color: #d6b26e; color: #3a2610; font-weight: 600; }
+}
+.sp-logo-lg { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid #d6b26e; background: #fff; flex: none; }
+.sp-logo-ph { display: grid; place-items: center; background: #f2e2c9; color: #9b713c; mat-icon { font-size: 2.2rem; width: 2.2rem; height: 2.2rem; } }
+
+.sp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .85rem; margin-bottom: 1.25rem; }
+.sp-stat { background: #fffdf9; border: 1px solid #eadfce; border-radius: 1rem; padding: .9rem 1.1rem; box-shadow: 0 4px 14px rgba(70, 40, 30, .05);
+  b { display: block; font-size: 1.6rem; color: #76283a; line-height: 1.1; } span { font-size: .78rem; color: #8d7775; text-transform: uppercase; letter-spacing: .05em; } }
+
+.sp-toolbar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;
+  .form-control { max-width: 420px; border-radius: 999px; padding-left: 1.1rem; } }
+
+.sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.1rem; }
+.sp-card { background: #fffdf9; border: 1px solid #eadfce; border-radius: 1.1rem; padding: 1.25rem; display: flex; flex-direction: column; gap: .9rem;
+  box-shadow: 0 6px 20px rgba(70, 40, 30, .06); transition: transform .2s ease, box-shadow .2s ease;
+  &:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(70, 40, 30, .12); }
+  .sp-head { display: flex; gap: .85rem; align-items: center; }
+  .sp-logo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #e7d3a8; flex: none; background: #fff; }
+  .sp-name { font-weight: 700; color: #382a2d; line-height: 1.2; }
+  .sp-tag { font-size: .8rem; color: #8d7775; }
+  .sp-meta { display: grid; gap: .4rem; font-size: .85rem; color: #5b4a50;
+    div { display: flex; gap: .5rem; align-items: center; } mat-icon { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; color: #9b713c; flex: none; } }
+  .sp-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding-top: .8rem; border-top: 1px dashed #e7d9c3; }
+}
+.sp-pager { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; font-size: .85rem; }
+.sp-empty { text-align: center; padding: 3rem 1rem; color: #8d7775; background: #fffdf9; border: 1px dashed #e0d4c6; border-radius: 1rem; }
+
+/* form */
+.sp-profile { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; }
+.sp-section { background: #fffdf9; border: 1px solid #eadfce; border-radius: 1.1rem; padding: 1.4rem 1.5rem; margin-bottom: 1.1rem; box-shadow: 0 4px 16px rgba(70, 40, 30, .05);
+  h5 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.35rem; color: #76283a; margin: 0 0 .2rem; display: flex; align-items: center; gap: .5rem;
+    mat-icon { color: #9b713c; } }
+  .sp-sub { font-size: .82rem; color: #8d7775; margin-bottom: 1rem; }
+}
+.sp-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 1.1rem; align-items: start;
+  @media (max-width: 991px) { grid-template-columns: 1fr; } }
+.sp-qr { width: 160px; height: 160px; object-fit: contain; background: #fff; border: 1px solid #eadfce; border-radius: .9rem; padding: .35rem; }
+.sp-actions { position: sticky; bottom: 0; z-index: 5; display: flex; gap: .6rem; padding: .9rem 1.1rem; margin-top: .5rem;
+  background: rgba(252, 248, 242, .95); backdrop-filter: blur(6px); border: 1px solid #eadfce; border-radius: 1rem; box-shadow: 0 -4px 18px rgba(70, 40, 30, .08); }

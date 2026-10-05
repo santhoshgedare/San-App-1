@@ -12,6 +12,8 @@ import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-lo
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
 import type { RoleDto, UserDto } from '../../../core/models/auth.models';
+import { AddressFields } from '../../../shared/address-fields/address-fields';
+import { emptyAddress, validateAddress } from '../../../core/auth/address.service';
 import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 
 /**
@@ -22,7 +24,7 @@ import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 @Component({
   selector: 'app-user-form',
   standalone: true,
-  imports: [PasswordField, CommonModule, FormsModule, DatePipe, MatIconModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
+  imports: [AddressFields, PasswordField, CommonModule, FormsModule, DatePipe, MatIconModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
   templateUrl: './user-form.html',
   styleUrl: './user-form.scss',
 })
@@ -47,6 +49,8 @@ export class UserForm implements OnInit {
   password = '';
   firstName = '';
   lastName = '';
+  phoneNumber = '';
+  address = emptyAddress();
   isActive = true;
   selectedRoleNames = new Set<string>();
 
@@ -104,6 +108,15 @@ export class UserForm implements OnInit {
         this.errorMessage.set('All fields are required.');
         return;
       }
+      if (!this.phoneNumber.trim()) {
+        this.errorMessage.set('Phone number is required.');
+        return;
+      }
+      const addressProblem = validateAddress(this.address);
+      if (addressProblem) {
+        this.errorMessage.set(addressProblem);
+        return;
+      }
 
       this.isSaving.set(true);
       this.userService
@@ -112,6 +125,12 @@ export class UserForm implements OnInit {
           password: this.password,
           firstName: this.firstName.trim(),
           lastName: this.lastName.trim(),
+          phoneNumber: this.phoneNumber.trim(),
+          address: {
+            ...this.address,
+            fullName: ` `.trim(),
+            phone: this.phoneNumber.trim(),
+          },
           roles: Array.from(this.selectedRoleNames),
         })
         .subscribe({

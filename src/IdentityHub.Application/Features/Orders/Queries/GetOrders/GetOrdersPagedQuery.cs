@@ -11,7 +11,8 @@ public sealed record GetOrdersPagedQuery(
     string? PaymentStatus,
     Guid? CustomerId,
     int Page = 1,
-    int PageSize = 20) : IRequest<PagedResult<OrderDto>>;
+    int PageSize = 20,
+    Guid? SellerId = null) : IRequest<PagedResult<OrderDto>>;
 
 public sealed class GetOrdersPagedQueryHandler(IOrderService orderService)
     : IRequestHandler<GetOrdersPagedQuery, PagedResult<OrderDto>>
@@ -37,6 +38,7 @@ public sealed class GetOrdersPagedQueryHandler(IOrderService orderService)
             request.CustomerId,
             request.Page,
             request.PageSize,
+            request.SellerId,
             ct);
     }
 }

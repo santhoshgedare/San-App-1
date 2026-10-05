@@ -1,3 +1,4 @@
+import type { AddressInput } from '../auth/address.service';
 export interface UserDto {
   id: string;
   email: string;
@@ -117,6 +118,8 @@ export interface ItemDto {
   barcode: string | null;
   categoryId: string;
   categoryName: string;
+  sellerId?: string | null;
+  sellerName?: string;
   unitOfMeasurement: UnitOfMeasurement;
   price: number;
   costPrice: number | null;
@@ -183,6 +186,8 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
+  phoneNumber: string;
+  address: AddressInput;
 }
 
 export interface ApiError {
@@ -226,7 +231,11 @@ export interface OrderItemDto {
 }
 
 export interface OrderDto {
+  /** True when the current user may change this order's status, delivery charge, payment or refund. */
+  canManage?: boolean;
   id: string;
+  sellerId?: string | null;
+  sellerName?: string;
   orderNumber: string;
   customerId?: string | null;
   customerName: string;

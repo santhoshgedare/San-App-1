@@ -86,6 +86,7 @@
           <tr class="order-row" (click)="viewOrder(ord)">
             <td>
               <span class="order-num">{{ ord.orderNumber }}</span>
+              <span class="order-time">{{ ord.sellerName || 'SRIVIDIKA' }}</span>
             </td>
             <td>
               <span class="order-date">{{ ord.createdAt | date: 'mediumDate' }}</span>

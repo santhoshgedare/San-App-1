@@ -21,6 +21,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
   },
   {
+    path: 'seller-register',
+    loadComponent: () => import('./features/sellers/seller-register/seller-register').then((m) => m.SellerRegister),
+  },
+  {
     path: '',
     loadComponent: () => import('./core/layout/shell').then((m) => m.Shell),
     children: [
@@ -49,6 +53,26 @@ export const routes: Routes = [
         path: 'users/:id',
         loadComponent: () => import('./features/users/user-form/user-form').then((m) => m.UserForm),
         canActivate: [authGuard, sectionGuard('section-users-manage')],
+      },
+      {
+        path: 'sellers',
+        loadComponent: () => import('./features/sellers/sellers').then((m) => m.Sellers),
+        canActivate: [authGuard, roleGuard(['Admin'])],
+      },
+      {
+        path: 'sellers/:id',
+        loadComponent: () => import('./features/sellers/seller-form/seller-form').then((m) => m.SellerForm),
+        canActivate: [authGuard, roleGuard(['Admin'])],
+      },
+      {
+        path: 'email-logs',
+        loadComponent: () => import('./features/email-logs/email-logs').then((m) => m.EmailLogs),
+        canActivate: [authGuard, roleGuard(['Admin'])],
+      },
+      {
+        path: 'seller-profile',
+        loadComponent: () => import('./features/sellers/seller-form/seller-form').then((m) => m.SellerForm),
+        canActivate: [authGuard, roleGuard(['Manager'])],
       },
       {
         path: 'roles',

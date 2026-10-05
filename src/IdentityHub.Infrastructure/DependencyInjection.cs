@@ -113,7 +113,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
 
         services.AddScoped<IIdentityService, IdentityService>();
-        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<SmtpEmailSender>();
+        services.AddScoped<IEmailSender, LoggingEmailSender>();
+        services.AddScoped<IEmailLogService, EmailLogService>();
+        services.AddScoped<IOrderChatService, OrderChatService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -124,6 +127,7 @@ public static class DependencyInjection
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IItemService, ItemService>();
         services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<ISellerService, SellerService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentSettingsService, PaymentSettingsService>();
         services.AddScoped<IAddressService, AddressService>();

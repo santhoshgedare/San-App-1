@@ -1,0 +1,64 @@
+<section class="sp-hero">
+  <div>
+    <h2>Sellers &amp; Companies</h2>
+    <p>Create a seller company, then invite its manager by email to register.</p>
+  </div>
+  <a class="btn btn-sm" routerLink="/sellers/new"><mat-icon class="align-middle" style="font-size:1.1rem;width:1.1rem;height:1.1rem">add</mat-icon> Add seller company</a>
+</section>
+
+<div class="sp-stats">
+  <div class="sp-stat"><b>{{ stats().total }}</b><span>Companies</span></div>
+  <div class="sp-stat"><b>{{ stats().active }}</b><span>Registered</span></div>
+  <div class="sp-stat"><b>{{ stats().invited }}</b><span>Invited</span></div>
+  <div class="sp-stat"><b>{{ stats().items }}</b><span>Products listed</span></div>
+</div>
+
+<div class="sp-toolbar">
+  <input type="search" class="form-control" placeholder="Search company, email or city…" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
+  <span class="text-muted small">{{ filtered().length }} seller(s)</span>
+</div>
+
+@if (paged().length) {
+<div class="sp-grid">
+  @for (s of paged(); track s.id) {
+    <article class="sp-card">
+      <div class="sp-head">
+        @if (s.logoUrl) {
+          <img class="sp-logo" [src]="s.logoUrl" alt="" />
+        } @else {
+          <div class="sp-logo sp-logo-ph"><mat-icon>storefront</mat-icon></div>
+        }
+        <div class="flex-grow-1 min-w-0">
+          <div class="sp-name">{{ s.companyName }}</div>
+          <div class="sp-tag">{{ s.tagline || 'No tagline yet' }}</div>
+        </div>
+        @if (s.userEmail) { <span class="badge text-bg-success">Registered</span> }
+        @else if (s.inviteStatus === 'Pending') { <span class="badge text-bg-info">Invited</span> }
+        @else if (s.inviteStatus === 'Expired') { <span class="badge text-bg-danger">Expired</span> }
+        @else { <span class="badge text-bg-warning">Not invited</span> }
+      </div>
+      <div class="sp-meta">
+        <div><mat-icon>mail</mat-icon><span class="text-break">{{ s.userEmail || s.inviteEmail || s.contactEmail || '—' }}</span></div>
+        <div><mat-icon>call</mat-icon><span>{{ s.contactPhone || '—' }}</span></div>
+        <div><mat-icon>place</mat-icon><span>{{ location(s) || '—' }}</span></div>
+        <div><mat-icon>inventory_2</mat-icon><span>{{ s.itemCount }} product(s)</span></div>
+      </div>
+      <div class="sp-foot">
+        <a [routerLink]="['/sellers', s.id]" class="btn btn-sm btn-outline-primary">Edit / Invite</a>
+        <button type="button" class="btn btn-sm btn-outline-danger" (click)="remove(s)">Delete</button>
+      </div>
+    </article>
+  }
+</div>
+} @else {
+  <div class="sp-empty">No seller companies found. Items without a seller are fulfilled by SRIVIDIKA.</div>
+}
+
+<div class="sp-pager">
+  <span>Showing {{ rangeLabel() }}</span>
+  <span class="d-flex gap-2 align-items-center">
+    <button class="btn btn-sm btn-outline-secondary" [disabled]="page() <= 1" (click)="page.set(page() - 1)">Prev</button>
+    Page {{ page() }} / {{ totalPages() }}
+    <button class="btn btn-sm btn-outline-secondary" [disabled]="page() >= totalPages()" (click)="page.set(page() + 1)">Next</button>
+  </span>
+</div>

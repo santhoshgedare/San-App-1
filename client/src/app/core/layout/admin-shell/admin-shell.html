@@ -89,6 +89,21 @@
         <span matListItemTitle>Roles</span>
       </a>
       }
+      @if (auth.isAdmin()) {
+      <a mat-list-item routerLink="/sellers" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+        <mat-icon matListItemIcon>storefront</mat-icon>
+        <span matListItemTitle>Sellers</span>
+      </a>
+      <a mat-list-item routerLink="/email-logs" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+        <mat-icon matListItemIcon>forward_to_inbox</mat-icon>
+        <span matListItemTitle>Email Log</span>
+      </a>
+      } @else if (auth.isManager()) {
+      <a mat-list-item routerLink="/seller-profile" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+        <mat-icon matListItemIcon>storefront</mat-icon>
+        <span matListItemTitle>My Company</span>
+      </a>
+      }
       <a *canRender="'section-categories-view'" mat-list-item routerLink="/categories" routerLinkActive="link-active"
         (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>category</mat-icon>

@@ -26,6 +26,10 @@ public sealed class Item
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Seller fulfilling this item. Null means the platform (SRIVIDIKA) itself.</summary>
+    public Guid? SellerId { get; set; }
+    public SellerProfile? Seller { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAt { get; set; }
 

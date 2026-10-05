@@ -36,6 +36,8 @@ public sealed class Order
     public decimal SubtotalAmount { get; set; }
     public decimal ShippingFee { get; set; }
     /// <summary>False until staff confirm the delivery charge with the customer.</summary>
+    public Guid? SellerId { get; set; }
+    public SellerProfile? Seller { get; set; }
     public bool ShippingFeeConfirmed { get; set; } = true;
     public string? ShippingFeeNote { get; set; }
     public decimal TaxAmount { get; set; }

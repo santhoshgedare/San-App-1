@@ -39,6 +39,7 @@ export interface ApprovalDto {
   revisionNumber: number;
   /** True only for the latest revision — only one approval per entity may be pending at a time. */
   isCurrent: boolean;
+  canDecide?: boolean;
   /** Per-stage row: assigned approver, designation, status, decision date, remark — in stage order. */
   stageDecisions: ApprovalStageDecisionDto[];
 }

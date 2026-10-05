@@ -55,7 +55,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     [RequireSection("section-users-roles")]
     public async Task<ActionResult<UserDto>> Create(CreateUserRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new CreateUserCommand(request.Email, request.Password, request.FirstName, request.LastName, request.Roles), ct);
+        var result = await sender.Send(new CreateUserCommand(request.Email, request.Password, request.FirstName, request.LastName, request.PhoneNumber, AddressesController.ToInput(request.Address), request.Roles), ct);
         return result.Succeeded ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data) : BadRequest(new { errors = result.Errors });
     }
 

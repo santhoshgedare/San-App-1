@@ -5,6 +5,7 @@ using IdentityHub.Domain.Entities;
 using IdentityHub.Infrastructure.Identity;
 using IdentityHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using IdentityHub.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace IdentityHub.Infrastructure.Services;
@@ -119,7 +120,15 @@ public sealed class ApprovalService(
 
         // Only Admin, or someone eligible for that stage (i.e. any current/prospective approver), may reassign it.
         var eligibleRoles = await GetStageRolesAsync(approval, stageIndex, ct);
-        if (!currentUser.IsInRole(Domain.Constants.Roles.Admin) && !eligibleRoles.Any(currentUser.IsInRole))
+        var orderOwnership = await GetOrderOwnershipAsync(approval, ct);
+        if (orderOwnership is not null)
+        {
+            if (!await CanCurrentUserDecideAsync(approval, ct))
+            {
+                throw new UnauthorizedAccessException("Only the seller fulfilling this order can reassign its approval.");
+            }
+        }
+        else if (!currentUser.IsInRole(Domain.Constants.Roles.Admin) && !eligibleRoles.Any(currentUser.IsInRole))
         {
             throw new UnauthorizedAccessException("You are not eligible to reassign this stage's approver.");
         }
@@ -222,6 +231,14 @@ public sealed class ApprovalService(
     /// <summary>True when the current user holds one of the current stage's eligible roles (or is Admin/Manager for legacy, workflow-less entity types).</summary>
     private async Task<bool> CanCurrentUserDecideAsync(Approval approval, CancellationToken ct)
     {
+        var ownership = await GetOrderOwnershipAsync(approval, ct);
+        if (ownership is not null)
+        {
+            return ownership.Value.SellerUserId is null
+                ? currentUser.IsInRole(Domain.Constants.Roles.Admin)
+                : ownership.Value.SellerUserId == currentUser.UserId;
+        }
+
         if (approval.WorkflowId is null)
         {
             return currentUser.IsInRole(Domain.Constants.Roles.Admin) || currentUser.IsInRole(Domain.Constants.Roles.Manager);
@@ -234,6 +251,24 @@ public sealed class ApprovalService(
         }
 
         return eligibleRoles.Any(currentUser.IsInRole) || currentUser.IsInRole(Domain.Constants.Roles.Admin);
+    }
+
+    /// <summary>For order approvals returns the fulfilling seller's login user (null = platform-owned order); null for other entity types.</summary>
+    private async Task<(Guid? SellerUserId, Guid? SellerId)?> GetOrderOwnershipAsync(Approval approval, CancellationToken ct)
+    {
+        if (approval.EntityType != EntityTypes.Order || !Guid.TryParse(approval.EntityId, out var orderId))
+        {
+            return null;
+        }
+
+        var sellerId = await db.Orders.Where(o => o.Id == orderId).Select(o => o.SellerId).FirstOrDefaultAsync(ct);
+        if (sellerId is null)
+        {
+            return (null, null);
+        }
+
+        var sellerUserId = await db.SellerProfiles.Where(s => s.Id == sellerId).Select(s => s.UserId).FirstOrDefaultAsync(ct);
+        return (sellerUserId ?? Guid.Empty, sellerId);
     }
 
     private async Task<List<string>> GetStageRolesAsync(Approval approval, int stageIndex, CancellationToken ct)
@@ -296,6 +331,14 @@ public sealed class ApprovalService(
             approvalsQuery = approvalsQuery.Where(a => a.Status == status);
         }
 
+        if (!currentUser.IsInRole(Domain.Constants.Roles.Admin) && currentUser.UserId is { } me)
+        {
+            var mySellerId = await db.SellerProfiles.Where(s => s.UserId == me).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct);
+            var orderType = EntityTypes.Order;
+            var myOrderIds = db.Orders.Where(o => o.SellerId == mySellerId && mySellerId != null).Select(o => o.Id.ToString());
+            approvalsQuery = approvalsQuery.Where(a => a.EntityType != orderType || myOrderIds.Contains(a.EntityId));
+        }
+
         var totalCount = await approvalsQuery.CountAsync(ct);
         var pageOfApprovals = await approvalsQuery
             .OrderByDescending(a => a.RequestedAt)
@@ -337,6 +380,7 @@ public sealed class ApprovalService(
         CurrentStageIndex = a.CurrentStageIndex,
         RevisionNumber = a.RevisionNumber,
         IsCurrent = a.IsCurrent,
+        CanDecide = a.Status == ApprovalStatus.Pending && await CanCurrentUserDecideAsync(a, ct),
         StageDecisions = a.StageDecisions
             .OrderBy(d => d.StageIndex)
             .Select(d => new ApprovalStageDecisionDto

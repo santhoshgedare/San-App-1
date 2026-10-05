@@ -16,6 +16,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
     {
         var items = await db.Items
             .Include(i => i.Category)
+            .Include(i => i.Seller)
             .Include(i => i.Images)
             .Include(i => i.Documents)
             .Include(i => i.Variants)
@@ -25,10 +26,22 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         return items.Select(ToDto).ToList();
     }
 
+    public Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct)
+        => db.Items.Where(i => i.Id == id).Select(i => i.SellerId).FirstOrDefaultAsync(ct);
+
+    public async Task AssignSellerAsync(Guid id, Guid? sellerId, CancellationToken ct)
+    {
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (item is null) return;
+        item.SellerId = sellerId;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<ItemDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var item = await db.Items
             .Include(i => i.Category)
+            .Include(i => i.Seller)
             .Include(i => i.Images)
             .Include(i => i.Documents)
             .Include(i => i.Variants)
@@ -48,6 +61,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
 
         var candidates = await db.Items
             .Include(i => i.Category)
+            .Include(i => i.Seller)
             .Include(i => i.Images)
             .Include(i => i.Documents)
             .Include(i => i.Variants)
@@ -76,6 +90,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
 
         var itemsQuery = db.Items
             .Include(i => i.Category)
+            .Include(i => i.Seller)
             .Include(i => i.Images)
             .Include(i => i.Documents)
             .Include(i => i.Variants)
@@ -95,6 +110,11 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         if (query.CategoryId.HasValue)
         {
             itemsQuery = itemsQuery.Where(i => i.CategoryId == query.CategoryId.Value);
+        }
+
+        if (query.SellerId.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(i => i.SellerId == query.SellerId.Value);
         }
 
         if (query.IsActive.HasValue)
@@ -436,6 +456,8 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         return new ItemDto
         {
             Id = item.Id,
+            SellerId = item.SellerId,
+            SellerName = item.Seller?.CompanyName ?? "SRIVIDIKA",
             Code = item.Code,
             Name = item.Name,
             Description = item.Description,

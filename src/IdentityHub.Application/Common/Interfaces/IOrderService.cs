@@ -13,7 +13,9 @@ public interface IOrderService
         Guid? customerId,
         int page,
         int pageSize,
+        Guid? sellerId = null,
         CancellationToken ct = default);
+    Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct = default);
     Task<ProfitLossReportDto> GetProfitLossReportAsync(
         DateTimeOffset startInclusive,
         DateTimeOffset endExclusive,

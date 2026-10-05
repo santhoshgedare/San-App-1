@@ -1,37 +1,83 @@
-<div class="page-banner mb-3">
-  <h2 class="mb-0 h4 fw-bold">My Profile</h2>
-</div>
-
 @if (auth.currentUser(); as user) {
-<div class="card shadow-sm" style="max-width: 560px;">
-  <div class="card-body d-flex gap-4">
+<section class="sp-hero">
+  <div class="pf-id">
     <div class="avatar-circle">{{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}</div>
     <div>
-      <h4 class="mb-0">{{ user.firstName }} {{ user.lastName }}</h4>
-      <dl class="row mb-3 small profile-contact">
-        <dt class="col-5 text-muted">Email address</dt>
-        <dd class="col-7">{{ user.email }}</dd>
-        <dt class="col-5 text-muted">Phone number</dt>
-        <dd class="col-7">{{ user.phoneNumber || 'Not provided' }}</dd>
-      </dl>
-      <div class="mb-3">
-        @for (role of user.roles; track role) {
-        <span class="badge bg-primary-subtle text-primary-emphasis me-1">{{ role }}</span>
-        }
+      <h2>{{ user.firstName }} {{ user.lastName }}</h2>
+      <p>{{ user.email }}</p>
+      <div class="mt-2">
+        @for (role of user.roles; track role) { <span class="badge pf-role me-1">{{ role }}</span> }
       </div>
-      <dl class="row mb-0 small">
-        <dt class="col-5 text-muted">Account created</dt>
-        <dd class="col-7">{{ user.createdAt | date: 'medium' }}</dd>
-        <dt class="col-5 text-muted">Last login</dt>
-        <dd class="col-7">{{ user.lastLoginAt ? (user.lastLoginAt | date: 'medium') : 'This is your first login' }}</dd>
-        <dt class="col-5 text-muted">Status</dt>
-        <dd class="col-7">
-          <span class="badge" [class.bg-success]="user.isActive" [class.bg-danger]="!user.isActive">
-            {{ user.isActive ? 'Active' : 'Inactive' }}
-          </span>
-        </dd>
-      </dl>
     </div>
   </div>
+  <span class="badge" [class.text-bg-success]="user.isActive" [class.text-bg-danger]="!user.isActive">{{ user.isActive ? 'Active' : 'Inactive' }}</span>
+</section>
+
+<div class="pf-layout">
+  <aside>
+    <section class="pf-card">
+      <h5><mat-icon>badge</mat-icon> Account</h5>
+      <dl class="pf-dl">
+        <dt>Email address</dt><dd class="text-break">{{ user.email }}</dd>
+        <dt>Phone number</dt><dd>{{ user.phoneNumber || 'Not provided' }}</dd>
+        <dt>Account created</dt><dd>{{ user.createdAt | date: 'medium' }}</dd>
+        <dt>Last login</dt><dd>{{ user.lastLoginAt ? (user.lastLoginAt | date: 'medium') : 'This is your first login' }}</dd>
+      </dl>
+    </section>
+
+    <section class="pf-card">
+      <h5><mat-icon>bolt</mat-icon> Quick links</h5>
+      <div class="pf-links">
+        <a routerLink="/orders"><mat-icon>receipt_long</mat-icon> My orders</a>
+        <a routerLink="/favourites"><mat-icon>favorite</mat-icon> Favourites</a>
+        <a routerLink="/catalog"><mat-icon>storefront</mat-icon> Browse catalog</a>
+        @if (auth.isManager() && !auth.isAdmin()) {
+          <a routerLink="/seller-profile"><mat-icon>business</mat-icon> My company profile</a>
+        }
+      </div>
+    </section>
+  </aside>
+
+  <section class="pf-card">
+    <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+      <h5 class="mb-0"><mat-icon>home_pin</mat-icon> My addresses</h5>
+      @if (!editing()) {
+        <button type="button" class="btn btn-sm btn-primary" (click)="startAdd()">Add address</button>
+      }
+    </div>
+    <div class="pf-sub">Choose a default address for faster checkout.</div>
+
+    <div class="pf-addr-grid">
+      @for (a of addresses(); track a.id) {
+        <div class="pf-addr" [class.is-default]="a.isDefault">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong>{{ a.label }}</strong>
+            @if (a.isDefault) { <span class="badge text-bg-success">Default</span> }
+          </div>
+          <div class="text-muted small mt-1">{{ format(a) }}</div>
+          <div class="mt-2 d-flex gap-3 small">
+            <button type="button" class="btn btn-link btn-sm p-0" (click)="startEdit(a)">Edit</button>
+            @if (!a.isDefault) { <button type="button" class="btn btn-link btn-sm p-0" (click)="makeDefault(a)">Make default</button> }
+            <button type="button" class="btn btn-link btn-sm p-0 text-danger" (click)="remove(a)">Delete</button>
+          </div>
+        </div>
+      } @empty {
+        <p class="text-muted small mb-0">No addresses saved yet.</p>
+      }
+    </div>
+
+    @if (editing(); as model) {
+      <hr />
+      <div class="mb-2">
+        <label class="form-label">Label</label>
+        <input class="form-control" [(ngModel)]="model.label" [ngModelOptions]="{ standalone: true }" placeholder="Home, Office..." />
+      </div>
+      <app-address-fields [model]="model" />
+      <div class="mt-3 d-flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm" (click)="save()">Save address</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancel()">Cancel</button>
+      </div>
+    }
+  </section>
 </div>
 }

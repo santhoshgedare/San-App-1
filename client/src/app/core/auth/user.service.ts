@@ -1,3 +1,4 @@
+import type { AddressInput } from './address.service';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -16,6 +17,8 @@ export interface CreateUserRequest {
   password: string;
   firstName: string;
   lastName: string;
+  phoneNumber: string;
+  address: AddressInput;
   roles: string[];
 }
 
