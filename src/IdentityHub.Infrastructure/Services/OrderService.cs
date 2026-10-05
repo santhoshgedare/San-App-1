@@ -257,7 +257,7 @@ public sealed class OrderService(
             });
         }
 
-        var shippingFee = 0.00m; // Free shipping
+        var shippingFee = 0.00m; // Set by staff after the order is reviewed
         var taxAmount = 0.00m;
         var totalAmount = subtotal + shippingFee + taxAmount;
 
@@ -278,6 +278,7 @@ public sealed class OrderService(
             Status = OrderStatus.Pending,
             SubtotalAmount = subtotal,
             ShippingFee = shippingFee,
+            ShippingFeeConfirmed = false,
             TaxAmount = taxAmount,
             TotalAmount = totalAmount,
             Items = orderItems
@@ -375,6 +376,62 @@ public sealed class OrderService(
         return Result.Success();
     }
 
+    public async Task<Result> CancelOwnOrderAsync(Guid id, Guid customerId, CancellationToken ct = default)
+    {
+        var order = await db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id && o.CustomerId == customerId, ct);
+        if (order is null)
+        {
+            return Result.Failure("Order not found.");
+        }
+        if (order.Status != OrderStatus.Pending)
+        {
+            return Result.Failure("Only orders that are not yet confirmed can be cancelled. Please contact us for help.");
+        }
+
+        return await UpdateStatusAsync(id, OrderStatus.Cancelled, null, null, ct);
+    }
+
+    public async Task<Result> SetShippingFeeAsync(Guid id, decimal shippingFee, string? note, CancellationToken ct = default)
+    {
+        if (shippingFee < 0 || shippingFee > 100000)
+        {
+            return Result.Failure("Delivery charge must be between 0 and 100000.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (order is null)
+        {
+            return Result.Failure("Order not found.");
+        }
+        if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered or OrderStatus.Cancelled)
+        {
+            return Result.Failure("The delivery charge can no longer be changed for this order.");
+        }
+        if (order.PaymentStatus is PaymentStatus.Paid or PaymentStatus.Refunded)
+        {
+            return Result.Failure("The delivery charge cannot change after payment is received.");
+        }
+
+        var oldFee = order.ShippingFee;
+        order.ShippingFee = Math.Round(shippingFee, 2);
+        order.ShippingFeeNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        order.ShippingFeeConfirmed = true;
+        order.TotalAmount = order.SubtotalAmount + order.ShippingFee + order.TaxAmount;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+        await activityLogs.LogAsync(
+            EntityTypes.Order,
+            order.Id.ToString(),
+            "ShippingFeeUpdated",
+            $"Delivery charge set from {oldFee.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} to {order.ShippingFee.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}. New total {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}.",
+            ct);
+        await transaction.CommitAsync(ct);
+
+        return Result.Success();
+    }
+
     public async Task<Result> UpdatePaymentStatusAsync(
         Guid id,
         PaymentStatus paymentStatus,
@@ -407,6 +464,11 @@ public sealed class OrderService(
         if (oldPaymentStatus == PaymentStatus.Paid)
         {
             return Result.Failure("A paid payment cannot be changed; use the refund workflow if necessary.");
+        }
+
+        if (paymentStatus == PaymentStatus.Paid && !order.ShippingFeeConfirmed)
+        {
+            return Result.Failure("Confirm the delivery charge before marking payment as paid.");
         }
 
         if (paymentStatus == PaymentStatus.Paid &&
@@ -458,6 +520,10 @@ public sealed class OrderService(
         if (order.Status is OrderStatus.Pending or OrderStatus.Cancelled)
         {
             return Result.Failure("Payment details can be submitted only after the order is confirmed.");
+        }
+        if (!order.ShippingFeeConfirmed)
+        {
+            return Result.Failure("The delivery charge has not been confirmed yet. Please wait for it before paying.");
         }
 
         order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
@@ -546,6 +612,8 @@ public sealed class OrderService(
         ShippingCarrier = o.ShippingCarrier,
         SubtotalAmount = o.SubtotalAmount,
         ShippingFee = o.ShippingFee,
+        ShippingFeeConfirmed = o.ShippingFeeConfirmed,
+        ShippingFeeNote = o.ShippingFeeNote,
         TaxAmount = o.TaxAmount,
         TotalAmount = o.TotalAmount,
         CreatedAt = o.CreatedAt,

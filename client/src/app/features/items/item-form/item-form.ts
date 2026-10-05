@@ -13,6 +13,7 @@ import { CategoryService } from '../../../core/auth/category.service';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
+import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 import {
   UnitOfMeasurement,
   type CategoryDto,
@@ -46,6 +47,7 @@ interface VariantAttributeEntry {
 })
 export class ItemForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly itemService = inject(ItemService);
   private readonly categoryService = inject(CategoryService);
@@ -451,10 +453,14 @@ export class ItemForm implements OnInit {
     if (!existing) {
       return;
     }
-    if (!confirm(`Delete item "${existing.code} - ${existing.name}"?`)) {
-      return;
-    }
-    this.itemService.delete(existing.id).subscribe(() => this.router.navigate(['/items']));
+
+    this.confirmService
+      .confirm({ title: 'Delete item?', message: `Delete item "${existing.code} - ${existing.name}"?`, confirmText: 'Delete', cancelText: 'Keep', destructive: true })
+      .subscribe((ok) => {
+        if (ok) {
+          this.itemService.delete(existing.id).subscribe(() => this.router.navigate(['/items']));
+        }
+      });
   }
 
   cancel(): void {

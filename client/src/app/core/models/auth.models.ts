@@ -248,6 +248,8 @@ export interface OrderDto {
   shippingCarrier?: string | null;
   subtotalAmount: number;
   shippingFee: number;
+  shippingFeeConfirmed: boolean;
+  shippingFeeNote?: string | null;
   taxAmount: number;
   totalAmount: number;
   createdAt: string;

@@ -48,7 +48,7 @@ export class ReviewForm {
       }
       this.photos.update((p) => [...p, ...added]);
     } catch {
-      this.snackBar.open('Could not read that image', 'Close', { duration: 3000 });
+      this.snackBar.open('Could not read that image', 'Close', { duration: 3000, panelClass: ['snack-error'] });
     } finally {
       this.isProcessing.set(false);
     }
@@ -60,7 +60,7 @@ export class ReviewForm {
 
   protected submit(): void {
     if (this.rating() < 1) {
-      this.snackBar.open('Please choose a star rating', 'Close', { duration: 3000 });
+      this.snackBar.open('Please choose a star rating', 'Close', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
     this.isSubmitting.set(true);

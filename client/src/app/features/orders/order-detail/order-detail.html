@@ -127,7 +127,23 @@
       <!-- Total Calculation Breakdown -->
       <div class="order-totals-box">
         <div class="calc-row"><span>Subtotal:</span><span>{{ ord.subtotalAmount | currency }}</span></div>
-        <div class="calc-row"><span>Shipping:</span><span class="text-success">Free</span></div>
+        <div class="calc-row">
+          <span>Delivery charge:</span>
+          @if (ord.shippingFeeConfirmed) {
+          <span>{{ ord.shippingFee | currency }}</span>
+          } @else {
+          <span class="fee-pending">To be confirmed</span>
+          }
+        </div>
+        @if (ord.shippingFeeNote) {
+        <div class="fee-note">{{ ord.shippingFeeNote }}</div>
+        }
+        @if (!ord.shippingFeeConfirmed) {
+        <div class="fee-banner">
+          <mat-icon>local_shipping</mat-icon>
+          <span>Delivery charges vary by location. We will confirm the delivery charge and your final total before payment.</span>
+        </div>
+        }
         <div class="calc-row"><span>Tax:</span><span>{{ 0 | currency }}</span></div>
         <div class="calc-row grand-total">
           <span>Grand Total:</span>
@@ -355,6 +371,13 @@
         <span class="badge status-badge">{{ ord.status }}</span>
       </div>
 
+      @if (canCancelOwn(ord)) {
+      <div class="cancel-box">
+        <span>Changed your mind? You can cancel until the order is confirmed.</span>
+        <button type="button" class="btn-cancel-order" [disabled]="isUpdating()" (click)="cancelMyOrder()">Cancel order</button>
+      </div>
+      }
+
       @if (ord.trackingNumber) {
       <div class="info-group">
         <span class="info-label">Tracking Number</span>
@@ -363,6 +386,23 @@
       }
 
       <!-- Admin Update Fulfillment Form -->
+      @if (canUpdateOrderStatus(ord) && !["Shipped", "Delivered", "Cancelled"].includes(ord.status) && !["Paid", "Refunded"].includes(ord.paymentStatus)) {
+      <div class="admin-action-box">
+        <span class="action-heading">Delivery Charge {{ ord.shippingFeeConfirmed ? "(confirmed)" : "(not yet confirmed)" }}</span>
+        <div class="field-row">
+          <label>Amount</label>
+          <input type="number" min="0" step="1" [(ngModel)]="shippingFeeInput" placeholder="0 for free delivery" />
+        </div>
+        <div class="field-row">
+          <label>Note</label>
+          <input type="text" [(ngModel)]="shippingFeeNote" maxlength="200" placeholder="e.g. Courier to Hyderabad" />
+        </div>
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="saveShippingFee()" class="btn-save">
+          Save Delivery Charge
+        </button>
+      </div>
+      }
+
       @if (canUpdateOrderStatus(ord)) {
       <div class="admin-action-box">
         <span class="action-heading">Update Fulfillment Lifecycle</span>

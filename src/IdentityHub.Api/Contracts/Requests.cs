@@ -131,6 +131,8 @@ public sealed record UpdateOrderStatusRequest(
     string? TrackingNumber,
     string? ShippingCarrier);
 
+public sealed record SetOrderShippingFeeRequest(decimal ShippingFee, string? Note);
+
 public sealed record UpdateOrderPaymentStatusRequest(
     string PaymentStatus,
     string? PaymentReferenceNumber,

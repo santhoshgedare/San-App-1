@@ -215,14 +215,12 @@ export class Catalog implements OnInit, OnDestroy {
     event.stopPropagation();
     const variant = this.getSelectedVariant(item);
     if (!this.cartService.addToCart(item, variant, 1)) {
-      this.snackBar.open('No additional stock is available for this item.', 'Close', { duration: 3000 });
+      this.snackBar.open('No additional stock is available for this item.', 'Close', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
     const variantName = variant ? ` (${variant.name || variant.sku})` : '';
     this.snackBar.open(`Added "${item.name}${variantName}" to cart!`, 'View Cart', {
       duration: 3000,
-      horizontalPosition: 'right',
-      verticalPosition: 'bottom',
     }).onAction().subscribe(() => {
       this.router.navigate(['/cart']);
     });

@@ -45,6 +45,8 @@ export class ProductDetail implements OnInit {
   readonly selectedVariant = signal<ItemVariantDto | null>(null);
   readonly quantity = signal(1);
   readonly similarItems = signal<ItemDto[]>([]);
+  readonly similarHasMore = signal(false);
+  readonly isLoadingMoreSimilar = signal(false);
   readonly reviewSummary = signal<ItemReviewSummaryDto | null>(null);
   readonly lightboxImage = signal<string | null>(null);
   readonly ratingRows = [5, 4, 3, 2, 1];
@@ -96,17 +98,31 @@ export class ProductDetail implements OnInit {
         this.reviewService.getForItem(item.id).subscribe({ next: (s) => this.reviewSummary.set(s), error: () => this.reviewSummary.set(null) });
       },
       error: () => {
-        this.snackBar.open('Item not found', 'Close', { duration: 3000 });
+        this.snackBar.open('Item not found', 'Close', { duration: 3000, panelClass: ['snack-error'] });
         this.router.navigate(['/catalog']);
       },
     });
   }
 
-  private loadSimilar(item: ItemDto): void {
-    this.itemService.getSimilar(item.id, 5).subscribe({
-      next: (items) => this.similarItems.set(items),
-      error: () => this.similarItems.set([]),
+  private loadSimilar(item: ItemDto, take = 5): void {
+    this.itemService.getSimilar(item.id, take).subscribe({
+      next: (items) => {
+        this.similarItems.set(items);
+        this.similarHasMore.set(items.length >= take && take < 20);
+        this.isLoadingMoreSimilar.set(false);
+      },
+      error: () => {
+        this.similarItems.set([]);
+        this.isLoadingMoreSimilar.set(false);
+      },
     });
+  }
+
+  loadMoreSimilar(): void {
+    const itm = this.item();
+    if (!itm || this.isLoadingMoreSimilar()) return;
+    this.isLoadingMoreSimilar.set(true);
+    this.loadSimilar(itm, this.similarItems().length + 5);
   }
 
   ratingPercent(star: number): number {
@@ -223,15 +239,13 @@ export class ProductDetail implements OnInit {
 
     const variant = this.selectedVariant();
     if (!this.cartService.addToCart(item, variant, this.quantity())) {
-      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000 });
+      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
 
     const variantName = variant ? ` (${variant.name || variant.sku})` : '';
     this.snackBar.open(`Added ${this.quantity()}x "${item.name}${variantName}" to cart!`, 'View Cart', {
       duration: 3500,
-      horizontalPosition: 'right',
-      verticalPosition: 'bottom',
     }).onAction().subscribe(() => {
       this.router.navigate(['/cart']);
     });
@@ -249,7 +263,7 @@ export class ProductDetail implements OnInit {
     if (!item) return;
 
     if (!this.cartService.addToCart(item, this.selectedVariant(), this.quantity())) {
-      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000 });
+      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
     this.router.navigate(['/checkout']);

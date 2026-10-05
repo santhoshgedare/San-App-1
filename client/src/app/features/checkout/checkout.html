@@ -96,11 +96,11 @@
 
         <div class="price-breakdown">
           <div class="calc-row"><span>Subtotal</span><span>{{ subtotal() | currency }}</span></div>
-          <div class="calc-row"><span>Shipping</span><span class="text-success">Free Delivery</span></div>
+          <div class="calc-row"><span>Shipping</span><span>Confirmed after order</span></div>
           <div class="calc-row"><span>Tax</span><span>{{ 0 | currency }}</span></div>
           <div class="calc-divider"></div>
           <div class="calc-row total-row">
-            <span>Amount Payable</span>
+            <span>Items total</span>
             <span class="grand-total">{{ subtotal() | currency }}</span>
           </div>
         </div>

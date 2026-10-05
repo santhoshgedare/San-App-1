@@ -10,6 +10,7 @@ import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
 import type { RoleDto } from '../../../core/models/auth.models';
 import type { ModuleDto } from '../../../core/models/module-access.models';
+import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 
 /**
  * Single page for viewing/editing a role's section access, or creating a new role
@@ -25,6 +26,7 @@ import type { ModuleDto } from '../../../core/models/module-access.models';
 })
 export class RoleForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly roleService = inject(RoleService);
   private readonly moduleAccess = inject(ModuleAccessService);
@@ -181,10 +183,14 @@ export class RoleForm implements OnInit {
     if (!existing) {
       return;
     }
-    if (!confirm(`Delete role "${existing.name}"?`)) {
-      return;
-    }
-    this.roleService.delete(existing.id).subscribe(() => this.router.navigate(['/roles']));
+
+    this.confirmService
+      .confirm({ title: 'Delete role?', message: `Delete role "${existing.name}"?`, confirmText: 'Delete', cancelText: 'Keep', destructive: true })
+      .subscribe((ok) => {
+        if (ok) {
+          this.roleService.delete(existing.id).subscribe(() => this.router.navigate(['/roles']));
+        }
+      });
   }
 
   cancel(): void {

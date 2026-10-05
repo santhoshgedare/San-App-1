@@ -46,7 +46,7 @@ export class Cart {
   updateQuantity(cartItem: CartItem, delta: number): void {
     const newQty = cartItem.quantity + delta;
     if (!this.cartService.updateQuantity(cartItem.id, newQty) && delta > 0) {
-      this.snackBar.open(`Only ${this.getAvailableStock(cartItem)} available.`, 'Close', { duration: 3000 });
+      this.snackBar.open(`Only ${this.getAvailableStock(cartItem)} available.`, 'Close', { duration: 3000, panelClass: ['snack-error'] });
     }
   }
 

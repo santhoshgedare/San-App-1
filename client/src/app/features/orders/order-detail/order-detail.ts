@@ -19,6 +19,7 @@ import { ReviewService } from '../../../core/auth/review.service';
 import { ReviewForm } from '../../../shared/review-form/review-form';
 import { StarRating } from '../../../shared/star-rating/star-rating';
 import type { ItemReviewDto, OrderDto, PaymentSettingsDto } from '../../../core/models/auth.models';
+import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-order-detail',
@@ -52,6 +53,7 @@ export class OrderDetail implements OnInit {
   private readonly paymentSettingsService = inject(PaymentSettingsService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly reviewService = inject(ReviewService);
+  private readonly confirmService = inject(ConfirmService);
 
   readonly order = signal<OrderDto | null>(null);
   readonly paymentSettings = signal<PaymentSettingsDto | null>(null);
@@ -66,6 +68,8 @@ export class OrderDetail implements OnInit {
   newStatus = '';
   trackingNumber = '';
   shippingCarrier = '';
+  shippingFeeInput: number | null = null;
+  shippingFeeNote = '';
 
   // Payment status updates
   newPaymentStatus = '';
@@ -92,6 +96,8 @@ export class OrderDetail implements OnInit {
         this.newStatus = ord.status;
         this.trackingNumber = ord.trackingNumber || '';
         this.shippingCarrier = ord.shippingCarrier || '';
+        this.shippingFeeInput = ord.shippingFeeConfirmed ? ord.shippingFee : null;
+        this.shippingFeeNote = ord.shippingFeeNote || '';
         this.newPaymentStatus = ord.paymentStatus;
         this.paymentReferenceNumber = ord.paymentReferenceNumber || '';
         this.offlinePaymentNotes = ord.offlinePaymentNotes || '';
@@ -113,7 +119,7 @@ export class OrderDetail implements OnInit {
         }
       },
       error: () => {
-        this.snackBar.open('Order not found', 'Close', { duration: 3000 });
+        this.snackBar.open('Order not found', 'Close', { duration: 3000, panelClass: ['snack-error'] });
         this.router.navigate(['/orders']);
       },
     });
@@ -142,7 +148,7 @@ export class OrderDetail implements OnInit {
         },
         error: () => {
           this.isUpdating.set(false);
-          this.snackBar.open('Failed to update status', 'Dismiss', { duration: 3000 });
+          this.snackBar.open('Failed to update status', 'Dismiss', { duration: 3000, panelClass: ['snack-error'] });
         },
       });
   }
@@ -163,14 +169,61 @@ export class OrderDetail implements OnInit {
       this.sectionAccess.can('section-orders-refund');
   }
 
+  canCancelOwn(order: OrderDto | null): boolean {
+    return !!order && order.status === 'Pending' && order.customerId === this.auth.currentUser()?.id;
+  }
+
+  cancelMyOrder(): void {
+    const ord = this.order();
+    if (!ord) return;
+    this.confirmService
+      .confirm({ title: 'Cancel this order?', message: 'This cannot be undone. Your items will be released.', confirmText: 'Cancel order', cancelText: 'Keep order', destructive: true })
+      .subscribe((ok) => {
+        if (!ok) return;
+    this.isUpdating.set(true);
+    this.orderService.cancelMine(ord.id).subscribe({
+      next: () => {
+        this.isUpdating.set(false);
+        this.snackBar.open('Your order has been cancelled', 'Dismiss', { duration: 3000 });
+        this.loadOrder(ord.id);
+      },
+      error: (err) => {
+        this.isUpdating.set(false);
+        this.snackBar.open(err?.error?.errors?.[0] ?? 'Could not cancel the order', 'Dismiss', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+      });
+  }
+
+  saveShippingFee(): void {
+    const ord = this.order();
+    const fee = Number(this.shippingFeeInput);
+    if (!ord || this.shippingFeeInput === null || this.shippingFeeInput === ('' as unknown) || Number.isNaN(fee) || fee < 0) {
+      this.snackBar.open('Enter a delivery charge (0 for free delivery).', 'Dismiss', { duration: 3000, panelClass: ['snack-error'] });
+      return;
+    }
+    this.isUpdating.set(true);
+    this.orderService.setShippingFee(ord.id, { shippingFee: fee, note: this.shippingFeeNote.trim() || null }).subscribe({
+      next: () => {
+        this.isUpdating.set(false);
+        this.snackBar.open('Delivery charge saved', 'Dismiss', { duration: 3000 });
+        this.loadOrder(ord.id);
+      },
+      error: (err) => {
+        this.isUpdating.set(false);
+        this.snackBar.open(err?.error?.errors?.[0] ?? 'Could not save delivery charge', 'Dismiss', { duration: 4000, panelClass: ['snack-error'] });
+      },
+    });
+  }
+
   canSubmitPaymentDetails(order: OrderDto | null): boolean {
-    if (!order || this.isPrivileged() || !this.isPaymentAvailable(order) || !['Pending', 'Failed'].includes(order.paymentStatus)) return false;
+    if (!order || !order.shippingFeeConfirmed || this.isPrivileged() || !this.isPaymentAvailable(order) || !['Pending', 'Failed'].includes(order.paymentStatus)) return false;
     const currentUser = this.auth.currentUser();
     return order.customerId === currentUser?.id;
   }
 
   canUpdatePaymentStatus(order: OrderDto | null): boolean {
-    return this.sectionAccess.can('section-orders-payment') && !!order && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
+    return this.sectionAccess.can('section-orders-payment') && !!order && order.shippingFeeConfirmed && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
   }
 
   canUpdateOrderStatus(order: OrderDto | null): boolean {
@@ -189,7 +242,7 @@ export class OrderDetail implements OnInit {
     const ord = this.order();
     const reference = this.paymentReferenceNumber.trim();
     if (!ord || !reference) {
-      this.snackBar.open('Enter the UPI transaction reference ID.', 'Dismiss', { duration: 3000 });
+      this.snackBar.open('Enter the UPI transaction reference ID.', 'Dismiss', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
 
@@ -207,7 +260,7 @@ export class OrderDetail implements OnInit {
         },
         error: () => {
           this.isUpdating.set(false);
-          this.snackBar.open('Failed to submit payment details.', 'Dismiss', { duration: 3000 });
+          this.snackBar.open('Failed to submit payment details.', 'Dismiss', { duration: 3000, panelClass: ['snack-error'] });
         },
       });
   }
@@ -216,7 +269,7 @@ export class OrderDetail implements OnInit {
     const ord = this.order();
     if (!ord) return;
     if (this.newPaymentStatus === 'Paid' && !this.paymentReferenceNumber.trim() && !ord.paymentReferenceNumber) {
-      this.snackBar.open('A payment reference is required before confirming payment.', 'Dismiss', { duration: 3500 });
+      this.snackBar.open('A payment reference is required before confirming payment.', 'Dismiss', { duration: 3500, panelClass: ['snack-error'] });
       return;
     }
 
@@ -235,7 +288,7 @@ export class OrderDetail implements OnInit {
         },
         error: () => {
           this.isUpdating.set(false);
-          this.snackBar.open('Failed to update payment status', 'Dismiss', { duration: 3000 });
+          this.snackBar.open('Failed to update payment status', 'Dismiss', { duration: 3000, panelClass: ['snack-error'] });
         },
       });
   }
@@ -245,7 +298,7 @@ export class OrderDetail implements OnInit {
     const reference = this.refundReferenceNumber.trim();
     if (!ord || !this.canRecordRefund(ord)) return;
     if (!reference) {
-      this.snackBar.open('Enter the refund transaction reference.', 'Dismiss', { duration: 3500 });
+      this.snackBar.open('Enter the refund transaction reference.', 'Dismiss', { duration: 3500, panelClass: ['snack-error'] });
       return;
     }
 
@@ -263,7 +316,7 @@ export class OrderDetail implements OnInit {
       error: (error) => {
         this.isUpdating.set(false);
         const errors = error?.error?.errors;
-        this.snackBar.open(Array.isArray(errors) ? errors.join(' ') : 'Failed to record refund.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(Array.isArray(errors) ? errors.join(' ') : 'Failed to record refund.', 'Dismiss', { duration: 4000, panelClass: ['snack-error'] });
       },
     });
   }

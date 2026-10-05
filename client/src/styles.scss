@@ -425,3 +425,29 @@ app-user-shell .user-content {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Toasts: boxed alerts pinned top-right */
+.mat-mdc-snack-bar-container {
+  margin-top: 4.5rem !important;
+  margin-right: 1rem !important;
+  --mdc-snackbar-container-color: #fffdfa;
+  --mdc-snackbar-supporting-text-color: #382a2d;
+  --mat-snack-bar-button-color: #76283a;
+  --mdc-snackbar-container-shape: 0.9rem;
+  .mdc-snackbar__surface {
+    border-left: 5px solid #c9a45c;
+    border-radius: 0.9rem;
+    box-shadow: 0 12px 32px rgba(56, 42, 45, 0.22);
+    min-width: 280px;
+    max-width: 380px;
+  }
+  &.snack-error {
+    --mdc-snackbar-container-color: #fbefef;
+    --mdc-snackbar-supporting-text-color: #7a1f2b;
+    --mat-snack-bar-button-color: #a3202f;
+    .mdc-snackbar__surface { border-left-color: #a3202f; }
+  }
+}
+@media (max-width: 575.98px) {
+  .mat-mdc-snack-bar-container { margin-right: 0.5rem !important; margin-left: 0.5rem !important; }
+}

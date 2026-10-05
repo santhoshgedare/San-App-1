@@ -39,6 +39,8 @@ public interface IOrderService
         string? trackingNumber,
         string? shippingCarrier,
         CancellationToken ct = default);
+    Task<Result> CancelOwnOrderAsync(Guid id, Guid customerId, CancellationToken ct = default);
+    Task<Result> SetShippingFeeAsync(Guid id, decimal shippingFee, string? note, CancellationToken ct = default);
     Task<Result> UpdatePaymentStatusAsync(
         Guid id,
         PaymentStatus paymentStatus,

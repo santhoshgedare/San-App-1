@@ -9,6 +9,7 @@ import { CategoryService } from '../../../core/auth/category.service';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
+import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 import {
   CategoryVariantType,
   UnitOfMeasurement,
@@ -27,6 +28,7 @@ import {
 })
 export class CategoryForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly categoryService = inject(CategoryService);
 
@@ -154,10 +156,14 @@ export class CategoryForm implements OnInit {
     if (!existing) {
       return;
     }
-    if (!confirm(`Delete category "${existing.name}"?`)) {
-      return;
-    }
-    this.categoryService.delete(existing.id).subscribe(() => this.router.navigate(['/categories']));
+
+    this.confirmService
+      .confirm({ title: 'Delete category?', message: `Delete category "${existing.name}"?`, confirmText: 'Delete', cancelText: 'Keep', destructive: true })
+      .subscribe((ok) => {
+        if (ok) {
+          this.categoryService.delete(existing.id).subscribe(() => this.router.navigate(['/categories']));
+        }
+      });
   }
 
   cancel(): void {

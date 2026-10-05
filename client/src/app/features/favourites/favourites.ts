@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -66,7 +66,7 @@ export class Favourites implements OnInit {
       return;
     }
     if (!this.cartService.addToCart(item, null, 1)) {
-      this.snackBar.open('No additional stock is available for this item.', 'Close', { duration: 3000 });
+      this.snackBar.open('No additional stock is available for this item.', 'Close', { duration: 3000, panelClass: ['snack-error'] });
       return;
     }
     this.snackBar.open(`Added "${item.name}" to cart!`, 'View Cart', { duration: 3000 })

@@ -336,6 +336,8 @@ public sealed class OrderDto
     public string? ShippingCarrier { get; init; }
     public decimal SubtotalAmount { get; init; }
     public decimal ShippingFee { get; init; }
+    public bool ShippingFeeConfirmed { get; init; }
+    public string? ShippingFeeNote { get; init; }
     public decimal TaxAmount { get; init; }
     public decimal TotalAmount { get; init; }
     public DateTimeOffset CreatedAt { get; init; }

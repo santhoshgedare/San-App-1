@@ -12,6 +12,7 @@ import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-lo
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
 import type { RoleDto, UserDto } from '../../../core/models/auth.models';
+import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
 
 /**
  * Single page for viewing, editing, or creating a user (routed as `/users/new` or
@@ -27,6 +28,7 @@ import type { RoleDto, UserDto } from '../../../core/models/auth.models';
 })
 export class UserForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly roleService = inject(RoleService);
@@ -163,10 +165,14 @@ export class UserForm implements OnInit {
     if (!existing) {
       return;
     }
-    if (!confirm(`Delete user ${existing.email}? This cannot be undone.`)) {
-      return;
-    }
-    this.userService.delete(existing.id).subscribe(() => this.router.navigate(['/users']));
+
+    this.confirmService
+      .confirm({ title: 'Delete user?', message: `Delete user ${existing.email}? This cannot be undone.`, confirmText: 'Delete', cancelText: 'Keep', destructive: true })
+      .subscribe((ok) => {
+        if (ok) {
+          this.userService.delete(existing.id).subscribe(() => this.router.navigate(['/users']));
+        }
+      });
   }
 
   cancel(): void {

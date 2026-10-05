@@ -174,14 +174,9 @@
   <!-- Documents and Specifications: Documents & Specifications -->
   <section class="details-tabs-section">
     <!-- Documents & Downloads Tab -->
-      <h2 class="section-heading">Documents &amp; Downloads ({{ itm.documents?.length || 0 }})</h2>
+      @if (itm.documents && itm.documents.length > 0) {
+      <h2 class="section-heading">Documents &amp; Downloads ({{ itm.documents.length }})</h2>
         <div class="tab-pane-content">
-          @if (!itm.documents || itm.documents.length === 0) {
-          <div class="no-docs-box">
-            <mat-icon>folder_open</mat-icon>
-            <p>No downloadable documents or spec sheets attached to this product.</p>
-          </div>
-          } @else {
           <div class="documents-grid">
             @for (doc of itm.documents; track doc.id) {
             <a [href]="doc.url" target="_blank" rel="noopener noreferrer" class="document-card">
@@ -200,8 +195,8 @@
             </a>
             }
           </div>
-          }
         </div>
+      }
 
       <!-- Technical Specification Tab -->
       <h2 class="section-heading">Technical Specifications</h2>
@@ -232,11 +227,9 @@
           </table>
         </div>
 
-      <h2 class="section-heading">Customer Reviews</h2>
       @if (reviewSummary(); as rs) {
-        @if (rs.totalCount === 0) {
-        <p class="reviews-empty">No reviews yet. Customers can review this item after their order is delivered.</p>
-        } @else {
+        @if (rs.totalCount > 0) {
+      <h2 class="section-heading">Customer Reviews</h2>
         <div class="reviews-summary">
           <div class="reviews-avg">
             <strong>{{ rs.averageRating | number: '1.1-1' }}</strong>
@@ -304,6 +297,12 @@
           <span class="similar-price">{{ s.price | currency }}</span>
         </div>
       </a>
+      }
+      @if (similarHasMore()) {
+      <button type="button" class="similar-more" (click)="loadMoreSimilar()" [disabled]="isLoadingMoreSimilar()">
+        <mat-icon>{{ isLoadingMoreSimilar() ? 'hourglass_empty' : 'add_circle_outline' }}</mat-icon>
+        <span>{{ isLoadingMoreSimilar() ? 'Loading...' : 'Load more' }}</span>
+      </button>
       }
     </div>
   </section>

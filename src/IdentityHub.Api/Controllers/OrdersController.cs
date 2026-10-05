@@ -115,6 +115,26 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
 
+    /// <summary>Lets a customer cancel their own order while it is still Pending (not yet confirmed).</summary>
+    [HttpPost("{id:guid}/cancel")]
+    [RequireSection("section-orders-view")]
+    public async Task<IActionResult> CancelOwn(Guid id, [FromServices] IOrderService orders, CancellationToken ct)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue) return Unauthorized();
+        var result = await orders.CancelOwnOrderAsync(id, currentUserId.Value, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Sets the delivery charge for an order before payment and notifies the customer via the order total.</summary>
+    [HttpPut("{id:guid}/shipping-fee")]
+    [RequireSection("section-orders-manage")]
+    public async Task<IActionResult> SetShippingFee(Guid id, SetOrderShippingFeeRequest request, [FromServices] IOrderService orders, CancellationToken ct)
+    {
+        var result = await orders.SetShippingFeeAsync(id, request.ShippingFee, request.Note, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
     /// <summary>Updates offline payment status (e.g. Paid, Pending, Refunded) with reference number & notes.</summary>
     [HttpPut("{id:guid}/payment-status")]
     [RequireSection("section-orders-payment")]

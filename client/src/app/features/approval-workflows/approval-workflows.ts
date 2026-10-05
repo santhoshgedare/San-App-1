@@ -12,6 +12,7 @@ import { UserService } from '../../core/auth/user.service';
 import { ENTITY_TYPES } from '../../core/models/constants';
 import type { ApprovalWorkflowDto } from '../../core/models/approval.models';
 import type { RoleDto, UserDto } from '../../core/models/auth.models';
+import { ConfirmService } from '../../shared/confirm-dialog/confirm-dialog';
 
 interface StageDraft {
   name: string;
@@ -46,6 +47,7 @@ const CONFIGURABLE_ENTITY_TYPES: string[] = [
 })
 export class ApprovalWorkflows implements OnInit {
   private readonly workflowService = inject(ApprovalWorkflowService);
+  private readonly confirmService = inject(ConfirmService);
   private readonly roleService = inject(RoleService);
   private readonly userService = inject(UserService);
   private readonly router = inject(Router);
@@ -180,13 +182,18 @@ export class ApprovalWorkflows implements OnInit {
   }
 
   remove(): void {
-    if (!this.editingId) {
+    const id = this.editingId;
+    if (!id) {
       return;
     }
-    if (!confirm('Delete this approval workflow? Entities of this type will fall back to a single Admin/Manager decision.')) {
-      return;
-    }
-    this.workflowService.delete(this.editingId).subscribe(() => this.reload());
+
+    this.confirmService
+      .confirm({ title: 'Delete workflow?', message: 'Delete this approval workflow? Entities of this type will fall back to a single Admin/Manager decision.', confirmText: 'Delete', cancelText: 'Keep', destructive: true })
+      .subscribe((ok) => {
+        if (ok) {
+          this.workflowService.delete(id).subscribe(() => this.reload());
+        }
+      });
   }
 
   cancel(): void {
