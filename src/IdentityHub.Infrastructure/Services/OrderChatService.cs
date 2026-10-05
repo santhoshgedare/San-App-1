@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IdentityHub.Infrastructure.Services;
 
-public sealed class OrderChatService(AppDbContext db, ICurrentUserService currentUser) : IOrderChatService
+public sealed class OrderChatService(AppDbContext db, ICurrentUserService currentUser, IOrderNotifier notifier) : IOrderChatService
 {
     private const int MaxLength = 1000;
 
@@ -76,6 +76,7 @@ public sealed class OrderChatService(AppDbContext db, ICurrentUserService curren
         }
 
         await db.SaveChangesAsync(ct);
+        await notifier.NotifyAsync(orderId, OrderNotice.ChatMessage, text.Length > 300 ? text[..300] + "…" : text, ct);
         return null;
     }
 

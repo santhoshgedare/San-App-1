@@ -117,6 +117,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, LoggingEmailSender>();
         services.AddScoped<IEmailLogService, EmailLogService>();
         services.AddScoped<IOrderChatService, OrderChatService>();
+        services.AddScoped<IOrderNotifier, OrderNotifier>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();

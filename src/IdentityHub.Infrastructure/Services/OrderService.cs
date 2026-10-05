@@ -14,7 +14,8 @@ namespace IdentityHub.Infrastructure.Services;
 public sealed class OrderService(
     AppDbContext db,
     IActivityLogService activityLogs,
-    IApprovalService approvals) : IOrderService
+    IApprovalService approvals,
+    IOrderNotifier notifier) : IOrderService
 {
     public async Task<OrderDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -331,6 +332,8 @@ public sealed class OrderService(
             $"Customer: {order.CustomerName}, Payment Method: {order.PaymentMethod}, Total: {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}",
             ct);
 
+        await notifier.NotifyAsync(order.Id, OrderNotice.Placed, $"Total {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}.", ct);
+
         return Result<OrderDto>.Success(MapToDto(order));
     }
 
@@ -421,6 +424,8 @@ public sealed class OrderService(
             ct);
         await transaction.CommitAsync(ct);
 
+        await notifier.NotifyAsync(order.Id, OrderNotice.StatusChanged, $"Status: {oldStatus} → {status}." + (order.TrackingNumber is null ? "" : $" Tracking: {order.ShippingCarrier} {order.TrackingNumber}"), ct);
+
         return Result.Success();
     }
 
@@ -486,6 +491,8 @@ public sealed class OrderService(
             ct);
         await transaction.CommitAsync(ct);
 
+        await notifier.NotifyAsync(order.Id, OrderNotice.DeliveryCharge, $"Delivery charge {order.ShippingFee.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}. Order total {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}.", ct);
+
         return Result.Success();
     }
 
@@ -550,6 +557,8 @@ public sealed class OrderService(
             ct);
         await transaction.CommitAsync(ct);
 
+        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentUpdated, $"Payment status: {paymentStatus}.", ct);
+
         return Result.Success();
     }
 
@@ -596,6 +605,8 @@ public sealed class OrderService(
             ct);
         await transaction.CommitAsync(ct);
 
+        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentSubmitted, $"Reference: {order.PaymentReferenceNumber}", ct);
+
         return Result.Success();
     }
 
@@ -641,6 +652,8 @@ public sealed class OrderService(
             $"Full refund of {refundAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} recorded. Refund reference: {order.RefundReferenceNumber}.",
             ct);
         await transaction.CommitAsync(ct);
+
+        await notifier.NotifyAsync(order.Id, OrderNotice.Refunded, $"Refund of {refundAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} recorded. Reference: {order.RefundReferenceNumber}.", ct);
 
         return Result.Success();
     }
