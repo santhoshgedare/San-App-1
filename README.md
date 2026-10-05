@@ -57,6 +57,109 @@ The API applies EF Core migrations and seeds roles/admin user on startup. Update
 `src/IdentityHub.Api/appsettings.json` `ConnectionStrings:DefaultConnection` and `Jwt:Secret`
 for your environment (use a strong secret and a secrets manager in production).
 
+#### Google and Facebook (Meta) sign-in
+
+For local development, create OAuth apps with these authorized redirect URIs:
+
+- Google: `https://localhost:7226/signin-google`
+- Facebook (Meta): `https://localhost:7226/signin-facebook`
+
+For local development, create the gitignored
+`src/IdentityHub.Api/appsettings.Local.json` file and add provider app credentials under `Authentication`:
+
+```json
+{
+  "Authentication": {
+    "Google": {
+      "ClientId": "<Google client ID>",
+      "ClientSecret": "<Google client secret>"
+    },
+    "Facebook": {
+      "AppId": "<Meta app ID>",
+      "AppSecret": "<Meta app secret>"
+    }
+  }
+}
+```
+
+#### Production configuration
+
+Copy `src/IdentityHub.Api/appsettings.json` to the deployment host as
+`src/IdentityHub.Api/appsettings.Production.json` and set the production values there. That file is
+gitignored so provider, SMTP, JWT, and database secrets are not committed. Do not put API secrets in
+Angular environment files:
+
+```json
+{
+  "AllowedOrigins": ["https://shop.example.com"],
+  "Client": { "BaseUrl": "https://shop.example.com" },
+  "Authentication": {
+    "Google": {
+      "ClientId": "<production Google client ID>",
+      "ClientSecret": "<production Google client secret>"
+    },
+    "Facebook": {
+      "AppId": "<production Meta app ID>",
+      "AppSecret": "<production Meta app secret>"
+    }
+  },
+  "Email": {
+    "Smtp": {
+      "Host": "smtp.example.com",
+      "Port": 587,
+      "Username": "<SMTP username>",
+      "Password": "<SMTP password>",
+      "FromAddress": "accounts@example.com",
+      "FromName": "SRIVIDIKA",
+      "UseStartTls": true,
+      "TimeoutSeconds": 15
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "<production SQL Server connection string>"
+  },
+  "Jwt": {
+    "Secret": "<long random production signing secret>",
+    "Issuer": "IdentityHub",
+    "Audience": "IdentityHubClient",
+    "AccessTokenMinutes": 15,
+    "RefreshTokenDays": 7
+  }
+}
+```
+
+Set `ASPNETCORE_ENVIRONMENT=Production` in the hosting platform so ASP.NET Core loads this file.
+Keep the production override on the server and restrict file access; both local and production
+override files are gitignored. OAuth credentials are read from `Authentication:Google` and
+`Authentication:Facebook` in appsettings.
+Password recovery is limited to
+five requests per source IP per hour by default; `PasswordRecovery:RateLimit` and
+`PasswordRecovery:TokenLifespanMinutes` in `appsettings.json` control these values. SMTP transport
+settings are bound from `Email:Smtp`, and the reset-link origin comes from `Client:BaseUrl`. The
+committed `appsettings.json` includes safe local defaults with blank SMTP credentials. Forgot-password responses are generic to prevent account
+enumeration; password changes send a confirmation email. The API returns `503` for recovery while
+SMTP is not configured. Set `Client__BaseUrl` to the exact public client origin so reset links
+return to the deployed reset-password page.
+
+Replace `https://shop.example.com` with the exact browser origin serving the client (scheme and
+host, plus port if nonstandard). `environment.prod.ts` uses `/api`, so the default setup expects
+the client and API to share one public origin. If they are hosted separately, set `AllowedOrigins`
+to the client origin and change `client/src/environments/environment.prod.ts` to the public API
+base URL before building the client.
+
+In the Google Cloud OAuth client and Meta Facebook Login settings, add these **public API** redirect
+URIs, replacing the host with the deployed API host:
+
+- Google: `https://api.example.com/signin-google`
+- Facebook (Meta): `https://api.example.com/signin-facebook`
+
+For a same-origin deployment, use the app host instead (for example,
+`https://shop.example.com/signin-google`). If TLS terminates at a reverse proxy, configure the
+hosting platform and ASP.NET Core forwarded-header handling so OAuth sees the original HTTPS
+scheme and public host. After setting secrets and provider redirect URIs, restart/redeploy the API.
+The login page enables each provider only when its credentials are present. Google accounts with
+verified email can link to an existing account; unverified provider emails cannot silently link.
+
 ### Client
 
 ```powershell

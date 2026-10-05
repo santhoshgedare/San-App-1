@@ -15,7 +15,9 @@
   color: inherit;
   text-decoration: none;
   border: 0;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     transform: translateY(-2px);
@@ -41,7 +43,7 @@
 
   &.categories {
     color: #7c3aed;
-    background: #ede9fe;
+    background: #f6e6e9;
   }
 
   &.items {
@@ -101,4 +103,109 @@
   .order-summary {
     grid-template-columns: 1fr;
   }
+}
+
+.financial-report {
+  border-top: 1px solid #d7ddd7;
+  padding-top: 1.25rem;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+    color: #17231d;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0.3rem 0 0;
+    color: #64746b;
+    font-size: 0.8125rem;
+  }
+}
+
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+
+  label {
+    display: grid;
+    gap: 0.2rem;
+    color: #64746b;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  input {
+    min-height: 2.4rem;
+    border: 1px solid #cbd5ce;
+    border-radius: 0.35rem;
+    padding: 0.35rem 0.5rem;
+    color: #17231d;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 2.4rem;
+  }
+
+  mat-icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+}
+
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  border: 1px solid #d7ddd7;
+  border-radius: 0.5rem;
+  overflow: hidden;
+
+  > div {
+    display: flex;
+    min-height: 6.2rem;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.9rem;
+    border-right: 1px solid #e4e9e5;
+    border-bottom: 1px solid #e4e9e5;
+  }
+
+  span,
+  small {
+    color: #64746b;
+    font-size: 0.75rem;
+  }
+
+  strong {
+    color: #17231d;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .refund-value,
+  .loss-value {
+    color: #a33b31;
+  }
+}
+
+.report-warning {
+  margin: 0.75rem 0 0;
+  color: #78571b;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }

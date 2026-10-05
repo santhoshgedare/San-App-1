@@ -7,13 +7,18 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
 import { OrderService } from '../../../core/auth/order.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { SectionAccessStore } from '../../../core/auth/section-access.store';
 import { PaymentSettingsService } from '../../../core/auth/payment-settings.service';
 import { ENTITY_TYPES } from '../../../core/models/constants';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
-import type { OrderDto, PaymentSettingsDto } from '../../../core/models/auth.models';
+import { ReviewService } from '../../../core/auth/review.service';
+import { ReviewForm } from '../../../shared/review-form/review-form';
+import { StarRating } from '../../../shared/star-rating/star-rating';
+import type { ItemReviewDto, OrderDto, PaymentSettingsDto } from '../../../core/models/auth.models';
 
 @Component({
   selector: 'app-order-detail',
@@ -31,7 +36,10 @@ import type { OrderDto, PaymentSettingsDto } from '../../../core/models/auth.mod
     MatSelectModule,
     ApprovalPanel,
     ActivityLogPanel,
+    ReviewForm,
+    StarRating,
   ],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.scss',
 })
@@ -40,12 +48,16 @@ export class OrderDetail implements OnInit {
   private readonly router = inject(Router);
   private readonly orderService = inject(OrderService);
   protected readonly auth = inject(AuthService);
+  private readonly sectionAccess = inject(SectionAccessStore);
   private readonly paymentSettingsService = inject(PaymentSettingsService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly reviewService = inject(ReviewService);
 
   readonly order = signal<OrderDto | null>(null);
   readonly paymentSettings = signal<PaymentSettingsDto | null>(null);
   readonly isLoading = signal(true);
+  readonly reviews = signal<Record<string, ItemReviewDto>>({});
+  readonly reviewingItemId = signal<string | null>(null);
   readonly isUpdating = signal(false);
 
   readonly entityType = ENTITY_TYPES.order;
@@ -86,6 +98,11 @@ export class OrderDetail implements OnInit {
         this.refundReferenceNumber = ord.refundReferenceNumber || '';
         this.refundNotes = ord.refundNotes || '';
         this.isLoading.set(false);
+        if (ord.status === 'Delivered' && !this.isPrivileged()) {
+          this.reviewService.getForOrder(ord.id).subscribe({
+            next: (list) => this.reviews.set(Object.fromEntries(list.map((r) => [r.orderItemId, r]))),
+          });
+        }
         if (!this.isPrivileged() && this.isPaymentAvailable(ord) && ['Pending', 'Failed'].includes(ord.paymentStatus) && !this.paymentSettings()) {
           this.paymentSettingsService.get().subscribe({
             next: (settings) => this.paymentSettings.set(settings),
@@ -130,8 +147,20 @@ export class OrderDetail implements OnInit {
       });
   }
 
+  canReview(order: OrderDto): boolean {
+    return order.status === 'Delivered' && !this.isPrivileged();
+  }
+
+  onReviewSubmitted(review: ItemReviewDto): void {
+    this.reviews.update((m) => ({ ...m, [review.orderItemId]: review }));
+    this.reviewingItemId.set(null);
+  }
+
   isPrivileged(): boolean {
-    return this.auth.isAdmin() || this.auth.isManager();
+    return this.auth.isAdmin() ||
+      this.sectionAccess.can('section-orders-manage') ||
+      this.sectionAccess.can('section-orders-payment') ||
+      this.sectionAccess.can('section-orders-refund');
   }
 
   canSubmitPaymentDetails(order: OrderDto | null): boolean {
@@ -141,7 +170,15 @@ export class OrderDetail implements OnInit {
   }
 
   canUpdatePaymentStatus(order: OrderDto | null): boolean {
-    return this.isPrivileged() && !!order && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
+    return this.sectionAccess.can('section-orders-payment') && !!order && this.isPaymentAvailable(order) && ['Pending', 'Failed'].includes(order.paymentStatus);
+  }
+
+  canUpdateOrderStatus(order: OrderDto | null): boolean {
+    return this.sectionAccess.can('section-orders-manage') && !!order;
+  }
+
+  canRecordRefund(order: OrderDto | null): boolean {
+    return this.sectionAccess.can('section-orders-refund') && !!order && order.paymentStatus === 'Paid';
   }
 
   isPaymentAvailable(order: OrderDto | null): boolean {
@@ -206,7 +243,7 @@ export class OrderDetail implements OnInit {
   recordRefund(): void {
     const ord = this.order();
     const reference = this.refundReferenceNumber.trim();
-    if (!ord || !this.isPrivileged() || ord.paymentStatus !== 'Paid') return;
+    if (!ord || !this.canRecordRefund(ord)) return;
     if (!reference) {
       this.snackBar.open('Enter the refund transaction reference.', 'Dismiss', { duration: 3500 });
       return;

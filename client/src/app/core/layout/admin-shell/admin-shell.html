@@ -3,13 +3,8 @@
     <mat-icon>menu</mat-icon>
   </button>
   <span class="brand">
-    <img
-      src="logo.png"
-      alt="SRIVIDIKA"
-      class="brand-logo"
-      #brandImg
-      (error)="brandImg.classList.add('d-none'); brandFallback.classList.remove('d-none')"
-    />
+    <img src="assets/logo.png" alt="SRIVIDIKA" class="brand-logo" #brandImg
+      (error)="brandImg.classList.add('d-none'); brandFallback.classList.remove('d-none')" />
     <span class="brand-text d-none" #brandFallback>SRIVIDIKA</span>
   </span>
   <span class="flex-spacer"></span>
@@ -18,7 +13,8 @@
     <mat-icon>settings</mat-icon>
   </button>
 
-  <a mat-icon-button routerLink="/cart" matTooltip="Shopping Cart" aria-label="Shopping Cart">
+  <a *canRender="'section-cart-view'" mat-icon-button routerLink="/cart" matTooltip="Shopping Cart"
+    aria-label="Shopping Cart">
     <mat-icon [matBadge]="cartCount()" [matBadgeHidden]="cartCount() === 0" matBadgeColor="warn">
       shopping_cart
     </mat-icon>
@@ -29,10 +25,10 @@
   </button>
   <mat-menu #userMenu="matMenu">
     @if (auth.currentUser(); as user) {
-      <div class="px-3 py-2">
-        <div class="fw-semibold">{{ user.firstName }} {{ user.lastName }}</div>
-        <div class="text-muted small">{{ user.email }}</div>
-      </div>
+    <div class="px-3 py-2">
+      <div class="fw-semibold">{{ user.firstName }} {{ user.lastName }}</div>
+      <div class="text-muted small">{{ user.email }}</div>
+    </div>
     }
     <button mat-menu-item routerLink="/profile">
       <mat-icon>person</mat-icon>
@@ -50,56 +46,68 @@
 </mat-toolbar>
 
 <mat-sidenav-container class="app-sidenav-container">
-  <mat-sidenav
-    #sidenav
-    class="app-sidenav"
-    [opened]="!isScreenSmall()"
-    [mode]="isScreenSmall() ? 'over' : 'side'"
-  >
+  <mat-sidenav #sidenav class="app-sidenav" [opened]="!isScreenSmall()" [mode]="isScreenSmall() ? 'over' : 'side'">
     <mat-nav-list>
-      <a mat-list-item routerLink="/catalog" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-catalog-view'" mat-list-item routerLink="/catalog" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>storefront</mat-icon>
         <span matListItemTitle>Product Catalog</span>
       </a>
-      <a mat-list-item routerLink="/cart" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-cart-view'" mat-list-item routerLink="/cart" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>shopping_cart</mat-icon>
         <span matListItemTitle>Shopping Cart</span>
       </a>
-      <a mat-list-item routerLink="/dashboard" routerLinkActive="link-active" [routerLinkActiveOptions]="{ exact: true }" (click)="isScreenSmall() && sidenav.close()">
+      @if (sectionAccess.can('section-dashboard-view') || sectionAccess.can('section-reports-view')) {
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="link-active"
+        [routerLinkActiveOptions]="{ exact: true }" (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>speed</mat-icon>
         <span matListItemTitle>Dashboard</span>
       </a>
-      <a mat-list-item routerLink="/orders" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      }
+      <a *canRender="'section-orders-view'" mat-list-item routerLink="/orders" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>receipt_long</mat-icon>
         <span matListItemTitle>Orders</span>
       </a>
-      <a mat-list-item routerLink="/profile" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-profile-view'" mat-list-item routerLink="/profile" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>person</mat-icon>
         <span matListItemTitle>My Profile</span>
       </a>
       <ng-container *canRender="'section-users-view'">
-        <a mat-list-item routerLink="/users" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+        <a mat-list-item routerLink="/users" routerLinkActive="link-active"
+          (click)="isScreenSmall() && sidenav.close()">
           <mat-icon matListItemIcon>group</mat-icon>
           <span matListItemTitle>Users</span>
         </a>
       </ng-container>
       @if (auth.isAdmin()) {
-        <a mat-list-item routerLink="/roles" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-          <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
-          <span matListItemTitle>Roles</span>
-        </a>
+      <a *canRender="'section-roles-view'" mat-list-item routerLink="/roles" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
+        <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+        <span matListItemTitle>Roles</span>
+      </a>
       }
-      <a mat-list-item routerLink="/categories" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-categories-view'" mat-list-item routerLink="/categories" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>category</mat-icon>
         <span matListItemTitle>Categories</span>
       </a>
-      <a mat-list-item routerLink="/items" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-items-view'" mat-list-item routerLink="/items" routerLinkActive="link-active"
+        (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>inventory_2</mat-icon>
         <span matListItemTitle>Items</span>
       </a>
-      <a mat-list-item routerLink="/payment-settings" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+      <a *canRender="'section-payment-settings-view'" mat-list-item routerLink="/payment-settings"
+        routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
         <mat-icon matListItemIcon>qr_code_2</mat-icon>
         <span matListItemTitle>Payment Settings</span>
+      </a>
+      <a *canRender="'section-approval-workflows-view'" mat-list-item routerLink="/approval-workflows"
+        routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+        <mat-icon matListItemIcon>fact_check</mat-icon>
+        <span matListItemTitle>Approval Workflows</span>
       </a>
     </mat-nav-list>
   </mat-sidenav>

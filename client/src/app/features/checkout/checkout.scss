@@ -9,14 +9,14 @@
 }
 
 .checkout-header {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e9dfd4;
   padding-bottom: 1.25rem;
 
   .back-link {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    color: #4f46e5;
+    color: #76283a;
     font-size: 0.875rem;
     font-weight: 600;
     text-decoration: none;
@@ -36,13 +36,13 @@
   .page-title {
     font-size: 1.875rem;
     font-weight: 800;
-    color: #0f172a;
+    color: #382a2d;
     margin: 0 0 0.25rem;
   }
 
   .subtitle {
     font-size: 0.9375rem;
-    color: #64748b;
+    color: #716068;
     margin: 0;
   }
 }
@@ -112,8 +112,8 @@
 }
 
 .form-section {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #fffdfa;
+  border: 1px solid #e9dfd4;
   border-radius: 1rem;
   padding: 1.5rem;
   display: flex;
@@ -125,10 +125,10 @@
     align-items: center;
     gap: 0.625rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #efe8df;
 
     mat-icon {
-      color: #4f46e5;
+      color: #76283a;
       font-size: 1.5rem;
       width: 1.5rem;
       height: 1.5rem;
@@ -137,7 +137,7 @@
     h2 {
       font-size: 1.125rem;
       font-weight: 700;
-      color: #0f172a;
+      color: #382a2d;
       margin: 0;
     }
   }
@@ -161,25 +161,25 @@
   label {
     font-size: 0.8125rem;
     font-weight: 600;
-    color: #334155;
+    color: #57464a;
   }
 
   input,
   textarea {
     width: 100%;
     padding: 0.75rem 0.875rem;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
+    background: #f7f1e9;
+    border: 1px solid #ddd2c8;
     border-radius: 0.5rem;
     font-size: 0.875rem;
-    color: #0f172a;
+    color: #382a2d;
     transition: all 0.2s;
 
     &:focus {
       outline: none;
-      background: #ffffff;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      background: #fffdfa;
+      border-color: #76283a;
+      box-shadow: 0 0 0 3px rgba(118, 40, 58, 0.12);
     }
   }
 }
@@ -191,14 +191,14 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1.5rem;
-  background: #f8fafc;
-  border: 1.5px dashed #c7d2fe;
+  background: #f7f1e9;
+  border: 1.5px dashed #d8c9ba;
   border-radius: 0.75rem;
   text-align: center;
 
   .qr-image-wrap {
     padding: 0.75rem;
-    background: #ffffff;
+    background: #fffdfa;
     border-radius: 0.75rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 
@@ -229,11 +229,11 @@
     font-size: 0.9375rem;
 
     .label {
-      color: #64748b;
+      color: #716068;
     }
 
     .upi-id-value {
-      color: #4f46e5;
+      color: #76283a;
       letter-spacing: 0.02em;
     }
 
@@ -244,7 +244,7 @@
 
   .upi-instructions {
     margin: 0.25rem 0 0;
-    color: #6366f1;
+    color: #76283a;
     font-size: 0.8125rem;
     max-width: 32rem;
   }
@@ -257,8 +257,8 @@
 // Summary Aside
 .checkout-summary-column {
   .summary-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: #fffdfa;
+    border: 1px solid #e9dfd4;
     border-radius: 1rem;
     padding: 1.5rem;
     display: flex;
@@ -268,10 +268,10 @@
     .card-title {
       font-size: 1.125rem;
       font-weight: 700;
-      color: #0f172a;
+      color: #382a2d;
       margin: 0;
       padding-bottom: 0.75rem;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid #efe8df;
     }
 
     .items-mini-list {
@@ -293,21 +293,21 @@
 
           .mini-name {
             font-weight: 600;
-            color: #0f172a;
+            color: #382a2d;
           }
           .mini-attr {
             font-size: 0.75rem;
-            color: #6366f1;
+            color: #76283a;
           }
           .mini-qty {
             font-size: 0.75rem;
-            color: #64748b;
+            color: #716068;
           }
         }
 
         .mini-total {
           font-weight: 700;
-          color: #0f172a;
+          color: #382a2d;
         }
       }
     }
@@ -317,14 +317,14 @@
       flex-direction: column;
       gap: 0.5rem;
       padding: 0.75rem 0;
-      border-top: 1px solid #f1f5f9;
-      border-bottom: 1px solid #f1f5f9;
+      border-top: 1px solid #efe8df;
+      border-bottom: 1px solid #efe8df;
 
       .calc-row {
         display: flex;
         justify-content: space-between;
         font-size: 0.875rem;
-        color: #64748b;
+        color: #716068;
 
         .text-success {
           color: #10b981;
@@ -334,20 +334,20 @@
         &.total-row {
           font-size: 1rem;
           font-weight: 700;
-          color: #0f172a;
+          color: #382a2d;
           margin-top: 0.25rem;
 
           .grand-total {
             font-size: 1.35rem;
             font-weight: 800;
-            color: #4f46e5;
+            color: #76283a;
           }
         }
       }
 
       .calc-divider {
         height: 1px;
-        background: #f1f5f9;
+        background: #efe8df;
         margin: 0.25rem 0;
       }
     }
@@ -359,19 +359,19 @@
       gap: 0.5rem;
       width: 100%;
       padding: 0.875rem;
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: #ffffff;
+      background: linear-gradient(135deg, #76283a 0%, #5f1d2d 100%);
+      color: #fffdfa;
       border: none;
       border-radius: 0.75rem;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 4px 12px rgba(103, 38, 56, 0.2);
       transition: all 0.2s;
 
       &:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        box-shadow: 0 6px 16px rgba(103, 38, 56, 0.28);
       }
 
       &:disabled {
@@ -386,7 +386,7 @@
 
     .offline-terms-hint {
       font-size: 0.75rem;
-      color: #94a3b8;
+      color: #9c8d88;
       line-height: 1.4;
       text-align: center;
       margin: 0;

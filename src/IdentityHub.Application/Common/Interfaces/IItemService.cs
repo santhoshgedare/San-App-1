@@ -7,6 +7,7 @@ public interface IItemService
     Task<IReadOnlyList<ItemDto>> GetAllAsync(CancellationToken ct);
     Task<ItemDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<PagedResult<ItemDto>> GetPagedAsync(ItemListQuery query, CancellationToken ct);
+    Task<IReadOnlyList<ItemDto>> GetSimilarAsync(Guid id, int take, CancellationToken ct);
     Task<Result<ItemDto>> CreateAsync(
         string code,
         string name,

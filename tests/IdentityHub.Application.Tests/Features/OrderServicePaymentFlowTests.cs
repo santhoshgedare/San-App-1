@@ -110,6 +110,50 @@ public sealed class OrderServicePaymentFlowTests
     }
 
     [Fact]
+    public async Task Profit_loss_report_accounts_for_refunds_and_order_time_costs()
+    {
+        await using var db = CreateDbContext();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var paidOrder = CreateFinancialOrder("ORD-REPORT-PAID", today, PaymentStatus.Paid, 100m, 20m, null, null);
+        var refundedOrder = CreateFinancialOrder("ORD-REPORT-REFUND", today, PaymentStatus.Refunded, 50m, 15m, 50m, "REFUND-1");
+        await db.Orders.AddRangeAsync(paidOrder, refundedOrder);
+        await db.SaveChangesAsync();
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var start = new DateTimeOffset(today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        var end = new DateTimeOffset(today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+
+        var report = await service.GetProfitLossReportAsync(start, end, today, today);
+
+        report.PaidOrderCount.Should().Be(1);
+        report.RefundedOrderCount.Should().Be(1);
+        report.GrossSales.Should().Be(150m);
+        report.Refunds.Should().Be(50m);
+        report.NetSales.Should().Be(100m);
+        report.CostOfGoodsSold.Should().Be(70m);
+        report.GrossProfitOrLoss.Should().Be(30m);
+        report.IsComplete.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Profit_loss_report_withholds_result_when_historical_cost_is_missing()
+    {
+        await using var db = CreateDbContext();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var order = CreateFinancialOrder("ORD-REPORT-LEGACY", today, PaymentStatus.Paid, 100m, null, null, null);
+        await db.Orders.AddAsync(order);
+        await db.SaveChangesAsync();
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var start = new DateTimeOffset(today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        var end = new DateTimeOffset(today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+
+        var report = await service.GetProfitLossReportAsync(start, end, today, today);
+
+        report.MissingCostLineCount.Should().Be(1);
+        report.GrossProfitOrLoss.Should().BeNull();
+        report.IsComplete.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Payment_cannot_be_confirmed_without_a_reference_or_downgraded_after_paid()
     {
         await using var db = CreateDbContext();
@@ -154,6 +198,49 @@ public sealed class OrderServicePaymentFlowTests
         Status = OrderStatus.Confirmed,
         TotalAmount = 125.50m
     };
+
+    private static Order CreateFinancialOrder(
+        string orderNumber,
+        DateOnly createdDate,
+        PaymentStatus paymentStatus,
+        decimal amount,
+        decimal? unitCostPrice,
+        decimal? refundAmount,
+        string? refundReference) 
+    {
+        var category = new Category { Name = $"Category {orderNumber}" };
+        var item = new Item
+        {
+            Code = orderNumber,
+            Name = $"Item {orderNumber}",
+            Category = category,
+            CategoryId = category.Id,
+            Price = amount,
+            CostPrice = unitCostPrice ?? 0m
+        };
+        var order = CreatePaidOrder();
+        order.OrderNumber = orderNumber;
+        order.CreatedAt = new DateTimeOffset(createdDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        order.PaymentStatus = paymentStatus;
+        order.TotalAmount = amount;
+        order.RefundAmount = refundAmount;
+        order.RefundReferenceNumber = refundReference;
+        order.RefundedAt = paymentStatus == PaymentStatus.Refunded ? order.CreatedAt : null;
+        order.Items.Add(new OrderItem
+        {
+            OrderId = order.Id,
+            Order = order,
+            ItemId = item.Id,
+            Item = item,
+            ItemCode = item.Code,
+            ItemName = item.Name,
+            UnitPrice = amount / 2,
+            UnitCostPrice = unitCostPrice,
+            Quantity = 2,
+            TotalPrice = amount
+        });
+        return order;
+    }
 
     private sealed class RecordingActivityLogService : IActivityLogService
     {

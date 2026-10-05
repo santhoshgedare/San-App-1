@@ -21,9 +21,9 @@
     letter-spacing: 0.2px;
 
     .brand-logo {
-      height: 46px;
-      width: auto;
-      max-width: 160px;
+      height: 58px;
+      width: 78px;
+      max-width: none;
       object-fit: contain;
       vertical-align: middle;
       display: inline-block;
@@ -53,13 +53,13 @@
 
       &:hover {
         opacity: 1;
-        background-color: rgba(255, 255, 255, 0.12);
+        background-color: rgba(167, 122, 67, 0.12);
       }
     }
 
     .link-active {
       opacity: 1;
-      background-color: rgba(255, 255, 255, 0.18);
+      background-color: rgba(167, 122, 67, 0.16);
       font-weight: 600;
     }
   }
@@ -87,7 +87,7 @@
   right: 0;
   bottom: 0;
   overflow-y: auto;
-  background-color: #f4f6fb;
+  background-color: #fcf8f2;
 
   &.with-tab-bar {
     bottom: 60px;
@@ -101,7 +101,7 @@
   bottom: 0;
   z-index: 999;
   display: flex;
-  background: #fff;
+  background: #fcf8f2;
 
   a {
     flex: 1 1 0;
@@ -122,7 +122,7 @@
     }
 
     &.link-active {
-      color: #1976d2;
+      color: #76283a;
       font-weight: 600;
     }
   }
@@ -137,8 +137,8 @@
       max-width: calc(100% - 120px);
 
       .brand-logo {
-        max-width: 120px;
-        height: 38px;
+        width: 72px;
+        height: 54px;
       }
     }
   }

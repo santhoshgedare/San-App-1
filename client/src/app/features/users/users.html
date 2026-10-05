@@ -3,37 +3,36 @@
     <h2 class="mb-1 h4 fw-bold">Users</h2>
     <p class="text-muted mb-0 small">Manage user accounts, activation status, and role assignments.</p>
   </div>
-  @if (auth.isAdmin()) {
-    <button mat-flat-button color="primary" type="button" class="text-nowrap" (click)="create()">
-      <mat-icon>add</mat-icon> New User
-    </button>
+  @if (canCreateUsers()) {
+  <button mat-flat-button color="primary" type="button" class="text-nowrap" (click)="create()">
+    <mat-icon>add</mat-icon> New User
+  </button>
   }
 </div>
 
 <div class="row g-2 my-3">
   <div class="col-12 col-md-5">
-    <input
-      type="search"
-      class="form-control"
-      placeholder="Search by name or email…"
-      [ngModel]="searchTerm()"
-      (ngModelChange)="onSearchInput($event)"
-    />
+    <input type="search" class="form-control" placeholder="Search by name or email…" [ngModel]="searchTerm()"
+      (ngModelChange)="onSearchInput($event)" />
   </div>
+  @if (sectionAccess.can('section-users-roles')) {
   <div class="col-6 col-md-3">
-    <select class="form-select" [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); onFilterChange()">
-      <option value="">All roles</option>
+    <mat-select class="app-select" [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); onFilterChange()"
+      aria-label="Filter by role">
+      <mat-option value="">All roles</mat-option>
       @for (role of roles(); track role.id) {
-        <option [value]="role.name">{{ role.name }}</option>
+      <mat-option [value]="role.name">{{ role.name }}</mat-option>
       }
-    </select>
+    </mat-select>
   </div>
+  }
   <div class="col-6 col-md-3">
-    <select class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()">
-      <option value="">All statuses</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
+    <mat-select class="app-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()"
+      aria-label="Filter by status">
+      <mat-option value="">All statuses</mat-option>
+      <mat-option value="active">Active</mat-option>
+      <mat-option value="inactive">Inactive</mat-option>
+    </mat-select>
   </div>
 </div>
 
@@ -54,44 +53,45 @@
       </thead>
       <tbody>
         @if (isLoading()) {
-          <tr>
-            <td colspan="6" class="text-center text-muted py-4">Loading users…</td>
-          </tr>
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">Loading users…</td>
+        </tr>
         } @else if (!users().length) {
-          <tr>
-            <td colspan="6" class="text-center text-muted py-4">No users match your filters.</td>
-          </tr>
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">No users match your filters.</td>
+        </tr>
         } @else {
-          @for (user of users(); track user.id) {
-            <tr class="clickable-row" (click)="openDetail(user)">
-              <td>{{ user.firstName }} {{ user.lastName }}</td>
-              <td>{{ user.email }}</td>
-              <td>
-                @for (role of user.roles; track role) {
-                  <span class="badge bg-primary-subtle text-primary-emphasis me-1">{{ role }}</span>
-                }
-                @if (!user.roles.length) {
-                  <span class="text-muted small">No roles</span>
-                }
-              </td>
-              <td>
-                <span class="badge" [class.bg-success]="user.isActive" [class.bg-danger]="!user.isActive">
-                  {{ user.isActive ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-              <td>{{ user.lastLoginAt ? (user.lastLoginAt | date: 'short') : '—' }}</td>
-              <td class="text-nowrap text-end">
-                <button type="button" mat-icon-button matTooltip="View / Edit" (click)="openDetail(user)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-              </td>
-            </tr>
-          }
-          @if (isLoadingMore()) {
-            <tr>
-              <td colspan="6" class="text-center text-muted py-3">Loading more…</td>
-            </tr>
-          }
+        @for (user of users(); track user.id) {
+        <tr>
+          <td>{{ user.firstName }} {{ user.lastName }}</td>
+          <td>{{ user.email }}</td>
+          <td>
+            @for (role of user.roles; track role) {
+            <span class="badge bg-primary-subtle text-primary-emphasis me-1">{{ role }}</span>
+            }
+            @if (!user.roles.length) {
+            <span class="text-muted small">No roles</span>
+            }
+          </td>
+          <td>
+            <span class="badge" [class.bg-success]="user.isActive" [class.bg-danger]="!user.isActive">
+              {{ user.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>{{ user.lastLoginAt ? (user.lastLoginAt | date: 'short') : '—' }}</td>
+          <td class="text-nowrap text-end">
+            <button *canRender="'section-users-manage'" type="button" mat-icon-button matTooltip="Manage User"
+              (click)="openDetail(user)">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </td>
+        </tr>
+        }
+        @if (isLoadingMore()) {
+        <tr>
+          <td colspan="6" class="text-center text-muted py-3">Loading more…</td>
+        </tr>
+        }
         }
       </tbody>
     </table>

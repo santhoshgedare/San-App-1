@@ -7,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { OrderService } from '../../core/auth/order.service';
-import { AuthService } from '../../core/auth/auth.service';
+import { SectionAccessStore } from '../../core/auth/section-access.store';
 import type { OrderDto, OrderStatus, PaymentStatus } from '../../core/models/auth.models';
 
 const PAGE_SIZE = 15;
@@ -30,7 +30,7 @@ const PAGE_SIZE = 15;
 })
 export class Orders implements OnInit, OnDestroy {
   private readonly orderService = inject(OrderService);
-  protected readonly auth = inject(AuthService);
+  protected readonly sectionAccess = inject(SectionAccessStore);
   private readonly router = inject(Router);
   private readonly search$ = new Subject<string>();
 
@@ -42,6 +42,10 @@ export class Orders implements OnInit, OnDestroy {
   readonly searchTerm = signal('');
   readonly selectedStatus = signal<string>('');
   readonly selectedPaymentStatus = signal<string>('');
+
+  canManageOrders(): boolean {
+    return this.sectionAccess.can('section-orders-manage');
+  }
 
   readonly statusTabs = [
     { label: 'All Orders', value: '' },

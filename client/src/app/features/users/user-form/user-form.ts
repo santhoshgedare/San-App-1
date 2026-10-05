@@ -2,10 +2,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { PasswordField } from '../../../shared/password-field/password-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { UserService } from '../../../core/auth/user.service';
 import { RoleService } from '../../../core/auth/role.service';
+import { SectionAccessStore } from '../../../core/auth/section-access.store';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
@@ -19,7 +21,7 @@ import type { RoleDto, UserDto } from '../../../core/models/auth.models';
 @Component({
   selector: 'app-user-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, MatIconModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
+  imports: [PasswordField, CommonModule, FormsModule, DatePipe, MatIconModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
   templateUrl: './user-form.html',
   styleUrl: './user-form.scss',
 })
@@ -28,6 +30,7 @@ export class UserForm implements OnInit {
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly roleService = inject(RoleService);
+  protected readonly sectionAccess = inject(SectionAccessStore);
 
   readonly entityType = ENTITY_TYPES.user;
   readonly isNew = signal(true);
@@ -46,7 +49,9 @@ export class UserForm implements OnInit {
   selectedRoleNames = new Set<string>();
 
   ngOnInit(): void {
-    this.roleService.getAll().subscribe((roles) => this.roles.set(roles));
+    if (this.sectionAccess.can('section-users-roles')) {
+      this.roleService.getAll().subscribe((roles) => this.roles.set(roles));
+    }
 
     const id = this.route.snapshot.paramMap.get('id');
     if (!id || id === 'new') {
@@ -89,6 +94,10 @@ export class UserForm implements OnInit {
     this.errorMessage.set(null);
 
     if (this.isNew()) {
+      if (!this.sectionAccess.can('section-users-roles')) {
+        this.errorMessage.set('Role assignment permission is required to create users.');
+        return;
+      }
       if (!this.email.trim() || !this.password.trim() || !this.firstName.trim() || !this.lastName.trim()) {
         this.errorMessage.set('All fields are required.');
         return;
@@ -126,6 +135,11 @@ export class UserForm implements OnInit {
       .update(existing.id, { firstName: this.firstName.trim(), lastName: this.lastName.trim(), isActive: this.isActive })
       .subscribe({
         next: () => {
+          if (!this.sectionAccess.can('section-users-roles')) {
+            this.isSaving.set(false);
+            this.router.navigate(['/users']);
+            return;
+          }
           this.userService.assignRoles(existing.id, { roles: Array.from(this.selectedRoleNames) }).subscribe({
             next: () => {
               this.isSaving.set(false);

@@ -1,43 +1,62 @@
 <div class="catalog-page">
-  <header class="catalog-hero">
-    <div class="catalog-controls">
-      <div class="search-input-wrapper">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" placeholder="Search by name, SKU, or category..." [ngModel]="searchTerm()"
-          (ngModelChange)="onSearchInput($event)" />
-        @if (searchTerm()) {
-        <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Clear search">
-          <mat-icon>close</mat-icon>
-        </button>
-        }
-      </div>
-
-      <div class="sort-wrapper">
-        <mat-icon class="sort-icon">sort</mat-icon>
-        <select [ngModel]="selectedSort()" (ngModelChange)="selectedSort.set($event); onSortChange()">
-          <option value="popular">Most Relevant</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="name">Product Name (A-Z)</option>
-        </select>
-      </div>
-      <a routerLink="/cart" class="cart-floating-btn" matTooltip="View Shopping Cart">
-        <mat-icon [matBadge]="cartCount()" [matBadgeHidden]="cartCount() === 0" matBadgeColor="warn">
-          shopping_cart
-        </mat-icon>
-        <span class="cart-btn-label">Cart</span>
-      </a>
+  <section class="catalog-toolbar" aria-label="Search and filter products">
+    <div class="search-bar">
+      <mat-icon>search</mat-icon>
+      <input type="text" placeholder="Search products" aria-label="Search products" [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchInput($event)" />
+      @if (searchTerm()) {
+      <button type="button" class="clear-btn" (click)="onSearchInput('')" aria-label="Clear search">
+        <mat-icon>close</mat-icon>
+      </button>
+      }
     </div>
-  </header>
 
-  <section class="category-filter-bar" aria-label="Filter products by category">
-    @for (cat of categories(); track cat.id) {
-    <button type="button" class="filter-chip" [class.active]="selectedCategoryId() === cat.id"
-      [attr.aria-pressed]="selectedCategoryId() === cat.id"
-      [matTooltip]="selectedCategoryId() === cat.id ? 'Click again to clear category' : ''"
-      (click)="selectCategory(cat.id)">
-      <span>{{ cat.name }}</span>
-    </button>
+    <div class="filter-bar">
+      <mat-select class="app-select app-select-pill" panelWidth="auto" [class.active]="selectedCategoryId()"
+        [ngModel]="selectedCategoryId()" (ngModelChange)="setCategory($event)" aria-label="Filter by category">
+        <mat-select-trigger>
+          <mat-icon>grid_view</mat-icon>
+          <span class="pill-text">{{ selectedCategory()?.name || 'All categories' }}</span>
+        </mat-select-trigger>
+        <mat-option value="">All categories</mat-option>
+        @for (cat of categories(); track cat.id) {
+        <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+        }
+      </mat-select>
+
+      <mat-select class="app-select app-select-pill" panelWidth="auto" [ngModel]="selectedSort()"
+        (ngModelChange)="selectedSort.set($event); onSortChange()" aria-label="Sort products">
+        <mat-select-trigger>
+          <mat-icon>swap_vert</mat-icon>
+          <span class="pill-text">{{ sortLabel() }}</span>
+        </mat-select-trigger>
+        <mat-option value="popular">Most relevant</mat-option>
+        <mat-option value="price-asc">Price: Low to High</mat-option>
+        <mat-option value="price-desc">Price: High to Low</mat-option>
+        <mat-option value="name">Name: A-Z</mat-option>
+      </mat-select>
+    </div>
+
+    @if (!isLoading()) {
+    <div class="result-row">
+      <span class="result-count">{{ totalCount() }} {{ totalCount() === 1 ? 'product' : 'products' }}</span>
+      @if (selectedCategory(); as category) {
+      <button type="button" class="active-chip" (click)="setCategory('')"
+        [attr.aria-label]="'Remove category filter ' + category.name">
+        {{ category.name }}
+        <mat-icon>close</mat-icon>
+      </button>
+      }
+      @if (searchTerm()) {
+      <button type="button" class="active-chip" (click)="onSearchInput('')" aria-label="Remove search filter">
+        ?{{ searchTerm() }}?
+        <mat-icon>close</mat-icon>
+      </button>
+      }
+      @if (selectedCategoryId() || searchTerm()) {
+      <button type="button" class="clear-all" (click)="clearFilters()">Clear all</button>
+      }
+    </div>
     }
   </section>
 
@@ -52,7 +71,7 @@
       <mat-icon class="empty-icon">inventory_2</mat-icon>
       <h3>No Products Found</h3>
       <p>We couldn't find any products matching your current search or category filter.</p>
-      <button mat-flat-button color="primary" (click)="selectCategory(''); onSearchInput('')">
+      <button mat-flat-button color="primary" (click)="clearFilters()">
         Clear Filters
       </button>
     </div>
@@ -61,6 +80,12 @@
       @for (item of items(); track item.id) {
       <article class="product-card" (click)="viewDetail(item)">
         <div class="card-media">
+          <button type="button" class="fav-btn" [class.active]="favourites.isFavourite(item.id)"
+            [attr.aria-pressed]="favourites.isFavourite(item.id)"
+            [attr.aria-label]="(favourites.isFavourite(item.id) ? 'Remove ' : 'Add ') + item.name + (favourites.isFavourite(item.id) ? ' from favourites' : ' to favourites')"
+            (click)="toggleFavourite(item, $event)">
+            <mat-icon>{{ favourites.isFavourite(item.id) ? 'favorite' : 'favorite_border' }}</mat-icon>
+          </button>
           @if (getPrimaryImage(item); as img) {
           <img [src]="img.url" [alt]="img.caption || item.name" loading="lazy" class="product-img" />
           } @else {
@@ -76,7 +101,8 @@
             }
             @if (item.variants && item.variants.length > 0) {
             <span class="badge variant-badge">
-              <mat-icon>tune</mat-icon> {{ item.variants.length }} Variants
+              <mat-icon>tune</mat-icon>
+              <span class="variant-count">{{ item.variants.length }} {{ item.variants.length === 1 ? 'variant' : 'variants' }}</span>
             </span>
             }
           </div>
@@ -99,20 +125,19 @@
           </p>
 
           @if (item.variants && item.variants.length > 1) {
-          <label class="variants-selector" (click)="$event.stopPropagation()">
+          <div class="variants-selector" (click)="$event.stopPropagation()">
             <span class="variant-label">Option</span>
-            <div class="variant-select-wrap">
-              <select [ngModel]="getSelectedVariant(item)?.id" (ngModelChange)="onVariantChange(item, $event)"
-                (click)="$event.stopPropagation()" [attr.aria-label]="'Choose an option for ' + item.name">
-                @for (v of item.variants; track v.id) {
-                <option [value]="v.id" [disabled]="!v.isActive">
-                  {{ v.name || v.sku }} — {{ v.price | currency }}
-                  @if (v.stockQuantity <= 0) { (Out of stock) } </option>
-                    }
-              </select>
-              <mat-icon>expand_more</mat-icon>
-            </div>
-          </label>
+            <mat-select class="app-select app-select-sm" [ngModel]="getSelectedVariant(item)?.id"
+              (ngModelChange)="onVariantChange(item, $event)" [attr.aria-label]="'Choose an option for ' + item.name"
+              panelWidth="auto">
+              <mat-select-trigger>{{ getSelectedVariant(item)?.name || getSelectedVariant(item)?.sku }}</mat-select-trigger>
+              @for (v of item.variants; track v.id) {
+              <mat-option [value]="v.id" [disabled]="!v.isActive">
+                {{ v.name || v.sku }} — {{ v.price | currency }}
+                @if (v.stockQuantity <= 0) { (Out of stock) } </mat-option>
+                  }
+            </mat-select>
+          </div>
           }
 
           <div class="card-footer">

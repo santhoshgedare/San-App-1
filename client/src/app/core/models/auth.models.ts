@@ -3,6 +3,7 @@ export interface UserDto {
   email: string;
   firstName: string;
   lastName: string;
+  phoneNumber: string | null;
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
@@ -103,7 +104,7 @@ export interface ItemVariantDto {
   barcode?: string | null;
   attributesJson: string;
   price: number;
-  costPrice: number;
+  costPrice: number | null;
   stockQuantity: number;
   isActive: boolean;
 }
@@ -118,7 +119,7 @@ export interface ItemDto {
   categoryName: string;
   unitOfMeasurement: UnitOfMeasurement;
   price: number;
-  costPrice: number;
+  costPrice: number | null;
   stockQuantity: number;
   isActive: boolean;
   createdAt?: string;
@@ -169,6 +170,12 @@ export interface AuthResult {
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface ExternalAuthProvider {
+  provider: 'google' | 'facebook';
+  displayName: string;
+  enabled: boolean;
 }
 
 export interface RegisterRequest {
@@ -248,6 +255,21 @@ export interface OrderDto {
   items: OrderItemDto[];
 }
 
+export interface ProfitLossReportDto {
+  startDate: string;
+  endDate: string;
+  paidOrderCount: number;
+  refundedOrderCount: number;
+  legacyRefundCount: number;
+  missingCostLineCount: number;
+  grossSales: number;
+  refunds: number;
+  netSales: number;
+  costOfGoodsSold: number;
+  grossProfitOrLoss: number | null;
+  isComplete: boolean;
+}
+
 export interface OrderItemRequest {
   itemId: string;
   itemVariantId?: string | null;
@@ -313,3 +335,30 @@ export interface UpdatePaymentSettingsRequest {
   instructions?: string | null;
 }
 
+
+export interface ItemReviewDto {
+  id: string;
+  itemId: string;
+  orderItemId: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  comment?: string | null;
+  images: string[];
+  createdAt: string;
+}
+
+export interface ItemReviewSummaryDto {
+  averageRating: number;
+  totalCount: number;
+  distribution: Record<number, number>;
+  reviews: ItemReviewDto[];
+}
+
+export interface CreateReviewRequest {
+  orderItemId: string;
+  rating: number;
+  title?: string;
+  comment?: string;
+  images: string[];
+}

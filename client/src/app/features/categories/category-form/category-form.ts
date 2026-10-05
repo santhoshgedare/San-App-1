@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { CategoryService } from '../../../core/auth/category.service';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
@@ -18,7 +20,8 @@ import {
 @Component({
   selector: 'app-category-form',
   standalone: true,
-  imports: [FormsModule, MatIconModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
+  imports: [FormsModule, MatIconModule, MatSelectModule, MatButtonModule, ActivityLogPanel, ApprovalPanel],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './category-form.html',
   styleUrl: './category-form.scss',
 })

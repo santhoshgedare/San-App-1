@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { ModuleAccessService } from '../../auth/module-access.service';
 import { SectionAccessStore } from '../../auth/section-access.store';
-import { AuthService } from '../../auth/auth.service';
 import type { ModuleDto } from '../../models/module-access.models';
 
 interface SettingOption {
@@ -44,8 +43,6 @@ export class SettingsSheet {
   private readonly sheetRef = inject(MatBottomSheetRef<SettingsSheet>);
   private readonly moduleAccess = inject(ModuleAccessService);
   private readonly sectionAccess = inject(SectionAccessStore);
-  readonly auth = inject(AuthService);
-
   private readonly tree = signal<ModuleDto[]>([]);
 
   protected readonly groups = computed<SettingGroup[]>(() => {
@@ -57,7 +54,13 @@ export class SettingsSheet {
       .map((module) => ({
         category: module.name.toUpperCase(),
         options: module.pages
-          .filter((page) => page.isActive && page.sections.some((section) => section.isActive && this.sectionAccess.can(section.key)))
+          .filter((page) => {
+            return page.isActive && page.sections.some(
+              (section) => section.isActive &&
+                (section.key.endsWith('-view') || section.key.endsWith('-create')) &&
+                this.sectionAccess.can(section.key),
+            );
+          })
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((page) => ({
             name: page.name,
@@ -74,11 +77,6 @@ export class SettingsSheet {
 
   navigate(option: SettingOption): void {
     this.router.navigate([option.link]);
-    this.sheetRef.dismiss();
-  }
-
-  navigateToWorkflows(): void {
-    this.router.navigate(['/approval-workflows']);
     this.sheetRef.dismiss();
   }
 

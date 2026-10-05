@@ -1,4 +1,5 @@
 using IdentityHub.Api.Contracts;
+using IdentityHub.Api.Authorization;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.Users.Commands.AssignRoles;
 using IdentityHub.Application.Features.Users.Commands.CreateUser;
@@ -20,7 +21,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
 {
     /// <summary>Lists all users. Admin/Manager only.</summary>
     [HttpGet]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-users-view")]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll(CancellationToken ct)
         => Ok(await sender.Send(new GetUsersQuery(), ct));
 
@@ -28,7 +29,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     /// Lists users with search, role/status filters, and offset pagination for scroll-based list pages.
     /// </summary>
     [HttpGet("paged")]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-users-view")]
     public async Task<ActionResult<PagedResult<UserDto>>> GetPaged(
         [FromQuery] string? search,
         [FromQuery] string? role,
@@ -41,6 +42,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
     /// <summary>Gets a single user by id.</summary>
     [HttpGet("{id:guid}")]
+    [RequireSection("section-users-view")]
     public async Task<ActionResult<UserDto>> GetById(Guid id, CancellationToken ct)
     {
         var user = await sender.Send(new GetUserByIdQuery(id), ct);
@@ -49,7 +51,8 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
     /// <summary>Creates a user (admin-provisioned account, no auth tokens issued). Admin only.</summary>
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [RequireSection("section-users-manage")]
+    [RequireSection("section-users-roles")]
     public async Task<ActionResult<UserDto>> Create(CreateUserRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new CreateUserCommand(request.Email, request.Password, request.FirstName, request.LastName, request.Roles), ct);
@@ -58,7 +61,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
     /// <summary>Updates a user's profile and active status. Admin only.</summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [RequireSection("section-users-manage")]
     public async Task<IActionResult> Update(Guid id, UpdateUserRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new UpdateUserCommand(id, request.FirstName, request.LastName, request.IsActive), ct);
@@ -67,7 +70,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
     /// <summary>Deletes a user. Admin only.</summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [RequireSection("section-users-manage")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new DeleteUserCommand(id), ct);
@@ -76,7 +79,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
     /// <summary>Replaces a user's role assignments. Admin only.</summary>
     [HttpPut("{id:guid}/roles")]
-    [Authorize(Roles = Roles.Admin)]
+    [RequireSection("section-users-roles")]
     public async Task<IActionResult> AssignRoles(Guid id, AssignRolesRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new AssignRolesCommand(id, request.Roles), ct);

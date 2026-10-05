@@ -31,7 +31,7 @@
 
         <div class="mb-3">
           <label class="form-label">Password</label>
-          <input type="password" class="form-control" formControlName="password" autocomplete="new-password" placeholder="At least 8 characters" />
+          <app-password-field formControlName="password" autocomplete="new-password" placeholder="At least 8 characters" />
           @if (form.controls.password.invalid && form.controls.password.touched) {
             <div class="form-text text-danger">Password must be at least 8 characters.</div>
           }
@@ -45,7 +45,7 @@
           @if (isSubmitting()) {
             <span class="spinner-border spinner-border-sm me-2"></span>
           }
-          {{ isSubmitting() ? 'Creating account�' : 'Create Account' }}
+          {{ isSubmitting() ? 'Creating account...' : 'Create Account' }}
         </button>
       </form>
 

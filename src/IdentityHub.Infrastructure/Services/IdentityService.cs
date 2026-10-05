@@ -53,6 +53,115 @@ public sealed class IdentityService(
         return Result<UserDto>.Success(await ToDto(user));
     }
 
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null || !user.IsActive) return null;
+        return await userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task<Result> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken ct)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null || !user.IsActive)
+        {
+            return Result.Failure("The reset link is invalid or has expired.");
+        }
+
+        var resetResult = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!resetResult.Succeeded)
+        {
+            return Result.Failure(resetResult.Errors.Select(error => error.Description).ToArray());
+        }
+
+        await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "PasswordReset", "Password reset completed.", ct);
+        return Result.Success();
+    }
+
+    public async Task<Result<UserDto>> AuthenticateExternalAsync(
+        string provider,
+        string providerKey,
+        string email,
+        string firstName,
+        string lastName,
+        bool emailVerified,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(providerKey))
+        {
+            return Result<UserDto>.Failure("The identity provider did not return a usable account email and ID.");
+        }
+
+        var user = await userManager.FindByLoginAsync(provider, providerKey);
+        var created = false;
+        var linked = false;
+        if (user is null)
+        {
+            user = await userManager.FindByEmailAsync(email);
+            if (user is not null && !user.IsActive)
+            {
+                return Result<UserDto>.Failure("This account has been deactivated.");
+            }
+            if (user is not null && !emailVerified)
+            {
+                return Result<UserDto>.Failure("An account already uses this email. Sign in to that account first; this provider did not verify the email for linking.");
+            }
+
+            if (user is null)
+            {
+                var safeEmail = email.Trim();
+                user = new ApplicationUser
+                {
+                    UserName = safeEmail,
+                    Email = safeEmail,
+                    EmailConfirmed = emailVerified,
+                    FirstName = string.IsNullOrWhiteSpace(firstName) ? safeEmail.Split('@')[0] : firstName.Trim(),
+                    LastName = lastName?.Trim() ?? string.Empty,
+                    IsActive = true
+                };
+
+                var createResult = await userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    return Result<UserDto>.Failure(createResult.Errors.Select(error => error.Description).ToArray());
+                }
+                created = true;
+            }
+
+            var loginResult = await userManager.AddLoginAsync(user, new UserLoginInfo(provider, providerKey, provider));
+            if (!loginResult.Succeeded)
+            {
+                if (created) await userManager.DeleteAsync(user);
+                return Result<UserDto>.Failure(loginResult.Errors.Select(error => error.Description).ToArray());
+            }
+            linked = !created;
+
+            if (created)
+            {
+                var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
+                if (!roleResult.Succeeded)
+                {
+                    await userManager.RemoveLoginAsync(user, provider, providerKey);
+                    await userManager.DeleteAsync(user);
+                    return Result<UserDto>.Failure(roleResult.Errors.Select(error => error.Description).ToArray());
+                }
+
+                await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "Created", $"User {user.Email} registered with {provider}.", ct);
+            }
+            else if (linked)
+            {
+                await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "ExternalLoginLinked", $"{provider} sign-in linked to the account.", ct);
+            }
+        }
+
+        if (!user.IsActive)
+        {
+            return Result<UserDto>.Failure("This account has been deactivated.");
+        }
+
+        return Result<UserDto>.Success(await ToDto(user));
+    }
+
     public async Task<UserDto?> FindByIdAsync(Guid userId, CancellationToken ct)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());

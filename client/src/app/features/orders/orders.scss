@@ -19,8 +19,8 @@
       align-items: center;
       gap: 0.35rem;
       padding: 0.25rem 0.625rem;
-      background: #ede9fe;
-      color: #6366f1;
+      background: #f2dce0;
+      color: #76283a;
       border-radius: 9999px;
       font-size: 0.75rem;
       font-weight: 600;
@@ -36,13 +36,13 @@
     .page-title {
       font-size: 1.75rem;
       font-weight: 800;
-      color: #0f172a;
+      color: #382a2d;
       margin: 0 0 0.25rem;
     }
 
     .subtitle {
       font-size: 0.9375rem;
-      color: #64748b;
+      color: #716068;
       margin: 0;
     }
   }
@@ -59,8 +59,8 @@
 
 // Controls
 .controls-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #fffdfa;
+  border: 1px solid #e9dfd4;
   border-radius: 1rem;
   padding: 1.25rem;
   display: flex;
@@ -71,7 +71,7 @@
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #efe8df;
     padding-bottom: 0.75rem;
 
     .status-tab {
@@ -81,19 +81,19 @@
       border-radius: 0.5rem;
       font-size: 0.875rem;
       font-weight: 600;
-      color: #64748b;
+      color: #716068;
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.2s;
 
       &:hover {
-        background: #f8fafc;
-        color: #1e293b;
+        background: #f7f1e9;
+        color: #49383d;
       }
 
       &.active {
-        background: #ede9fe;
-        color: #4f46e5;
+        background: #f2dce0;
+        color: #76283a;
       }
     }
   }
@@ -115,7 +115,7 @@
         left: 0.75rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #94a3b8;
+        color: #9c8d88;
         font-size: 1.25rem;
         width: 1.25rem;
         height: 1.25rem;
@@ -124,16 +124,16 @@
       input {
         width: 100%;
         padding: 0.625rem 2.25rem 0.625rem 2.5rem;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
+        background: #f7f1e9;
+        border: 1px solid #ddd2c8;
         border-radius: 0.5rem;
         font-size: 0.875rem;
-        color: #0f172a;
+        color: #382a2d;
 
         &:focus {
           outline: none;
-          background: #ffffff;
-          border-color: #6366f1;
+          background: #fffdfa;
+          border-color: #76283a;
         }
       }
 
@@ -145,7 +145,7 @@
         background: none;
         border: none;
         cursor: pointer;
-        color: #94a3b8;
+        color: #9c8d88;
         padding: 0.25rem;
 
         mat-icon {
@@ -160,10 +160,10 @@
 
     .total-badge {
       font-size: 0.875rem;
-      color: #64748b;
+      color: #716068;
 
       strong {
-        color: #0f172a;
+        color: #382a2d;
       }
     }
   }
@@ -171,8 +171,8 @@
 
 // Table
 .orders-table-wrapper {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #fffdfa;
+  border: 1px solid #e9dfd4;
   border-radius: 1rem;
   overflow-x: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -183,15 +183,15 @@
   border-collapse: collapse;
 
   thead {
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
+    background: #f7f1e9;
+    border-bottom: 1px solid #e9dfd4;
 
     th {
       text-align: left;
       padding: 0.875rem 1rem;
       font-size: 0.75rem;
       font-weight: 700;
-      color: #64748b;
+      color: #716068;
       text-transform: uppercase;
       letter-spacing: 0.05em;
 
@@ -203,18 +203,18 @@
 
   tbody {
     .order-row {
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid #efe8df;
       cursor: pointer;
       transition: background 0.15s;
 
       &:hover {
-        background: #f8fafc;
+        background: #f7f1e9;
       }
 
       td {
         padding: 1rem;
         font-size: 0.875rem;
-        color: #1e293b;
+        color: #49383d;
         vertical-align: middle;
 
         &.actions-col {
@@ -224,19 +224,19 @@
 
       .order-num {
         font-weight: 700;
-        color: #4f46e5;
+        color: #76283a;
         letter-spacing: 0.025em;
       }
 
       .order-date {
         font-weight: 600;
-        color: #1e293b;
+        color: #49383d;
         display: block;
       }
 
       .order-time {
         font-size: 0.75rem;
-        color: #94a3b8;
+        color: #9c8d88;
       }
 
       .cust-info {
@@ -245,34 +245,34 @@
 
         .cust-name {
           font-weight: 600;
-          color: #0f172a;
+          color: #382a2d;
         }
 
         .cust-email {
           font-size: 0.75rem;
-          color: #64748b;
+          color: #716068;
         }
       }
 
       .items-count-badge {
         padding: 0.2rem 0.5rem;
-        background: #f1f5f9;
+        background: #efe8df;
         border-radius: 0.375rem;
         font-size: 0.75rem;
-        color: #475569;
+        color: #65545a;
         font-weight: 600;
       }
 
       .pay-method-badge {
         font-size: 0.8125rem;
-        color: #475569;
+        color: #65545a;
         font-weight: 500;
       }
 
       .order-total {
         font-size: 1rem;
         font-weight: 800;
-        color: #0f172a;
+        color: #382a2d;
       }
     }
   }
@@ -299,12 +299,12 @@
     color: #1d4ed8;
   }
   &.status-processing {
-    background: #ede9fe;
+    background: #f2dce0;
     color: #6d28d9;
   }
   &.status-shipped {
     background: #e0e7ff;
-    color: #4338ca;
+    color: #5f1d2d;
   }
   &.status-delivered {
     background: #d1fae5;
@@ -342,16 +342,16 @@
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  background: #ffffff;
+  background: #fffdfa;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9dfd4;
   text-align: center;
 
   .spinner {
     width: 2.5rem;
     height: 2.5rem;
-    border: 3px solid #e2e8f0;
-    border-top-color: #4f46e5;
+    border: 3px solid #e9dfd4;
+    border-top-color: #76283a;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 1rem;
@@ -361,18 +361,18 @@
     font-size: 3.5rem;
     width: 3.5rem;
     height: 3.5rem;
-    color: #94a3b8;
+    color: #9c8d88;
     margin-bottom: 0.5rem;
   }
 
   h3 {
     font-size: 1.25rem;
-    color: #0f172a;
+    color: #382a2d;
     margin: 0.5rem 0 0.25rem;
   }
 
   p {
-    color: #64748b;
+    color: #716068;
     max-width: 400px;
     margin-bottom: 1.25rem;
   }

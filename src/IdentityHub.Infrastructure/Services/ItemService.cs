@@ -37,6 +37,38 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         return item is null ? null : ToDto(item);
     }
 
+    public async Task<IReadOnlyList<ItemDto>> GetSimilarAsync(Guid id, int take, CancellationToken ct)
+    {
+        take = take is < 1 or > 20 ? 5 : take;
+        var categoryId = await db.Items.Where(i => i.Id == id).Select(i => (Guid?)i.CategoryId).FirstOrDefaultAsync(ct);
+        if (categoryId is null)
+        {
+            return [];
+        }
+
+        var candidates = await db.Items
+            .Include(i => i.Category)
+            .Include(i => i.Images)
+            .Include(i => i.Documents)
+            .Include(i => i.Variants)
+            .Where(i => i.IsActive && i.Id != id && i.CategoryId == categoryId.Value)
+            .ToListAsync(ct);
+
+        var ids = candidates.Select(c => c.Id).ToList();
+        var purchased = await db.OrderItems
+            .Where(oi => ids.Contains(oi.ItemId) && oi.Order!.Status != OrderStatus.Cancelled)
+            .GroupBy(oi => oi.ItemId)
+            .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync(ct);
+        var qtyByItem = purchased.ToDictionary(p => p.ItemId, p => p.Qty);
+
+        return candidates
+            .OrderByDescending(c => qtyByItem.GetValueOrDefault(c.Id))
+            .ThenBy(c => c.Name)
+            .Take(take)
+            .Select(ToDto)
+            .ToList();
+    }
     public async Task<PagedResult<ItemDto>> GetPagedAsync(ItemListQuery query, CancellationToken ct)
     {
         var page = query.Page < 1 ? 1 : query.Page;

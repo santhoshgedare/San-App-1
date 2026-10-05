@@ -3,86 +3,146 @@
     <h1 class="mb-1 h4 fw-bold">Dashboard</h1>
     <p class="text-muted mb-0 small">
       @if (auth.currentUser(); as user) {
-        Welcome, {{ user.firstName }}. Here is an overview of categories, items, and customer orders.
+      Welcome, {{ user.firstName }}. Here is an overview of categories, items, and customer orders.
       } @else {
-        Overview of categories, items, and customer orders.
+      Inventory, order activity, and financial performance.
       }
     </p>
   </div>
 </div>
 
 @if (isLoading()) {
-  <div class="dashboard-state card shadow-sm">
-    <div class="card-body">
-      <span class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
-      <span>Loading dashboard statistics...</span>
-    </div>
+<div class="dashboard-state card shadow-sm">
+  <div class="card-body">
+    <span class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
+    <span>Loading dashboard statistics...</span>
   </div>
+</div>
 } @else if (errorMessage(); as message) {
-  <div class="alert alert-danger d-flex align-items-center justify-content-between gap-3" role="alert">
-    <span>{{ message }}</span>
-    <button type="button" class="btn btn-outline-danger btn-sm" (click)="loadStatistics()">Retry</button>
-  </div>
+<div class="alert alert-danger d-flex align-items-center justify-content-between gap-3" role="alert">
+  <span>{{ message }}</span>
+  <button type="button" class="btn btn-outline-danger btn-sm" (click)="loadStatistics()">Retry</button>
+</div>
 } @else if (statistics(); as stats) {
-  <div class="row g-3">
-    <div class="col-md-6 col-xl-4">
-      <a class="stat-card card h-100 shadow-sm" routerLink="/categories">
-        <div class="card-body">
-          <div class="stat-icon categories"><mat-icon>category</mat-icon></div>
-          <div>
-            <div class="stat-value">{{ stats.categories }}</div>
-            <div class="stat-label">Categories</div>
-            <div class="stat-detail">{{ stats.activeCategories }} active</div>
-          </div>
+<div class="row g-3">
+  @if (sectionAccess.can('section-categories-view')) {
+  <div class="col-md-6 col-xl-4">
+    <a class="stat-card card h-100 shadow-sm" routerLink="/categories">
+      <div class="card-body">
+        <div class="stat-icon categories"><mat-icon>category</mat-icon></div>
+        <div>
+          <div class="stat-value">{{ stats.categories }}</div>
+          <div class="stat-label">Categories</div>
+          <div class="stat-detail">{{ stats.activeCategories }} active</div>
         </div>
-      </a>
+      </div>
+    </a>
+  </div>
+  }
+  @if (sectionAccess.can('section-items-view')) {
+  <div class="col-md-6 col-xl-4">
+    <a class="stat-card card h-100 shadow-sm" routerLink="/items">
+      <div class="card-body">
+        <div class="stat-icon items"><mat-icon>inventory_2</mat-icon></div>
+        <div>
+          <div class="stat-value">{{ stats.items }}</div>
+          <div class="stat-label">Items</div>
+          <div class="stat-detail">{{ stats.activeItems }} active</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  }
+  @if (sectionAccess.can('section-orders-view')) {
+  <div class="col-md-6 col-xl-4">
+    <a class="stat-card card h-100 shadow-sm" routerLink="/orders">
+      <div class="card-body">
+        <div class="stat-icon orders"><mat-icon>receipt_long</mat-icon></div>
+        <div>
+          <div class="stat-value">{{ stats.orders }}</div>
+          <div class="stat-label">Orders</div>
+          <div class="stat-detail">{{ stats.pendingOrders }} pending</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  }
+</div>
+
+<section class="card shadow-sm mt-4">
+  <div class="card-body">
+    <div class="section-card-header">
+      <span class="icon-avatar"><mat-icon>insights</mat-icon></span>
+      <span>Order summary</span>
     </div>
-    <div class="col-md-6 col-xl-4">
-      <a class="stat-card card h-100 shadow-sm" routerLink="/items">
-        <div class="card-body">
-          <div class="stat-icon items"><mat-icon>inventory_2</mat-icon></div>
-          <div>
-            <div class="stat-value">{{ stats.items }}</div>
-            <div class="stat-label">Items</div>
-            <div class="stat-detail">{{ stats.activeItems }} active</div>
-          </div>
-        </div>
-      </a>
+    <div class="order-summary">
+      <div>
+        <span class="summary-value text-warning-emphasis">{{ stats.pendingOrders }}</span>
+        <span class="summary-label">Pending</span>
+      </div>
+      <div>
+        <span class="summary-value text-success">{{ stats.deliveredOrders }}</span>
+        <span class="summary-label">Delivered</span>
+      </div>
+      <div>
+        <span class="summary-value">{{ stats.orders - stats.pendingOrders - stats.deliveredOrders }}</span>
+        <span class="summary-label">In progress / other</span>
+      </div>
     </div>
-    <div class="col-md-6 col-xl-4">
-      <a class="stat-card card h-100 shadow-sm" routerLink="/orders">
-        <div class="card-body">
-          <div class="stat-icon orders"><mat-icon>receipt_long</mat-icon></div>
-          <div>
-            <div class="stat-value">{{ stats.orders }}</div>
-            <div class="stat-label">Orders</div>
-            <div class="stat-detail">{{ stats.pendingOrders }} pending</div>
-          </div>
-        </div>
-      </a>
+  </div>
+</section>
+
+@if (sectionAccess.can('section-reports-view') && stats.profitLossReport; as report) {
+<section class="financial-report mt-4" aria-labelledby="profit-loss-title">
+  <header class="report-header">
+    <div>
+      <h2 id="profit-loss-title">Profit & Loss</h2>
+      <p>Paid order totals less recorded refunds and unit costs; gateway fees and operating expenses are excluded.</p>
+    </div>
+    <div class="report-controls">
+      <label>
+        <span>From</span>
+        <input type="date" [ngModel]="reportStartDate()" (ngModelChange)="reportStartDate.set($event)" />
+      </label>
+      <label>
+        <span>To</span>
+        <input type="date" [ngModel]="reportEndDate()" (ngModelChange)="reportEndDate.set($event)" />
+      </label>
+      <button type="button" class="btn btn-primary" [disabled]="isLoading()" (click)="loadStatistics()">
+        <mat-icon>refresh</mat-icon> Run
+      </button>
+      <button type="button" class="btn btn-outline-secondary" (click)="downloadReport(report)"
+        aria-label="Download profit and loss CSV">
+        <mat-icon>download</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <div class="report-metrics">
+    <div><span>Amount collected</span><strong>{{ report.grossSales | currency }}</strong><small>{{ report.paidOrderCount
+        }} paid</small></div>
+    <div><span>Refunds</span><strong class="refund-value">−{{ report.refunds | currency }}</strong><small>{{
+        report.refundedOrderCount }} refunded</small></div>
+    <div><span>Net sales</span><strong>{{ report.netSales | currency }}</strong></div>
+    <div><span>Cost of goods</span><strong>{{ report.costOfGoodsSold | currency }}</strong></div>
+    <div>
+      <span>Gross profit / loss</span>
+      @if (report.grossProfitOrLoss !== null) {
+      <strong [class.loss-value]="report.grossProfitOrLoss < 0">{{ report.grossProfitOrLoss | currency }}</strong>
+      } @else {
+      <strong>Incomplete</strong>
+      }
+      <small>Before operating expenses</small>
     </div>
   </div>
 
-  <section class="card shadow-sm mt-4">
-    <div class="card-body">
-      <div class="section-card-header">
-        <span class="icon-avatar"><mat-icon>insights</mat-icon></span>
-        <span>Order summary</span>
-      </div>
-      <div class="order-summary">
-        <div>
-          <span class="summary-value text-warning-emphasis">{{ stats.pendingOrders }}</span>
-          <span class="summary-label">Pending</span>
-        </div>
-        <div>
-          <span class="summary-value text-success">{{ stats.deliveredOrders }}</span>
-          <span class="summary-label">Delivered</span>
-        </div>
-        <div>
-          <span class="summary-value">{{ stats.orders - stats.pendingOrders - stats.deliveredOrders }}</span>
-          <span class="summary-label">In progress / other</span>
-        </div>
-      </div>
-    </div>
-  </section>
+  @if (!report.isComplete) {
+  <p class="report-warning" role="status">
+    This report has incomplete history: {{ report.missingCostLineCount }} order line(s) lack cost snapshots and {{
+    report.legacyRefundCount }} refund(s) lack recorded refund details. Gross profit/loss is withheld until source data
+    is complete. Costs are not reversed for returned goods.
+  </p>
+  }
+</section>
+}
 }

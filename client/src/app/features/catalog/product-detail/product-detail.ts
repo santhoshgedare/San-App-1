@@ -6,10 +6,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
 import { ItemService } from '../../../core/auth/item.service';
 import { CartService } from '../../../core/cart/cart.service';
-import type { ItemDto, ItemImageDto, ItemVariantDto } from '../../../core/models/auth.models';
+import { FavouritesService } from '../../../core/cart/favourites.service';
+import { ReviewService } from '../../../core/auth/review.service';
+import { StarRating } from '../../../shared/star-rating/star-rating';
+import type { ItemDto, ItemImageDto, ItemReviewSummaryDto, ItemVariantDto } from '../../../core/models/auth.models';
 
 @Component({
   selector: 'app-product-detail',
@@ -23,7 +25,7 @@ import type { ItemDto, ItemImageDto, ItemVariantDto } from '../../../core/models
     MatButtonModule,
     MatTooltipModule,
     MatSnackBarModule,
-    MatTabsModule,
+    StarRating,
   ],
   templateUrl: './product-detail.html',
   styleUrl: './product-detail.scss',
@@ -34,12 +36,18 @@ export class ProductDetail implements OnInit {
   private readonly itemService = inject(ItemService);
   private readonly cartService = inject(CartService);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly favourites = inject(FavouritesService);
+  private readonly reviewService = inject(ReviewService);
 
   readonly item = signal<ItemDto | null>(null);
   readonly isLoading = signal(true);
   readonly selectedImage = signal<ItemImageDto | null>(null);
   readonly selectedVariant = signal<ItemVariantDto | null>(null);
   readonly quantity = signal(1);
+  readonly similarItems = signal<ItemDto[]>([]);
+  readonly reviewSummary = signal<ItemReviewSummaryDto | null>(null);
+  readonly lightboxImage = signal<string | null>(null);
+  readonly ratingRows = [5, 4, 3, 2, 1];
 
   // Parsed attribute maps for interactive variant picker (e.g. { Color: ['Red', 'Blue'], Size: ['M', 'L'] })
   readonly attributeKeys = signal<string[]>([]);
@@ -47,11 +55,24 @@ export class ProductDetail implements OnInit {
   readonly selectedAttributeValues = signal<Record<string, string>>({});
 
   ngOnInit(): void {
-    const itemId = this.route.snapshot.paramMap.get('id');
-    if (!itemId) {
-      this.router.navigate(['/catalog']);
-      return;
-    }
+    this.route.paramMap.subscribe((params) => {
+      const itemId = params.get('id');
+      if (!itemId) {
+        this.router.navigate(['/catalog']);
+        return;
+      }
+      this.loadItem(itemId);
+    });
+  }
+
+  private loadItem(itemId: string): void {
+    this.isLoading.set(true);
+    this.quantity.set(1);
+    this.selectedVariant.set(null);
+    this.selectedImage.set(null);
+    this.similarItems.set([]);
+    this.reviewSummary.set(null);
+    window.scrollTo({ top: 0 });
 
     this.itemService.getById(itemId).subscribe({
       next: (item) => {
@@ -71,12 +92,34 @@ export class ProductDetail implements OnInit {
         }
 
         this.isLoading.set(false);
+        this.loadSimilar(item);
+        this.reviewService.getForItem(item.id).subscribe({ next: (s) => this.reviewSummary.set(s), error: () => this.reviewSummary.set(null) });
       },
       error: () => {
         this.snackBar.open('Item not found', 'Close', { duration: 3000 });
         this.router.navigate(['/catalog']);
       },
     });
+  }
+
+  private loadSimilar(item: ItemDto): void {
+    this.itemService.getSimilar(item.id, 5).subscribe({
+      next: (items) => this.similarItems.set(items),
+      error: () => this.similarItems.set([]),
+    });
+  }
+
+  ratingPercent(star: number): number {
+    const s = this.reviewSummary();
+    return s && s.totalCount ? ((s.distribution[star] ?? 0) / s.totalCount) * 100 : 0;
+  }
+
+  getPrimaryImage(item: ItemDto): ItemImageDto | null {
+    return item.images?.find((img) => img.isPrimary) ?? item.images?.[0] ?? null;
+  }
+
+  openSimilar(item: ItemDto): void {
+    this.router.navigate(['/catalog', item.id]);
   }
 
   private parseVariantAttributes(item: ItemDto): void {
@@ -192,6 +235,24 @@ export class ProductDetail implements OnInit {
     }).onAction().subscribe(() => {
       this.router.navigate(['/cart']);
     });
+  }
+
+  toggleFavourite(): void {
+    const item = this.item();
+    if (!item) return;
+    const added = this.favourites.toggle(item.id);
+    this.snackBar.open(added ? 'Added to favourites' : 'Removed from favourites', undefined, { duration: 1800 });
+  }
+
+  buyNow(): void {
+    const item = this.item();
+    if (!item) return;
+
+    if (!this.cartService.addToCart(item, this.selectedVariant(), this.quantity())) {
+      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000 });
+      return;
+    }
+    this.router.navigate(['/checkout']);
   }
 
   formatFileSize(bytes: number): string {

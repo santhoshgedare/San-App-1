@@ -1,5 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, untracked } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
+import { SectionAccessStore } from '../auth/section-access.store';
+import { ROLES } from '../models/constants';
 import { AdminShell } from './admin-shell/admin-shell';
 import { UserShell } from './user-shell/user-shell';
 
@@ -22,6 +24,20 @@ import { UserShell } from './user-shell/user-shell';
 })
 export class Shell {
   private readonly auth = inject(AuthService);
+  private readonly sectionAccess = inject(SectionAccessStore);
 
-  readonly showAdminLayout = computed(() => this.auth.isAdmin() || this.auth.isManager());
+  constructor() {
+    effect(() => {
+      const user = this.auth.currentUser();
+      untracked(() => {
+        this.sectionAccess.reset();
+        if (user) this.sectionAccess.load();
+      });
+    });
+  }
+
+  readonly showAdminLayout = computed(() => {
+    const roles = this.auth.currentUser()?.roles ?? [];
+    return roles.some((role) => role !== ROLES.user);
+  });
 }

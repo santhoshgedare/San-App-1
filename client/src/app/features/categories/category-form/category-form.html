@@ -49,11 +49,11 @@
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label">Unit of measurement</label>
-              <select class="form-select" [(ngModel)]="unitOfMeasurement">
+              <mat-select class="app-select" [(ngModel)]="unitOfMeasurement" aria-label="Unit of measurement">
                 @for (option of unitOptions; track option) {
-                  <option [value]="option">{{ option }}</option>
+                  <mat-option [value]="option">{{ option }}</mat-option>
                 }
-              </select>
+              </mat-select>
             </div>
             <div class="col-md-6 d-flex align-items-end">
               <div class="form-check form-switch mb-0">
@@ -86,11 +86,12 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small">Type</label>
-                    <select class="form-select" [ngModel]="variant.type" (ngModelChange)="updateVariant(i, { type: $event })">
+                    <mat-select class="app-select" [ngModel]="variant.type" (ngModelChange)="updateVariant(i, { type: $event })"
+                      aria-label="Variant type">
                       @for (type of variantTypeOptions; track type) {
-                        <option [value]="type">{{ type }}</option>
+                        <mat-option [value]="type">{{ type }}</mat-option>
                       }
-                    </select>
+                    </mat-select>
                   </div>
                   <div class="col-md-4">
                     <label class="form-label small">Available values</label>

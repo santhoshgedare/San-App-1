@@ -102,6 +102,24 @@
             <span class="label">Total</span>
             <strong>{{ item.totalPrice | currency }}</strong>
           </div>
+
+          @if (canReview(ord)) {
+          <div class="item-review">
+            @if (reviews()[item.id]; as rev) {
+            <div class="review-done">
+              <app-star-rating [value]="rev.rating" />
+              <span>Thanks for your review</span>
+            </div>
+            } @else if (reviewingItemId() === item.id) {
+            <app-review-form [orderItemId]="item.id" [itemName]="item.itemName"
+              (submitted)="onReviewSubmitted($event)" (cancelled)="reviewingItemId.set(null)" />
+            } @else {
+            <button type="button" class="review-btn" (click)="reviewingItemId.set(item.id)">
+              <mat-icon>rate_review</mat-icon> Rate &amp; review
+            </button>
+            }
+          </div>
+          }
         </div>
         }
       </div>
@@ -259,11 +277,11 @@
         <span class="action-heading">Update Payment Verification</span>
         <div class="field-row">
           <label>Status</label>
-          <select [(ngModel)]="newPaymentStatus">
-            <option value="Pending">Pending Verification</option>
-            <option value="Paid">Mark as Paid / Verified</option>
-            <option value="Failed">Payment Failed</option>
-          </select>
+          <mat-select class="app-select" [(ngModel)]="newPaymentStatus" aria-label="Payment status">
+            <mat-option value="Pending">Pending Verification</mat-option>
+            <mat-option value="Paid">Mark as Paid / Verified</mat-option>
+            <mat-option value="Failed">Payment Failed</mat-option>
+          </mat-select>
         </div>
 
         <div class="field-row">
@@ -304,7 +322,7 @@
       </div>
       }
 
-      @if (isPrivileged() && ord.paymentStatus === 'Paid') {
+      @if (canRecordRefund(ord)) {
       <div class="admin-action-box">
         <span class="action-heading">Record Completed Full Refund</span>
         <p class="refund-guidance">Send the refund through your payment provider first, then record its transaction
@@ -345,19 +363,19 @@
       }
 
       <!-- Admin Update Fulfillment Form -->
-      @if (auth.isAdmin() || auth.isManager()) {
+      @if (canUpdateOrderStatus(ord)) {
       <div class="admin-action-box">
         <span class="action-heading">Update Fulfillment Lifecycle</span>
         <div class="field-row">
           <label>Order Status</label>
-          <select [(ngModel)]="newStatus">
-            <option value="Pending">Pending</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Processing">Processing / Packaging</option>
-            <option value="Shipped">Shipped / In Transit</option>
-            <option value="Delivered">Delivered / Completed</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
+          <mat-select class="app-select" [(ngModel)]="newStatus" aria-label="Order status">
+            <mat-option value="Pending">Pending</mat-option>
+            <mat-option value="Confirmed">Confirmed</mat-option>
+            <mat-option value="Processing">Processing / Packaging</mat-option>
+            <mat-option value="Shipped">Shipped / In Transit</mat-option>
+            <mat-option value="Delivered">Delivered / Completed</mat-option>
+            <mat-option value="Cancelled">Cancelled</mat-option>
+          </mat-select>
         </div>
 
         <div class="field-row">

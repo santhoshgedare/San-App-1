@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ROLES, APP_CONSTANTS } from '../models/constants';
-import type { AuthResult, LoginRequest, RegisterRequest, UserDto } from '../models/auth.models';
+import type { AuthResult, ExternalAuthProvider, LoginRequest, RegisterRequest, UserDto } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -19,7 +19,7 @@ export class AuthService {
   constructor(
     private readonly http: HttpClient,
     private readonly router: Router,
-  ) {}
+  ) { }
 
   login(request: LoginRequest): Observable<AuthResult> {
     return this.http.post<AuthResult>(`${this.baseUrl}/login`, request).pipe(tap((result) => this.persistSession(result)));
@@ -27,6 +27,22 @@ export class AuthService {
 
   register(request: RegisterRequest): Observable<AuthResult> {
     return this.http.post<AuthResult>(`${this.baseUrl}/register`, request).pipe(tap((result) => this.persistSession(result)));
+  }
+
+  getExternalProviders(): Observable<ExternalAuthProvider[]> {
+    return this.http.get<ExternalAuthProvider[]>(`${this.baseUrl}/external/providers`);
+  }
+
+  requestPasswordReset(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(email: string, token: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/reset-password`, { email, token, newPassword });
+  }
+
+  completeExternalLogin(result: AuthResult): void {
+    this.persistSession(result);
   }
 
   refreshToken(): Observable<AuthResult> {

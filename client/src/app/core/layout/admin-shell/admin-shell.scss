@@ -18,9 +18,9 @@
     margin-left: 0.5rem;
 
     .brand-logo {
-      height: 46px;
-      width: auto;
-      max-width: 160px;
+      height: 58px;
+      width: 78px;
+      max-width: none;
       object-fit: contain;
       vertical-align: middle;
       display: inline-block;
@@ -48,7 +48,7 @@
   width: 240px;
 
   .link-active {
-    background-color: rgba(25, 118, 210, 0.12);
+    background-color: rgba(167, 122, 67, 0.12);
 
     ::ng-deep .mdc-list-item__primary-text {
       font-weight: 600;
@@ -57,7 +57,7 @@
 }
 
 .app-sidenav-content {
-  background-color: #f4f6fb;
+  background-color: #fcf8f2;
 }
 
 .content {
@@ -73,8 +73,8 @@
       max-width: calc(100% - 120px);
 
       .brand-logo {
-        max-width: 120px;
-        height: 38px;
+        width: 72px;
+        height: 54px;
       }
     }
   }

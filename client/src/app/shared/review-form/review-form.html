@@ -1,0 +1,36 @@
+<form class="review-form" (ngSubmit)="submit()" novalidate>
+  <div class="rf-head">
+    <strong>Rate {{ itemName() || 'this item' }}</strong>
+    <app-star-rating [interactive]="true" [(value)]="rating" />
+  </div>
+
+  <input class="rf-input" name="title" [(ngModel)]="title" maxlength="150" placeholder="Headline (optional)" />
+  <textarea class="rf-input" name="comment" [(ngModel)]="comment" rows="3" maxlength="2000"
+    placeholder="Tell others how it looks and feels in real life"></textarea>
+
+  <div class="rf-photos">
+    @for (p of photos(); track $index) {
+    <div class="rf-photo">
+      <img [src]="p" alt="Your review photo" />
+      <button type="button" class="rf-remove" (click)="removePhoto($index)" aria-label="Remove photo">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    }
+    @if (photos().length < maxPhotos) {
+    <label class="rf-add" [class.busy]="isProcessing()">
+      <mat-icon>add_a_photo</mat-icon>
+      <span>{{ isProcessing() ? 'Adding...' : 'Add photo' }}</span>
+      <input type="file" accept="image/*" multiple hidden (change)="onFilesSelected($event)" />
+    </label>
+    }
+  </div>
+  <p class="rf-hint">Add up to {{ maxPhotos }} photos of the product you received.</p>
+
+  <div class="rf-actions">
+    <button type="button" class="rf-cancel" (click)="cancelled.emit()" [disabled]="isSubmitting()">Cancel</button>
+    <button type="submit" class="rf-submit" [disabled]="isSubmitting() || isProcessing()">
+      {{ isSubmitting() ? 'Submitting...' : 'Submit review' }}
+    </button>
+  </div>
+</form>

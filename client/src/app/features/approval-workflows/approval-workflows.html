@@ -101,12 +101,13 @@
             <label class="form-label small text-muted mb-1 mt-2">
               Default approver (pre-populated on new requests; the requester/approver can still reassign it)
             </label>
-            <select class="form-select form-select-sm" style="max-width: 320px" [(ngModel)]="stage.defaultApproverUserId">
-              <option [ngValue]="null">— No default (pick per-request) —</option>
+            <mat-select class="app-select app-select-sm" style="max-width: 320px" [(ngModel)]="stage.defaultApproverUserId"
+              [canSelectNullableOptions]="true" aria-label="Default approver">
+              <mat-option [value]="null">— No default (pick per-request) —</mat-option>
               @for (user of usersForStage(stage); track user.id) {
-                <option [ngValue]="user.id">{{ user.email }}</option>
+                <mat-option [value]="user.id">{{ user.email }}</mat-option>
               }
-            </select>
+            </mat-select>
           </div>
         }
 

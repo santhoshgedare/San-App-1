@@ -2,16 +2,16 @@
   <div>
     <h2 class="mb-1 h4 fw-bold">
       @if (isNew()) {
-        New Role
+      New Role
       } @else {
-        {{ role()?.name }}
+      {{ role()?.name }}
       }
     </h2>
     <p class="text-muted mb-0 small">
       @if (isNew()) {
-        Create a role to assign to users.
+      Create a role to assign to users.
       } @else {
-        Manage which sections this role can access. {{ role()?.userCount }} user(s) assigned.
+      Manage which sections this role can access. {{ role()?.userCount }} user(s) assigned.
       }
     </p>
   </div>
@@ -21,90 +21,97 @@
 </div>
 
 @if (isLoading()) {
-  <p>Loading…</p>
+<p>Loading…</p>
 } @else {
-  <div class="row g-3">
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          @if (errorMessage(); as message) {
-            <div class="alert alert-danger py-2 small">{{ message }}</div>
-          }
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        @if (errorMessage(); as message) {
+        <div class="alert alert-danger py-2 small">{{ message }}</div>
+        }
 
-          @if (isNew()) {
-            <div class="section-card-header">
-              <span class="icon-avatar"><mat-icon>admin_panel_settings</mat-icon></span>
-              <span>New Role</span>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Role name</label>
-              <input type="text" class="form-control" [(ngModel)]="newRoleName" placeholder="e.g. Auditor" />
-            </div>
-          } @else {
-            <div class="section-card-header">
-              <span class="icon-avatar"><mat-icon>lock</mat-icon></span>
-              <span>Section Access</span>
-            </div>
-            @for (module of tree(); track module.id) {
-              <h6 class="text-uppercase text-muted small mt-2">{{ module.name }}</h6>
-              @for (page of module.pages; track page.id) {
-                <div class="ms-2 mb-2">
-                  <div class="fw-semibold small">{{ page.name }}</div>
-                  @for (section of page.sections; track section.id) {
-                    <div class="form-check ms-3">
-                      <input
-                        type="checkbox"
-                        class="form-check-input"
-                        [id]="section.id"
-                        [checked]="isSectionChecked(section.key)"
-                        (change)="toggleSection(section.key, $any($event.target).checked)"
-                      />
-                      <label class="form-check-label" [for]="section.id">{{ section.name }}</label>
-                    </div>
-                  }
-                </div>
-              }
+        @if (isNew()) {
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>admin_panel_settings</mat-icon></span>
+          <span>New Role</span>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Role name</label>
+          <input type="text" class="form-control" [(ngModel)]="newRoleName" placeholder="e.g. Auditor" />
+        </div>
+        } @else {
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>lock</mat-icon></span>
+          <span>Section Access</span>
+        </div>
+        <p class="text-muted small">{{ selectedCount() }} permission(s) selected.</p>
+        @for (module of tree(); track module.id) {
+        <div class="permission-module">
+          <label class="permission-parent">
+            <input type="checkbox" [checked]="isModuleChecked(module)" [indeterminate]="isModuleIndeterminate(module)"
+              (change)="toggleModule(module, $any($event.target).checked)" />
+            <span>{{ module.name }}</span>
+          </label>
+        </div>
+        @for (page of module.pages; track page.id) {
+        <div class="permission-page">
+          <label class="permission-parent">
+            <input type="checkbox" [checked]="isPageChecked(page)" [indeterminate]="isPageIndeterminate(page)"
+              (change)="togglePage(page, $any($event.target).checked)" />
+            <span>{{ page.name }}</span>
+          </label>
+          @for (section of page.sections; track section.id) {
+          <div class="form-check permission-section">
+            <input type="checkbox" class="form-check-input" [id]="section.id" [checked]="isSectionChecked(section.key)"
+              (change)="toggleSection(section.key, $any($event.target).checked)" />
+            <label class="form-check-label" [for]="section.id">{{ section.name }}</label>
+          </div>
+          }
+        </div>
+        }
+        }
+        }
+
+        <div class="d-flex justify-content-between mt-4">
+          <div>
+            @if (!isNew()) {
+            <button type="button" mat-stroked-button color="warn" (click)="remove()">
+              <mat-icon>delete</mat-icon> Delete Role
+            </button>
             }
-          }
-
-          <div class="d-flex justify-content-between mt-4">
-            <div>
-              @if (!isNew()) {
-                <button type="button" mat-stroked-button color="warn" (click)="remove()">
-                  <mat-icon>delete</mat-icon> Delete Role
-                </button>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
+            <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
+              @if (isSaving()) {
+              Saving…
+              } @else {
+              <ng-container><mat-icon>save</mat-icon> Save</ng-container>
               }
-            </div>
-            <div class="d-flex gap-2">
-              <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
-              <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
-                @if (isSaving()) {
-                  Saving…
-                } @else {
-                  <ng-container><mat-icon>save</mat-icon> Save</ng-container>
-                }
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </div>
     </div>
-
-    @if (!isNew() && role()) {
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <app-approval-panel [entityType]="entityType" [entityId]="role()!.id" requestTitle="Role access change approval" />
-          </div>
-        </div>
-      </div>
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <app-activity-log-panel [entityType]="entityType" [entityId]="role()!.id" />
-          </div>
-        </div>
-      </div>
-    }
   </div>
+
+  @if (!isNew() && role()) {
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <app-approval-panel [entityType]="entityType" [entityId]="role()!.id"
+          requestTitle="Role access change approval" />
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <app-activity-log-panel [entityType]="entityType" [entityId]="role()!.id" />
+      </div>
+    </div>
+  </div>
+  }
+</div>
 }

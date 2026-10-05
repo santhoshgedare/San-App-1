@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import type {
   CreateOrderRequest,
   OrderDto,
+  ProfitLossReportDto,
   RecordOrderRefundRequest,
   SubmitOrderPaymentDetailsRequest,
   UpdateOrderPaymentStatusRequest,
@@ -38,6 +39,11 @@ export class OrderService {
 
   getById(id: string): Observable<OrderDto> {
     return this.http.get<OrderDto>(`${this.baseUrl}/${id}`);
+  }
+
+  getProfitLossReport(startDate: string, endDate: string): Observable<ProfitLossReportDto> {
+    const params = new HttpParams().set('startDate', startDate).set('endDate', endDate);
+    return this.http.get<ProfitLossReportDto>(`${environment.apiUrl}/reports/profit-loss`, { params });
   }
 
   create(request: CreateOrderRequest): Observable<OrderDto> {

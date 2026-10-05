@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
@@ -37,7 +39,8 @@ const CONFIGURABLE_ENTITY_TYPES: string[] = [
 @Component({
   selector: 'app-approval-workflows',
   standalone: true,
-  imports: [FormsModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [FormsModule, MatIconModule, MatSelectModule, MatButtonModule, MatTooltipModule],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './approval-workflows.html',
   styleUrl: './approval-workflows.scss',
 })

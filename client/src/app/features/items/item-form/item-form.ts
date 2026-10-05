@@ -3,6 +3,8 @@ import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -31,13 +33,14 @@ interface VariantAttributeEntry {
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
+    MatIconModule, MatSelectModule,
     MatButtonModule,
     MatTooltipModule,
     MatTabsModule,
     ActivityLogPanel,
     ApprovalPanel,
   ],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './item-form.html',
   styleUrl: './item-form.scss',
 })
@@ -52,6 +55,8 @@ export class ItemForm implements OnInit {
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly tabIndex = signal(0);
+  readonly lastTabIndex = 3;
   readonly item = signal<ItemDto | null>(null);
   readonly categories = signal<CategoryDto[]>([]);
   readonly unitOptions = Object.values(UnitOfMeasurement);
@@ -95,7 +100,7 @@ export class ItemForm implements OnInit {
     }
 
     this.isNew.set(false);
-    this.itemService.getById(id).subscribe({
+    this.itemService.getManagementById(id).subscribe({
       next: (item) => {
         this.item.set(item);
         this.code = item.code;
@@ -105,7 +110,7 @@ export class ItemForm implements OnInit {
         this.categoryId = item.categoryId;
         this.unitOfMeasurement = item.unitOfMeasurement ?? UnitOfMeasurement.Piece;
         this.price = item.price;
-        this.costPrice = item.costPrice;
+        this.costPrice = item.costPrice ?? 0;
         this.stockQuantity = item.stockQuantity;
         this.isActive = item.isActive;
         this.images.set((item.images ?? []).map((img) => ({ ...img })));
@@ -339,8 +344,42 @@ export class ItemForm implements OnInit {
   }
 
   // --- Save / Delete / Cancel ---
+  private validateGeneral(): boolean {
+    if (!this.code.trim()) {
+      this.errorMessage.set('Item Code is required.');
+    } else if (!this.name.trim()) {
+      this.errorMessage.set('Item Name is required.');
+    } else if (!this.categoryId) {
+      this.errorMessage.set('Please select a category.');
+    } else {
+      this.errorMessage.set(null);
+      return true;
+    }
+    return false;
+  }
+
+  onTabChange(index: number): void {
+    if (this.isNew() && index > 0 && !this.validateGeneral()) {
+      this.tabIndex.set(0);
+      return;
+    }
+    this.tabIndex.set(index);
+  }
+
+  nextTab(): void {
+    this.onTabChange(Math.min(this.tabIndex() + 1, this.lastTabIndex));
+  }
+
+  previousTab(): void {
+    this.tabIndex.set(Math.max(this.tabIndex() - 1, 0));
+  }
+
   save(): void {
     this.errorMessage.set(null);
+
+    if (this.isNew() && this.tabIndex() !== this.lastTabIndex) {
+      return;
+    }
 
     const trimmedCode = this.code.trim();
     const trimmedName = this.name.trim();

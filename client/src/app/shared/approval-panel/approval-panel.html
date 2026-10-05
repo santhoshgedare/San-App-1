@@ -76,12 +76,12 @@
                     <td>
                       @if (reassigningStage()?.approvalId === approval.id && reassigningStage()?.stageIndex === row.stageIndex) {
                         <div class="d-flex align-items-center gap-1">
-                          <select class="form-select form-select-sm" style="max-width: 220px" [(ngModel)]="reassignUserId">
-                            <option value="" disabled>Select approver</option>
+                          <mat-select class="app-select app-select-sm" style="width: 220px" [(ngModel)]="reassignUserId"
+                            placeholder="Select approver" aria-label="Select approver">
                             @for (user of eligibleUsersForStage(approval, row.stageIndex); track user.id) {
-                              <option [value]="user.id">{{ user.email }}</option>
+                              <mat-option [value]="user.id">{{ user.email }}</mat-option>
                             }
-                          </select>
+                          </mat-select>
                           <button
                             type="button"
                             mat-icon-button

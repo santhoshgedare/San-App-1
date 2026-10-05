@@ -3,11 +3,15 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CanRenderDirective } from '../../core/directives/can-render.directive';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ItemService } from '../../core/auth/item.service';
 import { CategoryService } from '../../core/auth/category.service';
+import { SectionAccessStore } from '../../core/auth/section-access.store';
 import type { CategoryDto, ItemDto, ItemImageDto } from '../../core/models/auth.models';
 
 const PAGE_SIZE = 20;
@@ -19,13 +23,15 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-items',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [FormsModule, CurrencyPipe, MatIconModule, MatSelectModule, MatButtonModule, MatTooltipModule, CanRenderDirective],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './items.html',
   styleUrl: './items.scss',
 })
 export class Items implements OnInit, OnDestroy {
   private readonly itemService = inject(ItemService);
   private readonly categoryService = inject(CategoryService);
+  protected readonly sectionAccess = inject(SectionAccessStore);
   private readonly router = inject(Router);
   private readonly searchInput$ = new Subject<string>();
 
@@ -93,14 +99,17 @@ export class Items implements OnInit, OnDestroy {
   }
 
   private fetchPage(): void {
-    this.itemService
-      .getPaged({
-        search: this.searchTerm() || undefined,
-        categoryId: this.categoryFilter() || undefined,
-        isActive: this.statusFilter() === '' ? undefined : this.statusFilter() === 'active',
-        page: this.page,
-        pageSize: PAGE_SIZE,
-      })
+    const params = {
+      search: this.searchTerm() || undefined,
+      categoryId: this.categoryFilter() || undefined,
+      isActive: this.statusFilter() === '' ? undefined : this.statusFilter() === 'active',
+      page: this.page,
+      pageSize: PAGE_SIZE,
+    };
+    const request = this.sectionAccess.can('section-items-manage')
+      ? this.itemService.getManagementPaged(params)
+      : this.itemService.getPaged(params);
+    request
       .subscribe({
         next: (result) => {
           this.items.update((existing) => [...existing, ...result.items]);

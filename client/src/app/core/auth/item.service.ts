@@ -17,7 +17,7 @@ export interface ItemListParams {
 export class ItemService {
   private readonly baseUrl = `${environment.apiUrl}/items`;
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) { }
 
   getAll(): Observable<ItemDto[]> {
     return this.http.get<ItemDto[]>(this.baseUrl);
@@ -27,7 +27,23 @@ export class ItemService {
     return this.http.get<ItemDto>(`${this.baseUrl}/${id}`);
   }
 
+  getSimilar(id: string, take = 5): Observable<ItemDto[]> {
+    return this.http.get<ItemDto[]>(`${this.baseUrl}/${id}/similar`, { params: { take } });
+  }
+
+  getManagementById(id: string): Observable<ItemDto> {
+    return this.http.get<ItemDto>(`${this.baseUrl}/management/${id}`);
+  }
+
   getPaged(params: ItemListParams): Observable<PagedResult<ItemDto>> {
+    return this.getPagedFrom(`${this.baseUrl}/paged`, params);
+  }
+
+  getManagementPaged(params: ItemListParams): Observable<PagedResult<ItemDto>> {
+    return this.getPagedFrom(`${this.baseUrl}/management/paged`, params);
+  }
+
+  private getPagedFrom(url: string, params: ItemListParams): Observable<PagedResult<ItemDto>> {
     let httpParams = new HttpParams().set('page', params.page).set('pageSize', params.pageSize);
     if (params.search) {
       httpParams = httpParams.set('search', params.search);
@@ -38,7 +54,7 @@ export class ItemService {
     if (params.isActive !== undefined) {
       httpParams = httpParams.set('isActive', params.isActive);
     }
-    return this.http.get<PagedResult<ItemDto>>(`${this.baseUrl}/paged`, { params: httpParams });
+    return this.http.get<PagedResult<ItemDto>>(url, { params: httpParams });
   }
 
   create(request: CreateItemRequest): Observable<ItemDto> {

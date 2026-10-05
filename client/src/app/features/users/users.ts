@@ -3,12 +3,16 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { UserService } from '../../core/auth/user.service';
 import { RoleService } from '../../core/auth/role.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { SectionAccessStore } from '../../core/auth/section-access.store';
+import { CanRenderDirective } from '../../core/directives/can-render.directive';
 import type { RoleDto, UserDto } from '../../core/models/auth.models';
 
 const PAGE_SIZE = 20;
@@ -21,7 +25,8 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [FormsModule, DatePipe, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [FormsModule, DatePipe, MatIconModule, MatSelectModule, MatButtonModule, MatTooltipModule, CanRenderDirective],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './users.html',
   styleUrl: './users.scss',
 })
@@ -31,6 +36,7 @@ export class Users implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly searchInput$ = new Subject<string>();
   protected readonly auth = inject(AuthService);
+  protected readonly sectionAccess = inject(SectionAccessStore);
 
   @ViewChild('scrollContainer') scrollContainer?: ElementRef<HTMLDivElement>;
 
@@ -48,7 +54,9 @@ export class Users implements OnInit, OnDestroy {
   private hasMore = true;
 
   ngOnInit(): void {
-    this.roleService.getAll().subscribe((roles) => this.roles.set(roles));
+    if (this.sectionAccess.can('section-users-roles')) {
+      this.roleService.getAll().subscribe((roles) => this.roles.set(roles));
+    }
     this.searchInput$.pipe(debounceTime(300), distinctUntilChanged()).subscribe((term) => {
       this.searchTerm.set(term);
       this.reload();
@@ -62,6 +70,10 @@ export class Users implements OnInit, OnDestroy {
 
   onSearchInput(value: string): void {
     this.searchInput$.next(value);
+  }
+
+  canCreateUsers(): boolean {
+    return this.sectionAccess.can('section-users-manage') && this.sectionAccess.can('section-users-roles');
   }
 
   onFilterChange(): void {

@@ -3,7 +3,8 @@
     <h2 class="mb-1 h4 fw-bold">Items</h2>
     <p class="text-muted mb-0 small">Master catalog of products, images, documents, and variant-based pricing.</p>
   </div>
-  <button mat-flat-button color="primary" type="button" class="text-nowrap" (click)="create()">
+  <button *canRender="'section-items-manage'" mat-flat-button color="primary" type="button" class="text-nowrap"
+    (click)="create()">
     <mat-icon>add</mat-icon> New Item
   </button>
 </div>
@@ -14,20 +15,21 @@
       (ngModelChange)="onSearchInput($event)" />
   </div>
   <div class="col-6 col-md-3">
-    <select class="form-select" [ngModel]="categoryFilter()"
-      (ngModelChange)="categoryFilter.set($event); onFilterChange()">
-      <option value="">All Categories</option>
+    <mat-select class="app-select" [ngModel]="categoryFilter()"
+      (ngModelChange)="categoryFilter.set($event); onFilterChange()" aria-label="Filter by category">
+      <mat-option value="">All Categories</mat-option>
       @for (category of categories(); track category.id) {
-      <option [value]="category.id">{{ category.name }}</option>
+      <mat-option [value]="category.id">{{ category.name }}</mat-option>
       }
-    </select>
+    </mat-select>
   </div>
   <div class="col-6 col-md-2">
-    <select class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()">
-      <option value="">All Statuses</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
+    <mat-select class="app-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()"
+      aria-label="Filter by status">
+      <mat-option value="">All Statuses</mat-option>
+      <mat-option value="active">Active</mat-option>
+      <mat-option value="inactive">Inactive</mat-option>
+    </mat-select>
   </div>
 </div>
 
@@ -62,7 +64,7 @@
         </tr>
         } @else {
         @for (item of items(); track item.id) {
-        <tr class="clickable-row" (click)="openDetail(item)">
+        <tr>
           <td>
             @if (getPrimaryImage(item); as img) {
             <img [src]="img.url" alt="" class="rounded item-thumbnail border" />
@@ -91,7 +93,9 @@
           <td>{{ item.unitOfMeasurement }}</td>
           <td>
             <span class="fw-semibold">{{ item.price | currency }}</span>
+            @if (sectionAccess.can('section-items-manage') && item.costPrice !== null) {
             <div class="text-muted small">Cost: {{ item.costPrice | currency }}</div>
+            }
           </td>
           <td>
             @if (item.variants?.length) {
@@ -124,7 +128,8 @@
             }
           </td>
           <td class="text-end">
-            <button type="button" mat-icon-button matTooltip="View / Edit" (click)="openDetail(item)">
+            <button *canRender="'section-items-manage'" type="button" mat-icon-button matTooltip="Edit Item"
+              (click)="openDetail(item)">
               <mat-icon>edit</mat-icon>
             </button>
           </td>

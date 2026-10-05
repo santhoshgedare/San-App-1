@@ -1,0 +1,209 @@
+<main class="about-page">
+  <section class="hero" aria-labelledby="about-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span></span> An independent handmade studio</p>
+      <h1 class="hero-wordmark" id="about-title">
+        <img src="assets/logo.png" alt="SRIVIDIKA" fetchpriority="high" />
+      </h1>
+      <p class="hero-tagline">Handmade with Love. Created with Purpose.</p>
+      <p class="hero-description">
+        Beautiful handmade creations brought to life through creativity, craftsmanship, and a shared passion for
+        timeless design.
+      </p>
+      <a class="hero-link" routerLink="/catalog">Enter the collection <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="hero-product-gallery" role="group" aria-label="A selection of SRIVIDIKA handmade bangles">
+      <figure class="hero-product-card hero-product-card--gold">
+        <img src="assets/bangles/hero-gold-bangles.jpeg" alt="Gold-tone handmade bangles with detailed stone settings" fetchpriority="high" />
+      </figure>
+      <figure class="hero-product-card hero-product-card--red">
+        <img src="assets/bangles/hero-red-bangles.jpeg" alt="Ruby-red and gold handcrafted bangle set" fetchpriority="high" />
+      </figure>
+      <figure class="hero-product-card hero-product-card--purple">
+        <img src="assets/bangles/hero-purple-bangles.jpeg" alt="Purple and gold handmade bangles displayed together" fetchpriority="high" />
+      </figure>
+    </div>
+    <div class="hero-side-note" aria-hidden="true"><span></span> A world made by hand</div>
+    <div class="hero-index" aria-hidden="true">STUDIO / 01</div>
+    <a class="hero-scroll" href="#beginning"><span></span> Scroll to discover</a>
+  </section>
+
+  <section class="story-section" id="beginning" aria-labelledby="story-title">
+    <div class="story section-wrap">
+      <div class="section-kicker reveal"><span>01</span><span>The Beginning</span></div>
+      <div class="story-content reveal">
+        <p class="eyebrow">Made with intention</p>
+        <h2 id="story-title">The Story Behind <em>SRIVIDIKA</em></h2>
+        <div class="story-columns">
+          <p>
+            SRIVIDIKA is built around the simple joy of making: the pleasure of shaping an idea into something
+            beautiful by hand. Each creation starts with curiosity and grows through care, patience, and a love for
+            thoughtful detail.
+          </p>
+          <p>
+            Today, SRIVIDIKA is a growing independent handmade brand, guided by a shared creative vision and a respect
+            for the craft. We hope our pieces bring a little joy to everyday moments and become things to enjoy and
+            cherish.
+          </p>
+        </div>
+      </div>
+      <div class="story-mark" aria-hidden="true">S</div>
+    </div>
+  </section>
+
+  <section class="craft-section" aria-labelledby="craft-title">
+    <div class="craft-copy reveal">
+      <div class="section-kicker"><span>02</span><span>The Craft</span></div>
+      <p class="eyebrow">A closer look</p>
+      <h2 id="craft-title">Made to move<br /><em>with you.</em></h2>
+      <p>
+        A bangle is more than a circle. It is a meeting of form, finish, and feeling—shaped with intention and made
+        to become part of your own story.
+      </p>
+      <div class="craft-note"><span></span> Turn your view. Take your time.</div>
+    </div>
+    <div
+      class="craft-stage"
+      role="group"
+      aria-label="Photographs of SRIVIDIKA handcrafted bangles"
+    >
+      <figure class="craft-product-card">
+        <img src="assets/bangles/hero-blue-bangles.jpeg" alt="Blue enamel and gold handmade bangles held together" loading="lazy" />
+        <figcaption>Thoughtful details, made by hand</figcaption>
+      </figure>
+      <span class="craft-orbit craft-orbit--one" aria-hidden="true"></span>
+      <span class="craft-orbit craft-orbit--two" aria-hidden="true"></span>
+      <span class="craft-label craft-label--top">Handcrafted <i></i></span>
+      <span class="craft-label craft-label--right">Thoughtfully Designed <i></i></span>
+      <span class="craft-label craft-label--bottom">Made with Care <i></i></span>
+      <span class="craft-stage-index">SCENE / 02</span>
+    </div>
+    <div class="craft-baseline"><span>Material</span><span>Form</span><span>Feeling</span></div>
+  </section>
+
+  <section class="team-section" aria-labelledby="team-title">
+    <div class="section-wrap">
+      <div class="team-heading reveal">
+        <div class="section-kicker"><span>03</span><span>The People</span></div>
+        <div class="team-heading-copy">
+          <p class="eyebrow">A shared creative spirit</p>
+          <h2 id="team-title">Meet the People<br />Behind <em>SRIVIDIKA</em></h2>
+          <p class="section-intro">
+            SRIVIDIKA is brought to life by a dedicated team united by creativity, craftsmanship, and a passion for
+            handmade products.
+          </p>
+        </div>
+      </div>
+
+      <div class="team-grid">
+        @for (person of team; track person.name) {
+          <article class="team-card reveal" [class.team-card--founder]="person.isFounder">
+            <div
+              class="portrait-placeholder"
+              role="img"
+              [attr.aria-label]="'Portrait placeholder for ' + person.name"
+            >
+              <span class="portrait-frame"></span>
+              <span class="portrait-orbit portrait-orbit--one"></span>
+              <span class="portrait-orbit portrait-orbit--two"></span>
+              <span class="portrait-monogram" aria-hidden="true">{{ person.name.charAt(0) }}</span>
+              <span class="portrait-note">Portrait<br />coming soon</span>
+            </div>
+            <div class="team-card-copy">
+              <p class="team-role">{{ person.title }}</p>
+              <h3>{{ person.name }}</h3>
+              <p class="team-description">{{ person.description }}</p>
+            </div>
+            @if (person.isFounder) {
+              <span class="founder-marker" aria-hidden="true">Creative vision</span>
+            }
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="beliefs philosophy-section" aria-labelledby="beliefs-title">
+    <div class="section-wrap">
+    <div class="beliefs-heading reveal">
+      <div class="section-kicker"><span>04</span><span>The Philosophy</span></div>
+      <div>
+        <p class="eyebrow">The things we hold close</p>
+        <h2 id="beliefs-title">What We <em>Believe</em></h2>
+      </div>
+    </div>
+    <div class="belief-grid">
+      <article class="belief-card reveal">
+        <span class="belief-number">01</span>
+        <span class="belief-symbol" aria-hidden="true">✳</span>
+        <h3>Craftsmanship</h3>
+        <p>We value the care and attention that goes into handmade creations.</p>
+      </article>
+      <article class="belief-card reveal">
+        <span class="belief-number">02</span>
+        <span class="belief-symbol" aria-hidden="true">✦</span>
+        <h3>Creativity</h3>
+        <p>Every creation begins with an idea and the freedom to explore something beautiful.</p>
+      </article>
+      <article class="belief-card reveal">
+        <span class="belief-number">03</span>
+        <span class="belief-symbol" aria-hidden="true">◌</span>
+        <h3>Tradition</h3>
+        <p>We appreciate timeless craftsmanship while bringing a fresh, contemporary perspective.</p>
+      </article>
+      <article class="belief-card reveal">
+        <span class="belief-number">04</span>
+        <span class="belief-symbol" aria-hidden="true">∞</span>
+        <h3>Together</h3>
+        <p>SRIVIDIKA grows through collaboration, shared ideas, and a passion for creating.</p>
+      </article>
+    </div>
+    </div>
+  </section>
+
+  <section class="difference-section" aria-labelledby="difference-title">
+    <div class="difference-copy reveal">
+      <p class="eyebrow">A little character in every detail</p>
+      <h2 id="difference-title">The <em>SRIVIDIKA</em><br /><em>Difference</em></h2>
+      <p class="difference-intro">
+        Handmade pieces have a character all their own. It is in the considered details, the thoughtful design, and
+        the human touch behind each creation.
+      </p>
+    </div>
+    <ul class="difference-list reveal">
+      <li><span>01</span> Handmade</li>
+      <li><span>02</span> Thoughtfully Designed</li>
+      <li><span>03</span> Carefully Crafted</li>
+      <li><span>04</span> Personal</li>
+      <li><span>05</span> Authentic</li>
+    </ul>
+  </section>
+
+  <section class="quote-section" aria-label="A thought from SRIVIDIKA">
+    <span class="quote-mark" aria-hidden="true">“</span>
+    <p class="quote-text reveal">
+      Every beautiful creation begins with an idea, a little patience, and a lot of heart.
+    </p>
+    <div class="quote-signature"><span></span> The SRIVIDIKA spirit <span></span></div>
+    <span class="quote-decoration" aria-hidden="true"></span>
+  </section>
+
+  <section class="discover-section" aria-labelledby="discover-title">
+    <div class="discover-kicker"><span>05</span><span>The Collection</span></div>
+    <div class="discover-inner reveal">
+      <p class="eyebrow">Find something lovely</p>
+      <h2 id="discover-title">Discover <em>SRIVIDIKA</em></h2>
+      <p>Explore our handmade creations and find something made to be cherished.</p>
+      <div class="discover-actions">
+        <a class="button button-primary" routerLink="/catalog">
+          Shop Collection <span aria-hidden="true">↗</span>
+        </a>
+        <a class="button button-outline" routerLink="/catalog">
+          Explore Bangles <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </div>
+    <span class="discover-ring discover-ring--one" aria-hidden="true"></span>
+    <span class="discover-ring discover-ring--two" aria-hidden="true"></span>
+  </section>
+</main>

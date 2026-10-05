@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace IdentityHub.Application.Common.Models;
 
 public sealed class UserDto
@@ -243,7 +245,8 @@ public sealed class ItemVariantDto
     public string? Barcode { get; init; }
     public string AttributesJson { get; init; } = "{}";
     public decimal Price { get; init; }
-    public decimal CostPrice { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? CostPrice { get; init; }
     public int StockQuantity { get; init; }
     public bool IsActive { get; init; }
 }
@@ -270,7 +273,8 @@ public sealed class ItemDto
     public string CategoryName { get; init; } = string.Empty;
     public string UnitOfMeasurement { get; init; } = string.Empty;
     public decimal Price { get; init; }
-    public decimal CostPrice { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? CostPrice { get; init; }
     public int StockQuantity { get; init; }
     public bool IsActive { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
@@ -339,6 +343,22 @@ public sealed class OrderDto
     public IReadOnlyList<OrderItemDto> Items { get; init; } = [];
 }
 
+public sealed class ProfitLossReportDto
+{
+    public DateOnly StartDate { get; init; }
+    public DateOnly EndDate { get; init; }
+    public int PaidOrderCount { get; init; }
+    public int RefundedOrderCount { get; init; }
+    public int LegacyRefundCount { get; init; }
+    public int MissingCostLineCount { get; init; }
+    public decimal GrossSales { get; init; }
+    public decimal Refunds { get; init; }
+    public decimal NetSales { get; init; }
+    public decimal CostOfGoodsSold { get; init; }
+    public decimal? GrossProfitOrLoss { get; init; }
+    public bool IsComplete { get; init; }
+}
+
 public sealed class PaymentSettingsDto
 {
     public Guid Id { get; init; }
@@ -391,3 +411,24 @@ public sealed record ItemListQuery(
     int PageSize = 20);
 
 
+
+public sealed class ItemReviewDto
+{
+    public Guid Id { get; init; }
+    public Guid ItemId { get; init; }
+    public Guid OrderItemId { get; init; }
+    public string ReviewerName { get; init; } = string.Empty;
+    public int Rating { get; init; }
+    public string? Title { get; init; }
+    public string? Comment { get; init; }
+    public IReadOnlyList<string> Images { get; init; } = [];
+    public DateTimeOffset CreatedAt { get; init; }
+}
+
+public sealed class ItemReviewSummaryDto
+{
+    public double AverageRating { get; init; }
+    public int TotalCount { get; init; }
+    public IReadOnlyDictionary<int, int> Distribution { get; init; } = new Dictionary<int, int>();
+    public IReadOnlyList<ItemReviewDto> Reviews { get; init; } = [];
+}

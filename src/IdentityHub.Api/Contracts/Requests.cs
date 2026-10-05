@@ -2,6 +2,12 @@ namespace IdentityHub.Api.Contracts;
 
 public sealed record LoginRequest(string Email, string Password);
 public sealed record RegisterRequest(string Email, string Password, string FirstName, string LastName, string? PhoneNumber);
+/// <summary>Requests a password-reset email without revealing whether the address is registered.</summary>
+public sealed record ForgotPasswordRequest(string Email);
+/// <summary>Completes a password reset using a one-time Identity token.</summary>
+public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
+/// <summary>An external sign-in provider available to the client.</summary>
+public sealed record ExternalAuthProviderDto(string Provider, string DisplayName, bool Enabled);
 public sealed record RefreshTokenRequest(string AccessToken, string RefreshToken);
 public sealed record LogoutRequest(string RefreshToken);
 public sealed record UpdateUserRequest(string FirstName, string LastName, bool IsActive);

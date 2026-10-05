@@ -10,13 +10,27 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: mat.$red-palette,
+        tertiary: mat.$orange-palette,
       ),
       typography: Roboto,
       density: 0,
     )
   );
+  --mat-sys-primary: #76283a;
+  --mat-sys-on-primary: #fffaf4;
+  --mat-sys-primary-container: #f2dce0;
+  --mat-sys-on-primary-container: #40131f;
+  --mat-sys-tertiary: #9b713c;
+  --mat-sys-on-tertiary: #fffaf1;
+  --mat-sys-tertiary-container: #f2e2c9;
+  --mat-sys-on-tertiary-container: #39260d;
+  --mat-sys-secondary: #795c4b;
+  --mat-sys-on-secondary: #fffaf5;
+  --mat-sys-surface: #fcf8f2;
+  --mat-sys-surface-container: #fcf8f2;
+  --mat-sys-on-surface: #382a2d;
+  --mat-sys-outline: #8d7775;
 }
 
 body {
@@ -28,7 +42,7 @@ body {
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
   // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
+  background-color: #fcf8f2;
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
 
@@ -39,7 +53,7 @@ body {
 /* You can add global styles to this file, and also import other style files */
 
 body {
-  background-color: #f4f6fb;
+  background-color: #fcf8f2;
 }
 
 * {
@@ -59,6 +73,174 @@ textarea {
   font: inherit;
 }
 
+// Brand overrides for Bootstrap primitives
+.btn-primary {
+  --bs-btn-bg: #76283a;
+  --bs-btn-border-color: #76283a;
+  --bs-btn-hover-bg: #5f1d2d;
+  --bs-btn-hover-border-color: #5f1d2d;
+  --bs-btn-active-bg: #5f1d2d;
+  --bs-btn-active-border-color: #5f1d2d;
+  --bs-btn-disabled-bg: #76283a;
+  --bs-btn-disabled-border-color: #76283a;
+  --bs-btn-focus-shadow-rgb: 118, 40, 58;
+  border-radius: 0.7rem;
+  font-weight: 600;
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: #5b4a50;
+  --bs-btn-border-color: #e0d4c6;
+  --bs-btn-hover-bg: #f5eee7;
+  --bs-btn-hover-color: #382a2d;
+  --bs-btn-hover-border-color: #cbb9a6;
+  border-radius: 0.7rem;
+}
+
+.form-control {
+  background-color: #fff;
+  border-color: #e0d4c6;
+  border-radius: 0.6rem;
+
+  &:focus {
+    background-color: #fff;
+    border-color: #76283a;
+    box-shadow: 0 0 0 3px rgba(118, 40, 58, 0.12);
+  }
+}
+
+.form-label {
+  color: #5b4a50;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+// Shared Material dropdown (mat-select) styling
+.mat-mdc-select.app-select {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  color: #382a2d;
+  font-size: 0.9rem;
+  background: #fff;
+  border: 1px solid #e0d4c6;
+  border-radius: 0.6rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  --mat-select-enabled-arrow-color: #8d7775;
+  --mat-select-focused-arrow-color: #76283a;
+  --mat-select-placeholder-text-color: #8d7775;
+  --mat-select-enabled-trigger-text-color: #382a2d;
+
+  &:hover {
+    border-color: #cbb9a6;
+  }
+
+  &:focus-visible,
+  &[aria-expanded='true'] {
+    border-color: #76283a;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(118, 40, 58, 0.12);
+  }
+
+  &.mat-mdc-select-disabled {
+    background: #f5eee7;
+    opacity: 0.7;
+  }
+
+  .mat-mdc-select-value {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    mat-icon {
+      flex: none;
+      width: 1.1rem;
+      height: 1.1rem;
+      font-size: 1.1rem;
+      color: #8d7775;
+    }
+  }
+
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  .mat-mdc-select-trigger {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mat-mdc-select-value,
+  .mat-mdc-select-value-text,
+  .mat-mdc-select-min-line {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mat-mdc-select-value-text {
+    display: flex;
+    align-items: center;
+  }
+
+  mat-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    line-height: 1.1;
+  }
+
+  &.app-select-sm {
+    min-height: 32px;
+    padding: 0 0.6rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.app-select-panel {
+  max-width: calc(100vw - 16px) !important;
+
+  .mat-mdc-select-panel,
+  &.mat-mdc-select-panel {
+    padding: 0.35rem;
+    background: #fffdfa;
+    border: 1px solid #eadfd2;
+    border-radius: 0.85rem;
+    box-shadow: 0 14px 34px rgba(64, 40, 51, 0.16);
+    --mat-select-panel-background-color: #fffdfa;
+  }
+
+  .mat-mdc-option {
+    min-height: 40px;
+    color: #382a2d;
+    font-size: 0.9rem;
+    border-radius: 0.55rem;
+
+    .mdc-list-item__primary-text {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    &:hover:not(.mdc-list-item--disabled),
+    &.mat-mdc-option-active:not(.mdc-list-item--selected) {
+      background: #f5eee7;
+    }
+
+    &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+      color: #76283a;
+      font-weight: 600;
+      background: #f6e6e9;
+    }
+  }
+}
+
 app-admin-shell .content > router-outlet + *,
 app-user-shell .user-content > router-outlet + * {
   display: block;
@@ -68,6 +250,51 @@ app-user-shell .user-content > router-outlet + * {
   min-height: 100%;
   margin: 0 auto;
   padding: 1.75rem;
+}
+
+app-user-shell .user-content > router-outlet + app-about {
+  max-width: none;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+app-user-shell .app-toolbar,
+app-admin-shell .app-toolbar {
+  color: #402833;
+  background-color: #fcf8f2;
+  --mat-toolbar-container-background-color: #fcf8f2;
+  --mat-toolbar-container-text-color: #402833;
+}
+
+app-user-shell .app-toolbar .top-nav a:hover,
+app-user-shell .app-toolbar .top-nav .link-active {
+  background-color: rgba(167, 122, 67, 0.12);
+}
+
+app-user-shell .mobile-tab-bar {
+  background: #fcf8f2;
+
+  a {
+    color: #735f70;
+
+    &.link-active {
+      color: #9a6a31;
+    }
+  }
+}
+
+app-user-shell .user-content,
+app-admin-shell .app-sidenav-content {
+  background-color: #fcf8f2;
+}
+
+app-admin-shell .app-sidenav {
+  background-color: #fcf8f2;
+
+  .link-active {
+    background-color: rgba(167, 122, 67, 0.12);
+  }
 }
 
 app-admin-shell .content,
@@ -100,8 +327,8 @@ app-user-shell .user-content {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background-color: #e8f0fe;
-    color: #1967d2;
+    background-color: #f3e5dc;
+    color: #8a5d32;
     flex-shrink: 0;
 
     mat-icon {
@@ -116,10 +343,21 @@ app-user-shell .user-content {
    list-page headers (e.g. "Purchase Order — Showing 25 of 61314 Entries"). */
 .page-banner {
   background: #fff;
-  border-left: 3px solid #1967d2;
-  border-radius: 4px;
+  border-left: 3px solid #a17a43;
+  border-radius: 8px;
   padding: 0.65rem 1rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @media screen and (max-width: 767px) {
@@ -130,6 +368,10 @@ app-user-shell .user-content {
   app-admin-shell .content > router-outlet + *,
   app-user-shell .user-content > router-outlet + * {
     padding: 1rem;
+  }
+
+  app-user-shell .user-content > router-outlet + app-about {
+    padding: 0;
   }
 
   .catalog-page,
@@ -151,7 +393,6 @@ app-user-shell .user-content {
 
   .page-header,
   .hero-heading,
-  .catalog-controls,
   .controls-card .search-filter-row,
   .checkout-layout,
   .grid-2,
@@ -165,9 +406,7 @@ app-user-shell .user-content {
     align-items: stretch !important;
   }
 
-  .catalog-controls .search-input-wrapper,
   .search-box,
-  .catalog-controls .sort-wrapper,
   .controls-card .search-filter-row .search-box,
   .field-group,
   .checkout-layout > *,

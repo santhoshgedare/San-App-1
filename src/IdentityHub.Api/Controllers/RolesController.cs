@@ -1,4 +1,5 @@
 using IdentityHub.Api.Contracts;
+using IdentityHub.Api.Authorization;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.Roles.Commands.CreateRole;
 using IdentityHub.Application.Features.Roles.Commands.DeleteRole;
@@ -12,16 +13,18 @@ namespace IdentityHub.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize]
 public sealed class RolesController(ISender sender) : ControllerBase
 {
     /// <summary>Lists all roles with their assigned user counts.</summary>
     [HttpGet]
+    [RequireSection("section-users-roles")]
     public async Task<ActionResult<IReadOnlyList<RoleDto>>> GetAll(CancellationToken ct)
         => Ok(await sender.Send(new GetRolesQuery(), ct));
 
     /// <summary>Lists roles with search and offset pagination for scroll-based list pages.</summary>
     [HttpGet("paged")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PagedResult<RoleDto>>> GetPaged(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -31,6 +34,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
 
     /// <summary>Creates a new role.</summary>
     [HttpPost]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> Create(CreateRoleRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new CreateRoleCommand(request.Name), ct);
@@ -39,6 +43,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
 
     /// <summary>Deletes a role.</summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new DeleteRoleCommand(id), ct);

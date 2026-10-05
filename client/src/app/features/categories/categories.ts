@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CanRenderDirective } from '../../core/directives/can-render.directive';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { CategoryService } from '../../core/auth/category.service';
 import type { CategoryDto } from '../../core/models/auth.models';
@@ -14,7 +15,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-categories',
   standalone: true,
-  imports: [FormsModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, CanRenderDirective],
   templateUrl: './categories.html',
   styleUrl: './categories.scss',
 })

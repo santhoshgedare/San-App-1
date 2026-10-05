@@ -1,16 +1,18 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatBadgeModule } from '@angular/material/badge';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../../shared/select-defaults';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ItemService } from '../../core/auth/item.service';
 import { CategoryService } from '../../core/auth/category.service';
 import { CartService } from '../../core/cart/cart.service';
+import { FavouritesService } from '../../core/cart/favourites.service';
 import type { CategoryDto, ItemDto, ItemImageDto, ItemVariantDto } from '../../core/models/auth.models';
 
 const PAGE_SIZE = 12;
@@ -22,13 +24,13 @@ const PAGE_SIZE = 12;
     CommonModule,
     FormsModule,
     CurrencyPipe,
-    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatBadgeModule,
+    MatSelectModule,
     MatSnackBarModule,
   ],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './catalog.html',
   styleUrl: './catalog.scss',
 })
@@ -37,6 +39,7 @@ export class Catalog implements OnInit, OnDestroy {
   private readonly categoryService = inject(CategoryService);
   private readonly cartService = inject(CartService);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly favourites = inject(FavouritesService);
   private readonly router = inject(Router);
   private readonly searchInput$ = new Subject<string>();
 
@@ -44,6 +47,18 @@ export class Catalog implements OnInit, OnDestroy {
 
   readonly items = signal<ItemDto[]>([]);
   readonly categories = signal<CategoryDto[]>([]);
+  readonly selectedCategory = computed(() =>
+    this.categories().find((category) => category.id === this.selectedCategoryId()),
+  );
+  readonly sortLabel = computed(
+    () =>
+      ({
+        popular: 'Most relevant',
+        'price-asc': 'Price: Low to High',
+        'price-desc': 'Price: High to Low',
+        name: 'Name: A-Z',
+      })[this.selectedSort()],
+  );
   readonly isLoading = signal(true);
   readonly isLoadingMore = signal(false);
   readonly totalCount = signal(0);
@@ -54,8 +69,6 @@ export class Catalog implements OnInit, OnDestroy {
 
   // Track user-selected variant per item card: itemId -> selectedVariant
   readonly selectedVariants = signal<Record<string, ItemVariantDto>>({});
-
-  readonly cartCount = this.cartService.totalItemsCount;
 
   private page = 1;
   private hasMore = true;
@@ -77,9 +90,17 @@ export class Catalog implements OnInit, OnDestroy {
     this.searchInput$.next(value);
   }
 
-  selectCategory(categoryId: string): void {
-    this.selectedCategoryId.set(this.selectedCategoryId() === categoryId ? '' : categoryId);
+  setCategory(categoryId: string): void {
+    this.selectedCategoryId.set(categoryId);
     this.reload();
+  }
+
+  clearFilters(): void {
+    this.selectedCategoryId.set('');
+    this.searchInput$.next('');
+    if (!this.searchTerm()) {
+      this.reload();
+    }
   }
 
   onSortChange(): void {
@@ -205,6 +226,12 @@ export class Catalog implements OnInit, OnDestroy {
     }).onAction().subscribe(() => {
       this.router.navigate(['/cart']);
     });
+  }
+
+  toggleFavourite(item: ItemDto, event: MouseEvent): void {
+    event.stopPropagation();
+    const added = this.favourites.toggle(item.id);
+    this.snackBar.open(added ? 'Added to favourites' : 'Removed from favourites', undefined, { duration: 1800 });
   }
 
   viewDetail(item: ItemDto): void {

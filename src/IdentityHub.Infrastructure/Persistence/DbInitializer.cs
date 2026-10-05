@@ -14,6 +14,8 @@ namespace IdentityHub.Infrastructure.Persistence;
 /// </summary>
 public static class DbInitializer
 {
+    private const string PermissionDefaultsMarkerKey = "system-role-defaults-v2";
+
     public static async Task SeedAsync(IServiceProvider services)
     {
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
@@ -50,6 +52,7 @@ public static class DbInitializer
 
         await SeedModuleAccessAsync(db, roleManager);
         await SeedCatalogDataAsync(db);
+        await SeedSampleItemsAsync(db);
     }
 
     private static async Task SeedCatalogDataAsync(AppDbContext db)
@@ -288,47 +291,235 @@ public static class DbInitializer
         await db.SaveChangesAsync();
     }
 
-    private static async Task SeedModuleAccessAsync(AppDbContext db, RoleManager<ApplicationRole> roleManager)
+    private static async Task SeedSampleItemsAsync(AppDbContext db)
     {
-        if (await db.Modules.AnyAsync())
+        if (await db.Items.AnyAsync(i => i.Code.StartsWith("SMP-")))
         {
             return;
         }
 
-        var userAccessModule = new Module { Name = "User Access Configuration", Key = "module-user-access", SortOrder = 1 };
-        var accountModule = new Module { Name = "Account", Key = "module-account", SortOrder = 2 };
-
-        var usersPage = new Page { Module = userAccessModule, Name = "Users", Url = "/users", SortOrder = 1 };
-        var rolesPage = new Page { Module = userAccessModule, Name = "Roles", Url = "/roles", SortOrder = 2 };
-        var profilePage = new Page { Module = accountModule, Name = "My Profile", Url = "/profile", SortOrder = 1 };
-
-        var usersView = new Section { Page = usersPage, Name = "View Users", Key = "section-users-view", SortOrder = 1 };
-        var usersEditRoles = new Section { Page = usersPage, Name = "Edit User Roles", Key = "section-users-edit-roles", SortOrder = 2 };
-        var usersDeactivate = new Section { Page = usersPage, Name = "Deactivate/Delete Users", Key = "section-users-manage", SortOrder = 3 };
-        var rolesView = new Section { Page = rolesPage, Name = "View Roles", Key = "section-roles-view", SortOrder = 1 };
-        var rolesManage = new Section { Page = rolesPage, Name = "Create/Delete Roles", Key = "section-roles-manage", SortOrder = 2 };
-        var profileView = new Section { Page = profilePage, Name = "View Profile", Key = "section-profile-view", SortOrder = 1 };
-
-        db.Modules.AddRange(userAccessModule, accountModule);
-        db.Pages.AddRange(usersPage, rolesPage, profilePage);
-        db.Sections.AddRange(usersView, usersEditRoles, usersDeactivate, rolesView, rolesManage, profileView);
-        await db.SaveChangesAsync();
-
-        var managerRole = await roleManager.FindByNameAsync(Roles.Manager);
-        if (managerRole is not null)
+        async Task<Category> EnsureCategoryAsync(string name, string description)
         {
-            db.RoleSectionAccesses.AddRange(
-                new RoleSectionAccess { RoleId = managerRole.Id, SectionId = usersView.Id },
-                new RoleSectionAccess { RoleId = managerRole.Id, SectionId = usersEditRoles.Id },
-                new RoleSectionAccess { RoleId = managerRole.Id, SectionId = profileView.Id });
+            var existing = await db.Categories.FirstOrDefaultAsync(c => c.Name == name);
+            if (existing is not null)
+            {
+                return existing;
+            }
+
+            var created = new Category
+            {
+                Name = name,
+                Description = description,
+                IsActive = true,
+                UnitOfMeasurement = UnitOfMeasurement.Piece
+            };
+            db.Categories.Add(created);
+            await db.SaveChangesAsync();
+            return created;
         }
 
-        var userRole = await roleManager.FindByNameAsync(Roles.User);
-        if (userRole is not null)
+        var bangles = await EnsureCategoryAsync("Bangles", "Handmade bangles and bangle sets.");
+        var electronics = await EnsureCategoryAsync("Electronics & Audio", "Premium audio gear and digital accessories.");
+        var apparel = await EnsureCategoryAsync("Apparel & Activewear", "Technical fabrics and modern apparel.");
+
+        var samples = new (Guid Category, string Code, string Name, string Description, decimal Price, decimal Cost, int Stock, string[] Options)[]
         {
-            db.RoleSectionAccesses.Add(new RoleSectionAccess { RoleId = userRole.Id, SectionId = profileView.Id });
+            (bangles.Id, "SMP-BAN-01", "Royal Maroon Silk Thread Bangles", "Silk thread bangles in deep maroon with fine gold detailing.", 450m, 220m, 40, ["2/4", "2/6", "2/8"]),
+            (bangles.Id, "SMP-BAN-02", "Pearl Kundan Bridal Set", "Kundan stone bangles finished with delicate pearl accents.", 1250m, 640m, 25, ["2/4", "2/6"]),
+            (bangles.Id, "SMP-BAN-03", "Emerald Green Glass Bangles", "Glossy emerald glass bangles with a subtle metallic edge.", 320m, 150m, 60, ["2/4", "2/6", "2/8"]),
+            (bangles.Id, "SMP-BAN-04", "Antique Gold Polish Kada", "Wide kada with an antique gold polish and hand-set stones.", 890m, 430m, 18, []),
+            (bangles.Id, "SMP-BAN-05", "Peach Blossom Thread Set", "Soft peach thread bangles with floral beadwork.", 380m, 170m, 35, ["2/4", "2/6"]),
+            (bangles.Id, "SMP-BAN-06", "Midnight Blue Kundan Bangles", "Deep blue kundan bangles with gold-toned borders.", 760m, 360m, 22, ["2/4", "2/6", "2/8"]),
+            (bangles.Id, "SMP-BAN-07", "Rose Quartz Beaded Bangles", "Rose quartz beads strung on a flexible band.", 540m, 250m, 30, []),
+            (bangles.Id, "SMP-BAN-08", "Temple Pattern Stack Set", "A stack of six temple-pattern bangles in antique tones.", 980m, 480m, 15, ["Set of 6"]),
+            (bangles.Id, "SMP-BAN-09", "Ivory Lace Thread Bangles", "Ivory thread bangles with lace-style detailing.", 290m, 130m, 50, ["2/4", "2/6"]),
+            (bangles.Id, "SMP-BAN-10", "Golden Meenakari Bangles", "Colourful meenakari work on gold-toned bangles.", 1100m, 540m, 12, ["2/4", "2/6"]),
+            (electronics.Id, "SMP-ELE-01", "Compact Bluetooth Speaker", "Portable speaker with clear sound and 12-hour battery.", 79m, 38m, 70, ["Black", "Blue"]),
+            (electronics.Id, "SMP-ELE-02", "True Wireless Earbuds", "In-ear earbuds with a charging case.", 59m, 27m, 90, ["White", "Black"]),
+            (electronics.Id, "SMP-ELE-03", "Fast Charge Power Bank 20000mAh", "High-capacity power bank with dual USB output.", 45m, 21m, 110, []),
+            (electronics.Id, "SMP-ELE-04", "Studio Monitor Headphones", "Wired over-ear headphones tuned for accurate sound.", 129m, 64m, 40, []),
+            (electronics.Id, "SMP-ELE-05", "Smart Fitness Band", "Activity tracker with heart-rate and sleep monitoring.", 49m, 22m, 80, ["Black", "Teal"]),
+            (electronics.Id, "SMP-ELE-06", "USB-C Braided Cable 2m", "Durable braided charging cable.", 12m, 4m, 200, []),
+            (apparel.Id, "SMP-APP-01", "Everyday Cotton Tee", "Soft midweight cotton tee with a relaxed fit.", 24m, 9m, 150, ["S", "M", "L", "XL"]),
+            (apparel.Id, "SMP-APP-02", "Performance Running Shorts", "Lightweight quick-dry shorts with a zip pocket.", 34m, 14m, 100, ["S", "M", "L"]),
+            (apparel.Id, "SMP-APP-03", "Fleece Zip Hoodie", "Warm fleece hoodie with a full zip.", 69m, 31m, 60, ["M", "L", "XL"]),
+            (apparel.Id, "SMP-APP-04", "Trail Hiking Pants", "Stretch hiking pants with water-resistant finish.", 84m, 38m, 45, ["S", "M", "L"]),
+            (apparel.Id, "SMP-APP-05", "Merino Base Layer", "Breathable merino wool base layer.", 74m, 35m, 55, []),
+            (apparel.Id, "SMP-APP-06", "Packable Rain Jacket", "Ultralight rain jacket that folds into its pocket.", 99m, 46m, 38, ["M", "L"]),
+        };
+
+        foreach (var s in samples)
+        {
+            var item = new Item
+            {
+                Code = s.Code,
+                Name = s.Name,
+                Description = s.Description,
+                CategoryId = s.Category,
+                UnitOfMeasurement = UnitOfMeasurement.Piece,
+                Price = s.Price,
+                CostPrice = s.Cost,
+                StockQuantity = s.Stock,
+                IsActive = true,
+                Images =
+                [
+                    new ItemImage
+                    {
+                        Url = $"https://picsum.photos/seed/{s.Code.ToLowerInvariant()}/800/800",
+                        FileName = $"{s.Code.ToLowerInvariant()}.jpg",
+                        Caption = s.Name,
+                        IsPrimary = true,
+                        SortOrder = 1
+                    }
+                ]
+            };
+
+            if (s.Options.Length > 1)
+            {
+                var perVariant = Math.Max(1, s.Stock / s.Options.Length);
+                item.Variants = s.Options.Select((option, index) => new ItemVariant
+                {
+                    Sku = $"{s.Code}-{index + 1:00}",
+                    Name = option,
+                    AttributesJson = $"{{\"Option\":\"{option}\"}}",
+                    Price = s.Price,
+                    CostPrice = s.Cost,
+                    StockQuantity = perVariant,
+                    IsActive = true
+                }).ToList();
+            }
+
+            db.Items.Add(item);
         }
 
         await db.SaveChangesAsync();
+    }
+    private static async Task SeedModuleAccessAsync(AppDbContext db, RoleManager<ApplicationRole> roleManager)
+    {
+        var shouldSeedRoleDefaults = !await db.Modules.AnyAsync(module => module.Key == PermissionDefaultsMarkerKey);
+        var sections = new Dictionary<string, Section>(StringComparer.Ordinal);
+
+        async Task<Module> EnsureModuleAsync(string key, string name, int sortOrder)
+        {
+            var module = await db.Modules.FirstOrDefaultAsync(value => value.Key == key);
+            if (module is not null) return module;
+
+            module = new Module { Name = name, Key = key, SortOrder = sortOrder };
+            db.Modules.Add(module);
+            return module;
+        }
+
+        async Task<Page> EnsurePageAsync(Module module, string name, string url, int sortOrder)
+        {
+            var page = await db.Pages.FirstOrDefaultAsync(value => value.Url == url);
+            if (page is not null) return page;
+
+            page = new Page { Module = module, Name = name, Url = url, SortOrder = sortOrder };
+            db.Pages.Add(page);
+            return page;
+        }
+
+        async Task EnsureSectionAsync(Page page, string name, string key, int sortOrder)
+        {
+            var section = await db.Sections.FirstOrDefaultAsync(value => value.Key == key);
+            if (section is null)
+            {
+                section = new Section { Page = page, Name = name, Key = key, SortOrder = sortOrder };
+                db.Sections.Add(section);
+            }
+            sections[key] = section;
+        }
+
+        async Task<Page> AddPageAsync(Module module, string name, string url, int sortOrder, params (string Name, string Key)[] pageSections)
+        {
+            var page = await EnsurePageAsync(module, name, url, sortOrder);
+            for (var index = 0; index < pageSections.Length; index++)
+            {
+                var (sectionName, key) = pageSections[index];
+                await EnsureSectionAsync(page, sectionName, key, index + 1);
+            }
+            return page;
+        }
+
+        var storefront = await EnsureModuleAsync("module-storefront", "Storefront", 1);
+        var inventory = await EnsureModuleAsync("module-inventory", "Inventory", 2);
+        var administration = await EnsureModuleAsync("module-administration", "Administration", 3);
+        var account = await EnsureModuleAsync("module-account", "Account & Settings", 4);
+        var analytics = await EnsureModuleAsync("module-analytics", "Analytics & Reports", 5);
+
+        await AddPageAsync(storefront, "Product Catalog", "/catalog", 1, ("View Catalog", "section-catalog-view"));
+        await AddPageAsync(storefront, "Shopping Cart", "/cart", 2, ("View Cart", "section-cart-view"));
+        await AddPageAsync(storefront, "Checkout", "/checkout", 3, ("Place Orders", "section-checkout-create"));
+        await AddPageAsync(storefront, "Orders", "/orders", 4,
+            ("View Own Orders", "section-orders-view"),
+            ("Manage Order Fulfillment", "section-orders-manage"),
+            ("Verify Payments", "section-orders-payment"),
+            ("Process Refunds", "section-orders-refund"));
+        await AddPageAsync(inventory, "Categories", "/categories", 1,
+            ("View Categories", "section-categories-view"),
+            ("Manage Categories", "section-categories-manage"));
+        await AddPageAsync(inventory, "Items", "/items", 2,
+            ("View Items", "section-items-view"),
+            ("Manage Items", "section-items-manage"));
+        await AddPageAsync(administration, "Users", "/users", 1,
+            ("View Users", "section-users-view"),
+            ("Manage Users", "section-users-manage"),
+            ("Assign User Roles", "section-users-roles"));
+        await AddPageAsync(administration, "Roles", "/roles", 2,
+            ("View Roles", "section-roles-view"),
+            ("Manage Roles & Access", "section-roles-manage"));
+        await AddPageAsync(administration, "Approval Workflows", "/approval-workflows", 3,
+            ("View Approval Workflows", "section-approval-workflows-view"),
+            ("Manage Approval Workflows", "section-approval-workflows-manage"));
+        await AddPageAsync(account, "My Profile", "/profile", 1,
+            ("View Profile", "section-profile-view"));
+        await AddPageAsync(account, "Payment Settings", "/payment-settings", 2,
+            ("View Payment Settings", "section-payment-settings-view"),
+            ("Manage Payment Settings", "section-payment-settings-manage"));
+        await AddPageAsync(analytics, "Dashboard & Reports", "/dashboard", 1,
+            ("View Dashboard", "section-dashboard-view"),
+            ("View Profit & Loss Reports", "section-reports-view"));
+
+        await db.SaveChangesAsync();
+
+        async Task GrantMissingAsync(string roleName, params string[] sectionKeys)
+        {
+            var role = await roleManager.FindByNameAsync(roleName);
+            if (role is null) return;
+
+            var sectionIds = sectionKeys.Select(key => sections[key].Id).ToArray();
+            var existingIds = await db.RoleSectionAccesses
+                .Where(access => access.RoleId == role.Id && sectionIds.Contains(access.SectionId))
+                .Select(access => access.SectionId)
+                .ToListAsync();
+
+            foreach (var sectionId in sectionIds.Except(existingIds))
+            {
+                db.RoleSectionAccesses.Add(new RoleSectionAccess { RoleId = role.Id, SectionId = sectionId });
+            }
+        }
+
+        if (shouldSeedRoleDefaults)
+        {
+            await GrantMissingAsync(Roles.Manager,
+                "section-dashboard-view", "section-reports-view",
+                "section-catalog-view", "section-cart-view", "section-checkout-create",
+                "section-orders-view", "section-orders-manage", "section-orders-payment", "section-orders-refund",
+                "section-categories-view", "section-categories-manage", "section-items-view", "section-items-manage",
+                "section-users-view", "section-profile-view",
+                "section-payment-settings-view", "section-payment-settings-manage");
+            await GrantMissingAsync(Roles.User,
+                "section-catalog-view", "section-cart-view", "section-checkout-create",
+                "section-orders-view", "section-profile-view");
+
+            db.Modules.Add(new Module
+            {
+                Name = "Permission Defaults Marker",
+                Key = PermissionDefaultsMarkerKey,
+                IsActive = false,
+                SortOrder = int.MaxValue
+            });
+            await db.SaveChangesAsync();
+        }
     }
 }

@@ -2,16 +2,16 @@
   <div>
     <h2 class="mb-1 h4 fw-bold">
       @if (isNew()) {
-        New User
+      New User
       } @else {
-        {{ user()?.firstName }} {{ user()?.lastName }}
+      {{ user()?.firstName }} {{ user()?.lastName }}
       }
     </h2>
     <p class="text-muted mb-0 small">
       @if (isNew()) {
-        Provision a new user account and assign roles.
+      Provision a new user account and assign roles.
       } @else {
-        View and edit account details, status, and role assignments.
+      View and edit account details, status, and role assignments.
       }
     </p>
   </div>
@@ -21,125 +21,121 @@
 </div>
 
 @if (isLoading()) {
-  <p>Loading…</p>
+<p>Loading…</p>
 } @else {
-  <div class="row g-3">
-    <div class="col-12">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          @if (errorMessage(); as message) {
-            <div class="alert alert-danger py-2 small">{{ message }}</div>
-          }
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        @if (errorMessage(); as message) {
+        <div class="alert alert-danger py-2 small">{{ message }}</div>
+        }
 
-          <div class="section-card-header">
-            <span class="icon-avatar"><mat-icon>badge</mat-icon></span>
-            <span>Account Details</span>
-          </div>
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>badge</mat-icon></span>
+          <span>Account Details</span>
+        </div>
 
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Email</label>
-              @if (isNew()) {
-                <input type="email" class="form-control" [(ngModel)]="email" placeholder="user@example.com" />
-              } @else {
-                <input type="email" class="form-control" [value]="user()?.email" disabled />
-              }
-            </div>
-
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
             @if (isNew()) {
-              <div class="col-md-6">
-                <label class="form-label">Password</label>
-                <input type="password" class="form-control" [(ngModel)]="password" placeholder="At least 8 characters" />
-              </div>
+            <input type="email" class="form-control" [(ngModel)]="email" placeholder="user@example.com" />
+            } @else {
+            <input type="email" class="form-control" [value]="user()?.email" disabled />
             }
-
-            <div class="col-md-6">
-              <label class="form-label">First name</label>
-              <input type="text" class="form-control" [(ngModel)]="firstName" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Last name</label>
-              <input type="text" class="form-control" [(ngModel)]="lastName" />
-            </div>
           </div>
 
-          @if (!isNew()) {
-            <div class="mb-3 mt-3 form-check form-switch">
-              <input type="checkbox" class="form-check-input" id="isActive" [(ngModel)]="isActive" />
-              <label class="form-check-label" for="isActive">Active</label>
-            </div>
-
-            <div class="row g-3 mb-3 text-muted small">
-              <div class="col-md-3">
-                <div class="fw-semibold">Created</div>
-                <div>{{ user()?.createdAt | date: 'medium' }}</div>
-              </div>
-              <div class="col-md-3">
-                <div class="fw-semibold">Last login</div>
-                <div>{{ user()?.lastLoginAt ? (user()!.lastLoginAt | date: 'medium') : '—' }}</div>
-              </div>
-            </div>
+          @if (isNew()) {
+          <div class="col-md-6">
+            <label class="form-label">Password</label>
+            <app-password-field [(ngModel)]="password" autocomplete="new-password" placeholder="At least 8 characters" />
+          </div>
           }
 
-          <hr />
-          <div class="section-card-header">
-            <span class="icon-avatar"><mat-icon>admin_panel_settings</mat-icon></span>
-            <span>Roles</span>
+          <div class="col-md-6">
+            <label class="form-label">First name</label>
+            <input type="text" class="form-control" [(ngModel)]="firstName" />
           </div>
-          <div class="mb-4">
-            @for (role of roles(); track role.id) {
-              <div class="form-check form-check-inline">
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  [id]="'role-' + role.id"
-                  [checked]="isRoleSelected(role.name)"
-                  (change)="toggleRole(role.name, $any($event.target).checked)"
-                />
-                <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
-              </div>
+          <div class="col-md-6">
+            <label class="form-label">Last name</label>
+            <input type="text" class="form-control" [(ngModel)]="lastName" />
+          </div>
+        </div>
+
+        @if (!isNew()) {
+        <div class="mb-3 mt-3 form-check form-switch">
+          <input type="checkbox" class="form-check-input" id="isActive" [(ngModel)]="isActive" />
+          <label class="form-check-label" for="isActive">Active</label>
+        </div>
+
+        <div class="row g-3 mb-3 text-muted small">
+          <div class="col-md-3">
+            <div class="fw-semibold">Created</div>
+            <div>{{ user()?.createdAt | date: 'medium' }}</div>
+          </div>
+          <div class="col-md-3">
+            <div class="fw-semibold">Last login</div>
+            <div>{{ user()?.lastLoginAt ? (user()!.lastLoginAt | date: 'medium') : '—' }}</div>
+          </div>
+        </div>
+        }
+
+        @if (sectionAccess.can('section-users-roles')) {
+        <hr />
+        <div class="section-card-header">
+          <span class="icon-avatar"><mat-icon>admin_panel_settings</mat-icon></span>
+          <span>Roles</span>
+        </div>
+        }
+        <div class="mb-4">
+          @for (role of roles(); track role.id) {
+          <div class="form-check form-check-inline">
+            <input type="checkbox" class="form-check-input" [id]="'role-' + role.id"
+              [checked]="isRoleSelected(role.name)" (change)="toggleRole(role.name, $any($event.target).checked)" />
+            <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+          </div>
+          }
+        </div>
+
+        <div class="d-flex justify-content-between mt-3">
+          <div>
+            @if (!isNew() && sectionAccess.can('section-users-manage')) {
+            <button type="button" mat-stroked-button color="warn" (click)="remove()">
+              <mat-icon>delete</mat-icon> Delete User
+            </button>
             }
           </div>
-
-          <div class="d-flex justify-content-between mt-3">
-            <div>
-              @if (!isNew()) {
-                <button type="button" mat-stroked-button color="warn" (click)="remove()">
-                  <mat-icon>delete</mat-icon> Delete User
-                </button>
+          <div class="d-flex gap-2">
+            <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
+            <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
+              @if (isSaving()) {
+              Saving…
+              } @else {
+              <ng-container><mat-icon>save</mat-icon> Save</ng-container>
               }
-            </div>
-            <div class="d-flex gap-2">
-              <button type="button" mat-stroked-button (click)="cancel()">Cancel</button>
-              <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
-                @if (isSaving()) {
-                  Saving…
-                } @else {
-                  <ng-container><mat-icon>save</mat-icon> Save</ng-container>
-                }
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </div>
     </div>
-
-    @if (!isNew() && user()) {
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <app-approval-panel [entityType]="entityType" [entityId]="user()!.id" requestTitle="User change approval" />
-          </div>
-        </div>
-      </div>
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <app-activity-log-panel [entityType]="entityType" [entityId]="user()!.id" />
-          </div>
-        </div>
-      </div>
-    }
   </div>
-}
 
+  @if (!isNew() && user()) {
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <app-approval-panel [entityType]="entityType" [entityId]="user()!.id" requestTitle="User change approval" />
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <app-activity-log-panel [entityType]="entityType" [entityId]="user()!.id" />
+      </div>
+    </div>
+  </div>
+  }
+</div>
+}

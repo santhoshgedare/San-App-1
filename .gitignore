@@ -2,6 +2,8 @@
 bin/
 obj/
 *.user
+src/IdentityHub.Api/appsettings.Production.json
+src/IdentityHub.Api/appsettings.Local.json
 
 # Angular / Node
 client/node_modules/

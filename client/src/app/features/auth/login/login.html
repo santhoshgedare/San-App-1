@@ -2,51 +2,73 @@
   <div class="card auth-card shadow-sm">
     <div class="card-body p-4">
       <div class="text-center mb-4">
-        <img
-          src="logo.png"
-          alt="SRIVIDIKA Logo"
-          class="auth-logo mb-2"
-          #authImg
-          (error)="authImg.classList.add('d-none'); authFallback.classList.remove('d-none')"
-        />
+        <img src="logo.png" alt="SRIVIDIKA Logo" class="auth-logo mb-2" #authImg
+          (error)="authImg.classList.add('d-none'); authFallback.classList.remove('d-none')" />
         <h3 class="mt-2 mb-0 d-none" #authFallback>SRIVIDIKA</h3>
         <p class="text-muted small">Sign in to your account</p>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="submit()">
         <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input type="email" class="form-control" formControlName="email" autocomplete="email" placeholder="you@example.com" />
+          <label for="login-email" class="form-label">Email</label>
+          <input id="login-email" type="email" class="form-control" formControlName="email" autocomplete="email"
+            placeholder="you@example.com" />
           @if (form.controls.email.invalid && form.controls.email.touched) {
-            <div class="form-text text-danger">A valid email is required.</div>
+          <div class="form-text text-danger">A valid email is required.</div>
           }
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Password</label>
-          <input type="password" class="form-control" formControlName="password" autocomplete="current-password" placeholder="��������" />
+          <div class="d-flex align-items-center justify-content-between">
+            <label for="login-password" class="form-label">Password</label>
+            <a class="forgot-link small" routerLink="/forgot-password">Forgot password?</a>
+          </div>
+          <app-password-field inputId="login-password" formControlName="password" autocomplete="current-password"
+            placeholder="Password" />
           @if (form.controls.password.invalid && form.controls.password.touched) {
-            <div class="form-text text-danger">Password is required.</div>
+          <div class="form-text text-danger">Password is required.</div>
           }
         </div>
 
         @if (errorMessage(); as message) {
-          <div class="alert alert-danger py-2 small">{{ message }}</div>
+        <div class="alert alert-danger py-2 small" role="alert">{{ message }}</div>
         }
 
         <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
           @if (isSubmitting()) {
-            <span class="spinner-border spinner-border-sm me-2"></span>
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
           }
-          {{ isSubmitting() ? 'Signing in�' : 'Sign In' }}
+          {{ isSubmitting() ? 'Signing in...' : 'Sign In' }}
         </button>
       </form>
 
+      <div class="social-login" aria-label="Other sign-in options">
+        <div class="social-divider"><span>or continue with</span></div>
+        <div class="social-provider-list">
+          @for (provider of externalProviders(); track provider.provider) {
+          <button type="button" class="btn btn-outline-secondary social-provider"
+            [disabled]="!provider.enabled || isSubmitting()" (click)="beginExternalLogin(provider)">
+            @if (provider.provider === 'google') {
+            <i class="bi bi-google google-mark" aria-hidden="true"></i>
+            } @else {
+            <i class="bi bi-facebook facebook-mark" aria-hidden="true"></i>
+            }
+            <span>{{ provider.displayName }}</span>
+          </button>
+          }
+        </div>
+        @if (providerDiscoveryFailed()) {
+        <p class="provider-note" role="status">Provider status is unavailable. Restart the API and reload to check
+          sign-in options.</p>
+        } @else if (providersLoading()) {
+        <p class="provider-note" role="status">Checking sign-in options...</p>
+        } @else if (!externalProviders().some((provider) => provider.enabled)) {
+        <p class="provider-note">Social sign-in is not configured yet.</p>
+        }
+      </div>
+
       <p class="text-center small mt-3 mb-0">
         Don't have an account? <a routerLink="/register" [queryParams]="{ returnUrl: returnUrl() }">Create one</a>
-      </p>
-      <p class="text-center text-muted mt-2 mb-0" style="font-size: 0.75rem;">
-        Demo admin: admin&#64;identityhub.local / Admin&#64;12345
       </p>
     </div>
   </div>

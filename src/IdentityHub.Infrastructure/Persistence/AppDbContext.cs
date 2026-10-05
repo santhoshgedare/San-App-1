@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ItemImage> ItemImages => Set<ItemImage>();
     public DbSet<ItemDocument> ItemDocuments => Set<ItemDocument>();
     public DbSet<ItemVariant> ItemVariants => Set<ItemVariant>();
+    public DbSet<ItemReview> ItemReviews => Set<ItemReview>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PaymentSettings> PaymentSettings => Set<PaymentSettings>();
@@ -204,6 +205,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(v => v.CostPrice).HasPrecision(18, 2);
         });
 
+        builder.Entity<ItemReview>(entity =>
+        {
+            entity.HasQueryFilter(r => !r.Item!.IsDeleted);
+            entity.Property(r => r.ReviewerName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.Title).HasMaxLength(150);
+            entity.Property(r => r.Comment).HasMaxLength(2000);
+
+            entity.HasOne(r => r.Item).WithMany().HasForeignKey(r => r.ItemId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(r => r.OrderItemId).IsUnique();
+            entity.HasIndex(r => new { r.ItemId, r.CreatedAt });
+        });
+
         builder.Entity<Order>(entity =>
         {
             entity.HasQueryFilter(o => !o.IsDeleted);
@@ -247,6 +261,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(i => i.VariantName).HasMaxLength(200);
             entity.Property(i => i.AttributesJson).HasMaxLength(1000);
             entity.Property(i => i.UnitPrice).HasPrecision(18, 2);
+            entity.Property(i => i.UnitCostPrice).HasPrecision(18, 2);
             entity.Property(i => i.TotalPrice).HasPrecision(18, 2);
 
             entity.HasOne(i => i.Item).WithMany().HasForeignKey(i => i.ItemId).OnDelete(DeleteBehavior.Restrict);

@@ -2,6 +2,8 @@ import { Component, OnChanges, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { SELECT_DEFAULTS } from '../select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApprovalService } from '../../core/auth/approval.service';
@@ -22,7 +24,8 @@ import type { UserDto } from '../../core/models/auth.models';
 @Component({
   selector: 'app-approval-panel',
   standalone: true,
-  imports: [DatePipe, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [DatePipe, FormsModule, MatIconModule, MatSelectModule, MatButtonModule, MatTooltipModule],
+  providers: [SELECT_DEFAULTS],
   templateUrl: './approval-panel.html',
   styleUrl: './approval-panel.scss',
 })

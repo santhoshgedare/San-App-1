@@ -14,6 +14,12 @@ public interface IOrderService
         int page,
         int pageSize,
         CancellationToken ct = default);
+    Task<ProfitLossReportDto> GetProfitLossReportAsync(
+        DateTimeOffset startInclusive,
+        DateTimeOffset endExclusive,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken ct = default);
     Task<Result<OrderDto>> CreateAsync(
         Guid? customerId,
         string customerName,

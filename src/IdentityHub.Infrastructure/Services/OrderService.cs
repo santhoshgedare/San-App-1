@@ -79,6 +79,56 @@ public sealed class OrderService(
         };
     }
 
+    public async Task<ProfitLossReportDto> GetProfitLossReportAsync(
+        DateTimeOffset startInclusive,
+        DateTimeOffset endExclusive,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken ct = default)
+    {
+        var settledOrders = db.Orders.AsNoTracking()
+            .Where(order => order.CreatedAt >= startInclusive &&
+                order.CreatedAt < endExclusive &&
+                (order.PaymentStatus == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.Refunded));
+        var refundedOrders = settledOrders.Where(order => order.PaymentStatus == PaymentStatus.Refunded);
+
+        var paidOrderCount = await settledOrders.CountAsync(order => order.PaymentStatus == PaymentStatus.Paid, ct);
+        var refundedOrderCount = await refundedOrders.CountAsync(ct);
+        var legacyRefundCount = await refundedOrders.CountAsync(
+            order => order.RefundAmount == null || order.RefundReferenceNumber == null,
+            ct);
+        var grossSales = await settledOrders.SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+        var refunds = await refundedOrders.SumAsync(order => (decimal?)(order.RefundAmount ?? order.TotalAmount), ct) ?? 0m;
+
+        var settledItems = db.OrderItems.AsNoTracking()
+            .Where(item => item.Order != null &&
+                item.Order.CreatedAt >= startInclusive &&
+                item.Order.CreatedAt < endExclusive &&
+                (item.Order.PaymentStatus == PaymentStatus.Paid || item.Order.PaymentStatus == PaymentStatus.Refunded));
+        var missingCostLineCount = await settledItems.CountAsync(item => item.UnitCostPrice == null, ct);
+        var costOfGoodsSold = await settledItems.SumAsync(
+            item => (decimal?)((item.UnitCostPrice ?? 0m) * item.Quantity),
+            ct) ?? 0m;
+        var isComplete = missingCostLineCount == 0 && legacyRefundCount == 0;
+        var netSales = grossSales - refunds;
+
+        return new ProfitLossReportDto
+        {
+            StartDate = startDate,
+            EndDate = endDate,
+            PaidOrderCount = paidOrderCount,
+            RefundedOrderCount = refundedOrderCount,
+            LegacyRefundCount = legacyRefundCount,
+            MissingCostLineCount = missingCostLineCount,
+            GrossSales = grossSales,
+            Refunds = refunds,
+            NetSales = netSales,
+            CostOfGoodsSold = costOfGoodsSold,
+            GrossProfitOrLoss = isComplete ? netSales - costOfGoodsSold : null,
+            IsComplete = isComplete
+        };
+    }
+
     public async Task<Result<OrderDto>> CreateAsync(
         Guid? customerId,
         string customerName,
@@ -201,6 +251,7 @@ public sealed class OrderService(
                 ImageUrl = product.Images.OrderBy(image => image.SortOrder).FirstOrDefault(image => image.IsPrimary)?.Url
                     ?? product.Images.OrderBy(image => image.SortOrder).FirstOrDefault()?.Url,
                 UnitPrice = unitPrice,
+                UnitCostPrice = variant?.CostPrice ?? product.CostPrice,
                 Quantity = itemInput.Quantity,
                 TotalPrice = lineTotal
             });

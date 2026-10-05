@@ -1,0 +1,50 @@
+﻿<section class="favourites-page">
+  <header class="fav-header">
+    <h1>My Favourites</h1>
+    <p>Pieces you've saved to come back to.</p>
+  </header>
+
+  @if (isLoading()) {
+  <p class="fav-status">Loading your favourites...</p>
+  } @else if (items().length === 0) {
+  <div class="fav-empty">
+    <mat-icon>favorite_border</mat-icon>
+    <h2>No favourites yet</h2>
+    <p>Tap the heart on any product to save it here.</p>
+    <a mat-flat-button color="primary" routerLink="/catalog">Browse the collection</a>
+  </div>
+  } @else {
+  <div class="fav-grid">
+    @for (item of items(); track item.id) {
+    <article class="fav-card" (click)="open(item)">
+      <div class="fav-media">
+        @if (image(item); as url) {
+        <img [src]="url" [alt]="item.name" loading="lazy" />
+        } @else {
+        <mat-icon class="no-img">image_not_supported</mat-icon>
+        }
+        <button type="button" class="fav-heart active" aria-label="Remove from favourites"
+          (click)="$event.stopPropagation(); remove(item)">
+          <mat-icon>favorite</mat-icon>
+        </button>
+      </div>
+      <div class="fav-body">
+        @if (item.categoryName) {
+        <span class="fav-category">{{ item.categoryName }}</span>
+        }
+        <h3>{{ item.name }}</h3>
+        <div class="fav-footer">
+          <span class="fav-price">
+            @if (item.variants.length > 1) {<small>from </small>}{{ startingPrice(item) | currency }}
+          </span>
+          <button type="button" class="fav-add" (click)="$event.stopPropagation(); addToCart(item)"
+            [attr.aria-label]="item.variants.length > 0 ? 'Choose options' : 'Add to cart'">
+            <mat-icon>{{ item.variants.length > 0 ? 'tune' : 'add_shopping_cart' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+    </article>
+    }
+  </div>
+  }
+</section>

@@ -5,16 +5,19 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { PaymentSettingsService } from '../../core/auth/payment-settings.service';
+import { SectionAccessStore } from '../../core/auth/section-access.store';
+import { CanRenderDirective } from '../../core/directives/can-render.directive';
 
 @Component({
   selector: 'app-payment-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatSnackBarModule, CanRenderDirective],
   templateUrl: './payment-settings.html',
   styleUrl: './payment-settings.scss',
 })
 export class PaymentSettingsComponent implements OnInit {
   private readonly paymentSettingsService = inject(PaymentSettingsService);
+  protected readonly sectionAccess = inject(SectionAccessStore);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly isLoading = signal(true);
@@ -25,6 +28,10 @@ export class PaymentSettingsComponent implements OnInit {
   payeeName = '';
   instructions = '';
   qrCodeImageUrl: string | null = null;
+
+  canManageSettings(): boolean {
+    return this.sectionAccess.can('section-payment-settings-manage');
+  }
 
   ngOnInit(): void {
     this.paymentSettingsService.get().subscribe({

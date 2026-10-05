@@ -13,6 +13,7 @@ public sealed class ModuleAccessService(AppDbContext db, RoleManager<Application
     public async Task<IReadOnlyList<ModuleDto>> GetModuleTreeAsync(CancellationToken ct)
     {
         var modules = await db.Modules
+            .Where(module => module.IsActive)
             .Include(m => m.Pages)
             .ThenInclude(p => p.Sections)
             .OrderBy(m => m.SortOrder)
@@ -146,10 +147,15 @@ public sealed class ModuleAccessService(AppDbContext db, RoleManager<Application
             return Result.Failure("Role not found.");
         }
 
+        var requestedKeys = sectionKeys.Distinct(StringComparer.Ordinal).ToArray();
         var sectionIds = await db.Sections
-            .Where(s => sectionKeys.Contains(s.Key))
+            .Where(section => requestedKeys.Contains(section.Key) && section.IsActive && section.Page!.IsActive && section.Page.Module!.IsActive)
             .Select(s => s.Id)
             .ToListAsync(ct);
+        if (sectionIds.Count != requestedKeys.Length)
+        {
+            return Result.Failure("One or more permission sections are invalid or inactive.");
+        }
 
         var existing = await db.RoleSectionAccesses.Where(r => r.RoleId == roleId).ToListAsync(ct);
         db.RoleSectionAccesses.RemoveRange(existing);
@@ -177,7 +183,10 @@ public sealed class ModuleAccessService(AppDbContext db, RoleManager<Application
 
         return await db.RoleSectionAccesses
             .Include(r => r.Section)
-            .Where(r => roleIds.Contains(r.RoleId))
+            .Where(r => roleIds.Contains(r.RoleId) &&
+                r.Section!.IsActive &&
+                r.Section.Page!.IsActive &&
+                r.Section.Page.Module!.IsActive)
             .Select(r => r.Section!.Key)
             .Distinct()
             .ToListAsync(ct);

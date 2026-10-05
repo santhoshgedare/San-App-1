@@ -1,4 +1,5 @@
 using IdentityHub.Api.Contracts;
+using IdentityHub.Api.Authorization;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.Categories.Commands.CreateCategory;
 using IdentityHub.Application.Features.Categories.Commands.DeleteCategory;
@@ -45,7 +46,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Creates a new category master with unit of measurement and variant definitions.</summary>
     [HttpPost]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-categories-manage")]
     public async Task<ActionResult<CategoryDto>> Create(CreateCategoryRequest request, CancellationToken ct)
     {
         var variantInputs = (request.VariantDefinitions ?? [])
@@ -66,7 +67,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Updates an existing category.</summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-categories-manage")]
     public async Task<IActionResult> Update(Guid id, UpdateCategoryRequest request, CancellationToken ct)
     {
         var variantInputs = (request.VariantDefinitions ?? [])
@@ -86,7 +87,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Soft-deletes a category.</summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-categories-manage")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new DeleteCategoryCommand(id), ct);

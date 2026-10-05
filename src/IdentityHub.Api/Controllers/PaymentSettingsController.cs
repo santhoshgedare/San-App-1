@@ -1,4 +1,5 @@
 using IdentityHub.Api.Contracts;
+using IdentityHub.Api.Authorization;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.PaymentSettings.Commands.UpdatePaymentSettings;
 using IdentityHub.Application.Features.PaymentSettings.Queries.GetPaymentSettings;
@@ -24,7 +25,7 @@ public sealed class PaymentSettingsController(ISender sender) : ControllerBase
 
     /// <summary>Updates the store's UPI ID, QR code image, and payment instructions.</summary>
     [HttpPut]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [RequireSection("section-payment-settings-manage")]
     public async Task<ActionResult<PaymentSettingsDto>> Update(UpdatePaymentSettingsRequest request, CancellationToken ct)
     {
         var updatedByEmail = User.Identity?.Name;

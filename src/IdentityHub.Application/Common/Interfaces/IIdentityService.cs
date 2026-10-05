@@ -10,6 +10,16 @@ public interface IIdentityService
 {
     Task<Result<UserDto>> RegisterAsync(string email, string password, string firstName, string lastName, string? phoneNumber, CancellationToken ct);
     Task<Result<UserDto>> ValidateCredentialsAsync(string email, string password, CancellationToken ct);
+    Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct);
+    Task<Result> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken ct);
+    Task<Result<UserDto>> AuthenticateExternalAsync(
+        string provider,
+        string providerKey,
+        string email,
+        string firstName,
+        string lastName,
+        bool emailVerified,
+        CancellationToken ct);
     Task<UserDto?> FindByIdAsync(Guid userId, CancellationToken ct);
     Task<UserDto?> FindByEmailAsync(string email, CancellationToken ct);
     Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken ct);
@@ -23,6 +33,12 @@ public interface IIdentityService
     Task<PagedResult<RoleDto>> GetRolesPagedAsync(RoleListQuery query, CancellationToken ct);
     Task<Result> CreateRoleAsync(string roleName, CancellationToken ct);
     Task<Result> DeleteRoleAsync(Guid roleId, CancellationToken ct);
+}
+
+public interface IEmailSender
+{
+    bool IsConfigured { get; }
+    Task SendAsync(string recipient, string subject, string htmlBody, string textBody, CancellationToken ct);
 }
 
 /// <summary>Search/filter/pagination parameters for the users list.</summary>

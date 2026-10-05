@@ -87,11 +87,49 @@ export class RoleForm implements OnInit {
   }
 
   toggleSection(key: string, checked: boolean): void {
+    this.toggleKeys([key], checked);
+  }
+
+  isPageChecked(page: ModuleDto['pages'][number]): boolean {
+    const keys = page.sections.filter((section) => section.isActive).map((section) => section.key);
+    return keys.length > 0 && keys.every((key) => this.isSectionChecked(key));
+  }
+
+  isPageIndeterminate(page: ModuleDto['pages'][number]): boolean {
+    const keys = page.sections.filter((section) => section.isActive).map((section) => section.key);
+    const selected = keys.filter((key) => this.isSectionChecked(key)).length;
+    return selected > 0 && selected < keys.length;
+  }
+
+  togglePage(page: ModuleDto['pages'][number], checked: boolean): void {
+    this.toggleKeys(page.sections.filter((section) => section.isActive).map((section) => section.key), checked);
+  }
+
+  isModuleChecked(module: ModuleDto): boolean {
+    const keys = module.pages.flatMap((page) => page.sections.filter((section) => section.isActive).map((section) => section.key));
+    return keys.length > 0 && keys.every((key) => this.isSectionChecked(key));
+  }
+
+  isModuleIndeterminate(module: ModuleDto): boolean {
+    const keys = module.pages.flatMap((page) => page.sections.filter((section) => section.isActive).map((section) => section.key));
+    const selected = keys.filter((key) => this.isSectionChecked(key)).length;
+    return selected > 0 && selected < keys.length;
+  }
+
+  toggleModule(module: ModuleDto, checked: boolean): void {
+    const keys = module.pages.flatMap((page) => page.sections.filter((section) => section.isActive).map((section) => section.key));
+    this.toggleKeys(keys, checked);
+  }
+
+  selectedCount(): number {
+    return this.selectedSectionKeys().size;
+  }
+
+  private toggleKeys(keysToChange: string[], checked: boolean): void {
     const keys = new Set(this.selectedSectionKeys());
-    if (checked) {
-      keys.add(key);
-    } else {
-      keys.delete(key);
+    for (const key of keysToChange) {
+      if (checked) keys.add(key);
+      else keys.delete(key);
     }
     this.selectedSectionKeys.set(keys);
   }
