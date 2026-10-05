@@ -1,3 +1,5 @@
+using System.Data;
+using System.Globalization;
 using System.Security.Cryptography;
 using IdentityHub.Application.Common.Interfaces;
 using IdentityHub.Application.Common.Models;
@@ -96,6 +98,82 @@ public sealed class OrderService(
             return Result<OrderDto>.Failure("An order must contain at least one item.");
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+        var itemIds = items.Select(i => i.ItemId).Distinct().OrderBy(id => id).ToArray();
+        var products = await db.Items
+            .Include(i => i.Variants)
+            .Include(i => i.Images)
+            .Where(i => itemIds.Contains(i.Id) && i.IsActive)
+            .OrderBy(i => i.Id)
+            .ToListAsync(ct);
+        var productsById = products.ToDictionary(i => i.Id);
+        var requestedQuantities = new Dictionary<(Guid ItemId, Guid? VariantId), long>();
+
+        foreach (var itemInput in items)
+        {
+            if (itemInput.Quantity <= 0)
+            {
+                return Result<OrderDto>.Failure("Order quantities must be greater than zero.");
+            }
+
+            if (!productsById.TryGetValue(itemInput.ItemId, out var product))
+            {
+                return Result<OrderDto>.Failure("An item in this order is no longer available.");
+            }
+
+            ItemVariant? variant = null;
+            if (product.Variants.Count > 0)
+            {
+                if (!itemInput.ItemVariantId.HasValue)
+                {
+                    return Result<OrderDto>.Failure($"Choose an available option for {product.Name}.");
+                }
+
+                variant = product.Variants.FirstOrDefault(v => v.Id == itemInput.ItemVariantId.Value && v.IsActive);
+                if (variant is null)
+                {
+                    return Result<OrderDto>.Failure($"The selected option for {product.Name} is no longer available.");
+                }
+            }
+            else if (itemInput.ItemVariantId.HasValue)
+            {
+                return Result<OrderDto>.Failure($"The selected option for {product.Name} is no longer available.");
+            }
+
+            var key = (product.Id, variant?.Id);
+            requestedQuantities[key] = requestedQuantities.GetValueOrDefault(key) + itemInput.Quantity;
+        }
+
+        foreach (var (key, requestedQuantity) in requestedQuantities)
+        {
+            var product = productsById[key.ItemId];
+            var variant = key.VariantId.HasValue
+                ? product.Variants.First(v => v.Id == key.VariantId.Value)
+                : null;
+            var availableQuantity = variant?.StockQuantity ?? product.StockQuantity;
+            var itemLabel = variant is null ? product.Name : $"{product.Name} ({variant.Name})";
+
+            if (availableQuantity < requestedQuantity)
+            {
+                return Result<OrderDto>.Failure(
+                    $"{itemLabel} has only {availableQuantity} in stock; {requestedQuantity} requested.");
+            }
+        }
+
+        foreach (var (key, requestedQuantity) in requestedQuantities)
+        {
+            var product = productsById[key.ItemId];
+            if (key.VariantId.HasValue)
+            {
+                product.Variants.First(v => v.Id == key.VariantId.Value).StockQuantity -= (int)requestedQuantity;
+            }
+            else
+            {
+                product.StockQuantity -= (int)requestedQuantity;
+            }
+        }
+
         var orderNumber = $"ORD-{DateTimeOffset.UtcNow:yyyyMMdd}-{RandomNumberGenerator.GetInt32(10000, 99999)}";
 
         decimal subtotal = 0;
@@ -103,20 +181,26 @@ public sealed class OrderService(
 
         foreach (var itemInput in items)
         {
-            var lineTotal = itemInput.UnitPrice * itemInput.Quantity;
+            var product = productsById[itemInput.ItemId];
+            var variant = itemInput.ItemVariantId.HasValue
+                ? product.Variants.First(v => v.Id == itemInput.ItemVariantId.Value)
+                : null;
+            var unitPrice = variant?.Price ?? product.Price;
+            var lineTotal = unitPrice * itemInput.Quantity;
             subtotal += lineTotal;
 
             orderItems.Add(new OrderItem
             {
-                ItemId = itemInput.ItemId,
-                ItemVariantId = itemInput.ItemVariantId,
-                ItemCode = itemInput.ItemCode,
-                ItemName = itemInput.ItemName,
-                VariantSku = itemInput.VariantSku,
-                VariantName = itemInput.VariantName,
-                AttributesJson = itemInput.AttributesJson,
-                ImageUrl = itemInput.ImageUrl,
-                UnitPrice = itemInput.UnitPrice,
+                ItemId = product.Id,
+                ItemVariantId = variant?.Id,
+                ItemCode = product.Code,
+                ItemName = product.Name,
+                VariantSku = variant?.Sku,
+                VariantName = variant?.Name,
+                AttributesJson = variant?.AttributesJson,
+                ImageUrl = product.Images.OrderBy(image => image.SortOrder).FirstOrDefault(image => image.IsPrimary)?.Url
+                    ?? product.Images.OrderBy(image => image.SortOrder).FirstOrDefault()?.Url,
+                UnitPrice = unitPrice,
                 Quantity = itemInput.Quantity,
                 TotalPrice = lineTotal
             });
@@ -150,13 +234,14 @@ public sealed class OrderService(
 
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         // Record Activity Log
         await activityLogs.LogAsync(
             EntityTypes.Order,
             order.Id.ToString(),
             "Created",
-            $"Order {order.OrderNumber} placed by {order.CustomerName} for {order.TotalAmount:C} ({order.PaymentMethod})",
+            $"Order {order.OrderNumber} placed by {order.CustomerName} for {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} ({order.PaymentMethod})",
             ct);
 
         // Raise approval if approval workflow configured for Orders
@@ -164,7 +249,7 @@ public sealed class OrderService(
             EntityTypes.Order,
             order.Id.ToString(),
             $"Order Approval: {order.OrderNumber}",
-            $"Customer: {order.CustomerName}, Payment Method: {order.PaymentMethod}, Total: {order.TotalAmount:C}",
+            $"Customer: {order.CustomerName}, Payment Method: {order.PaymentMethod}, Total: {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}",
             ct);
 
         return Result<OrderDto>.Success(MapToDto(order));
@@ -177,19 +262,59 @@ public sealed class OrderService(
         string? shippingCarrier,
         CancellationToken ct = default)
     {
-        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+        var order = await db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id, ct);
         if (order is null)
         {
             return Result.Failure("Order not found.");
         }
 
         var oldStatus = order.Status;
+        if (oldStatus == OrderStatus.Cancelled && status != OrderStatus.Cancelled)
+        {
+            return Result.Failure("A cancelled order cannot be reopened.");
+        }
+
+        if (status == OrderStatus.Cancelled && oldStatus is OrderStatus.Shipped or OrderStatus.Delivered)
+        {
+            return Result.Failure("A shipped or delivered order cannot be cancelled.");
+        }
+
+        if (oldStatus != OrderStatus.Cancelled && status == OrderStatus.Cancelled)
+        {
+            var itemIds = order.Items.Select(i => i.ItemId).Distinct().ToArray();
+            var items = await db.Items
+                .IgnoreQueryFilters()
+                .Include(i => i.Variants)
+                .Where(i => itemIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id, ct);
+
+            foreach (var orderItem in order.Items)
+            {
+                if (!items.TryGetValue(orderItem.ItemId, out var item)) continue;
+
+                if (orderItem.ItemVariantId.HasValue)
+                {
+                    var variant = item.Variants.FirstOrDefault(v => v.Id == orderItem.ItemVariantId.Value);
+                    if (variant is not null) variant.StockQuantity += orderItem.Quantity;
+                }
+                else
+                {
+                    item.StockQuantity += orderItem.Quantity;
+                }
+            }
+        }
+
         order.Status = status;
         if (!string.IsNullOrWhiteSpace(trackingNumber)) order.TrackingNumber = trackingNumber.Trim();
         if (!string.IsNullOrWhiteSpace(shippingCarrier)) order.ShippingCarrier = shippingCarrier.Trim();
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         await activityLogs.LogAsync(
             EntityTypes.Order,

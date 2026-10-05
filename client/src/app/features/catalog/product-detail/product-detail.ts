@@ -64,7 +64,10 @@ export class ProductDetail implements OnInit {
         this.parseVariantAttributes(item);
 
         if (item.variants && item.variants.length > 0) {
-          this.selectVariant(item.variants[0]);
+          const firstAvailable = item.variants.find((variant) => variant.isActive && variant.stockQuantity > 0)
+            ?? item.variants.find((variant) => variant.isActive)
+            ?? item.variants[0];
+          this.selectVariant(firstAvailable);
         }
 
         this.isLoading.set(false);
@@ -93,7 +96,7 @@ export class ProductDetail implements OnInit {
           }
           optionsMap[key].add(String(value));
         }
-      } catch {}
+      } catch { }
     }
 
     const keys = Array.from(keySet);
@@ -108,12 +111,15 @@ export class ProductDetail implements OnInit {
 
   selectVariant(variant: ItemVariantDto): void {
     this.selectedVariant.set(variant);
+    if (variant.stockQuantity > 0) {
+      this.quantity.update((quantity) => Math.min(quantity, variant.stockQuantity));
+    }
 
     if (variant.attributesJson) {
       try {
         const parsed = JSON.parse(variant.attributesJson);
         this.selectedAttributeValues.set(parsed);
-      } catch {}
+      } catch { }
     }
   }
 
@@ -126,6 +132,7 @@ export class ProductDetail implements OnInit {
     if (!item || !item.variants) return;
 
     const matched = item.variants.find((v) => {
+      if (!v.isActive) return false;
       if (!v.attributesJson) return false;
       try {
         const parsed = JSON.parse(v.attributesJson);
@@ -146,8 +153,21 @@ export class ProductDetail implements OnInit {
     return this.item()?.price ?? 0;
   }
 
+  getAvailableStock(): number {
+    const item = this.item();
+    if (!item || !item.isActive) return 0;
+    const variant = this.selectedVariant();
+    if (variant) return variant.isActive ? variant.stockQuantity : 0;
+    return item.variants.length > 0 ? 0 : item.stockQuantity;
+  }
+
+  getRemainingStock(): number {
+    const item = this.item();
+    return item ? this.cartService.getRemainingStock(item, this.selectedVariant()) : 0;
+  }
+
   incrementQuantity(): void {
-    this.quantity.update((q) => q + 1);
+    this.quantity.update((q) => Math.min(q + 1, this.getRemainingStock()));
   }
 
   decrementQuantity(): void {
@@ -159,7 +179,10 @@ export class ProductDetail implements OnInit {
     if (!item) return;
 
     const variant = this.selectedVariant();
-    this.cartService.addToCart(item, variant, this.quantity());
+    if (!this.cartService.addToCart(item, variant, this.quantity())) {
+      this.snackBar.open('There is not enough stock available for this quantity.', 'Close', { duration: 3000 });
+      return;
+    }
 
     const variantName = variant ? ` (${variant.name || variant.sku})` : '';
     this.snackBar.open(`Added ${this.quantity()}x "${item.name}${variantName}" to cart!`, 'View Cart', {

@@ -10,19 +10,15 @@
 
 <div class="row g-2 my-3">
   <div class="col-12 col-md-4">
-    <input
-      type="search"
-      class="form-control"
-      placeholder="Search by code, name, barcode…"
-      [ngModel]="searchTerm()"
-      (ngModelChange)="onSearchInput($event)"
-    />
+    <input type="search" class="form-control" placeholder="Search by code, name, barcode…" [ngModel]="searchTerm()"
+      (ngModelChange)="onSearchInput($event)" />
   </div>
   <div class="col-6 col-md-3">
-    <select class="form-select" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event); onFilterChange()">
+    <select class="form-select" [ngModel]="categoryFilter()"
+      (ngModelChange)="categoryFilter.set($event); onFilterChange()">
       <option value="">All Categories</option>
       @for (category of categories(); track category.id) {
-        <option [value]="category.id">{{ category.name }}</option>
+      <option [value]="category.id">{{ category.name }}</option>
       }
     </select>
   </div>
@@ -49,6 +45,7 @@
           <th>UoM</th>
           <th>Base Price</th>
           <th>Variants</th>
+          <th>Stock</th>
           <th>Media</th>
           <th>Status</th>
           <th></th>
@@ -56,79 +53,88 @@
       </thead>
       <tbody>
         @if (isLoading()) {
-          <tr>
-            <td colspan="10" class="text-center text-muted py-4">Loading items…</td>
-          </tr>
+        <tr>
+          <td colspan="11" class="text-center text-muted py-4">Loading items…</td>
+        </tr>
         } @else if (!items().length) {
-          <tr>
-            <td colspan="10" class="text-center text-muted py-4">No items match your criteria.</td>
-          </tr>
+        <tr>
+          <td colspan="11" class="text-center text-muted py-4">No items match your criteria.</td>
+        </tr>
         } @else {
-          @for (item of items(); track item.id) {
-            <tr class="clickable-row" (click)="openDetail(item)">
-              <td>
-                @if (getPrimaryImage(item); as img) {
-                  <img [src]="img.url" alt="" class="rounded item-thumbnail border" />
-                } @else {
-                  <div class="item-thumbnail-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
-                    <mat-icon class="small-icon">image</mat-icon>
-                  </div>
-                }
-              </td>
-              <td>
-                <span class="font-monospace fw-semibold">{{ item.code }}</span>
-                @if (item.barcode) {
-                  <div class="text-muted small font-monospace">{{ item.barcode }}</div>
-                }
-              </td>
-              <td>
-                <div class="fw-medium">{{ item.name }}</div>
-                @if (item.description) {
-                  <div class="text-muted small text-truncate" style="max-width: 250px;">{{ item.description }}</div>
-                }
-              </td>
-              <td>
-                <span class="badge text-bg-light border">{{ item.categoryName }}</span>
-              </td>
-              <td>{{ item.unitOfMeasurement }}</td>
-              <td>
-                <span class="fw-semibold">{{ item.price | currency }}</span>
-                <div class="text-muted small">Cost: {{ item.costPrice | currency }}</div>
-              </td>
-              <td>
-                @if (item.variants?.length) {
-                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-                    {{ item.variants.length }} variant(s)
-                  </span>
-                } @else {
-                  <span class="text-muted small">None</span>
-                }
-              </td>
-              <td>
-                <div class="d-flex gap-2 text-muted small">
-                  <span title="Images"><i class="bi bi-image me-1"></i>{{ item.images?.length ?? 0 }}</span>
-                  <span title="Documents"><i class="bi bi-file-earmark-text me-1"></i>{{ item.documents?.length ?? 0 }}</span>
-                </div>
-              </td>
-              <td>
-                @if (item.isActive) {
-                  <span class="badge text-bg-success">Active</span>
-                } @else {
-                  <span class="badge text-bg-secondary">Inactive</span>
-                }
-              </td>
-              <td class="text-end">
-                <button type="button" mat-icon-button matTooltip="View / Edit" (click)="openDetail(item)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-              </td>
-            </tr>
-          }
-          @if (isLoadingMore()) {
-            <tr>
-              <td colspan="10" class="text-center text-muted py-3">Loading more…</td>
-            </tr>
-          }
+        @for (item of items(); track item.id) {
+        <tr class="clickable-row" (click)="openDetail(item)">
+          <td>
+            @if (getPrimaryImage(item); as img) {
+            <img [src]="img.url" alt="" class="rounded item-thumbnail border" />
+            } @else {
+            <div
+              class="item-thumbnail-placeholder rounded border d-flex align-items-center justify-content-center text-muted">
+              <mat-icon class="small-icon">image</mat-icon>
+            </div>
+            }
+          </td>
+          <td>
+            <span class="font-monospace fw-semibold">{{ item.code }}</span>
+            @if (item.barcode) {
+            <div class="text-muted small font-monospace">{{ item.barcode }}</div>
+            }
+          </td>
+          <td>
+            <div class="fw-medium">{{ item.name }}</div>
+            @if (item.description) {
+            <div class="text-muted small text-truncate" style="max-width: 250px;">{{ item.description }}</div>
+            }
+          </td>
+          <td>
+            <span class="badge text-bg-light border">{{ item.categoryName }}</span>
+          </td>
+          <td>{{ item.unitOfMeasurement }}</td>
+          <td>
+            <span class="fw-semibold">{{ item.price | currency }}</span>
+            <div class="text-muted small">Cost: {{ item.costPrice | currency }}</div>
+          </td>
+          <td>
+            @if (item.variants?.length) {
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+              {{ item.variants.length }} variant(s)
+            </span>
+            } @else {
+            <span class="text-muted small">None</span>
+            }
+          </td>
+          <td>
+            @if (getAvailableStock(item) > 0) {
+            <span class="badge text-bg-success">{{ getAvailableStock(item) }}</span>
+            } @else {
+            <span class="badge text-bg-danger">Out of stock</span>
+            }
+          </td>
+          <td>
+            <div class="d-flex gap-2 text-muted small">
+              <span title="Images"><i class="bi bi-image me-1"></i>{{ item.images?.length ?? 0 }}</span>
+              <span title="Documents"><i class="bi bi-file-earmark-text me-1"></i>{{ item.documents?.length ?? 0
+                }}</span>
+            </div>
+          </td>
+          <td>
+            @if (item.isActive) {
+            <span class="badge text-bg-success">Active</span>
+            } @else {
+            <span class="badge text-bg-secondary">Inactive</span>
+            }
+          </td>
+          <td class="text-end">
+            <button type="button" mat-icon-button matTooltip="View / Edit" (click)="openDetail(item)">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </td>
+        </tr>
+        }
+        @if (isLoadingMore()) {
+        <tr>
+          <td colspan="11" class="text-center text-muted py-3">Loading more…</td>
+        </tr>
+        }
         }
       </tbody>
     </table>

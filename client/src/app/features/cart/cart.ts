@@ -30,6 +30,11 @@ export class Cart {
   readonly items = this.cartService.items;
   readonly totalItemsCount = this.cartService.totalItemsCount;
   readonly subtotal = this.cartService.subtotal;
+  readonly hasInsufficientStock = this.cartService.hasInsufficientStock;
+
+  getAvailableStock(line: CartItem): number {
+    return this.cartService.getAvailableStock(line.item, line.variant);
+  }
 
   getPrimaryImageUrl(cartItem: CartItem): string | null {
     const item = cartItem.item;
@@ -40,7 +45,9 @@ export class Cart {
 
   updateQuantity(cartItem: CartItem, delta: number): void {
     const newQty = cartItem.quantity + delta;
-    this.cartService.updateQuantity(cartItem.id, newQty);
+    if (!this.cartService.updateQuantity(cartItem.id, newQty) && delta > 0) {
+      this.snackBar.open(`Only ${this.getAvailableStock(cartItem)} available.`, 'Close', { duration: 3000 });
+    }
   }
 
   removeItem(cartItem: CartItem): void {

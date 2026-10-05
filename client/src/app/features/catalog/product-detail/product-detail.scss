@@ -206,6 +206,17 @@
     margin: 0;
   }
 
+  .stock-status {
+    margin: -0.75rem 0 0;
+    color: #44734e;
+    font-size: 0.875rem;
+    font-weight: 700;
+
+    &.out-of-stock {
+      color: #aa3b32;
+    }
+  }
+
   // Variant Selectors
   .variant-attribute-selectors,
   .variants-direct-list {
@@ -381,6 +392,20 @@
         }
       }
     }
+  }
+}
+
+.info-column .purchase-actions-box {
+  .quantity-picker .qty-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-add-to-cart:disabled {
+    background: #9ba7a0;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
   }
 }
 

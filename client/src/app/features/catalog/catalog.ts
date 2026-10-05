@@ -78,7 +78,7 @@ export class Catalog implements OnInit, OnDestroy {
   }
 
   selectCategory(categoryId: string): void {
-    this.selectedCategoryId.set(categoryId);
+    this.selectedCategoryId.set(this.selectedCategoryId() === categoryId ? '' : categoryId);
     this.reload();
   }
 
@@ -146,10 +146,22 @@ export class Catalog implements OnInit, OnDestroy {
 
   getSelectedVariant(item: ItemDto): ItemVariantDto | null {
     const map = this.selectedVariants();
-    if (map[item.id]) {
-      return map[item.id];
+    const selectedVariant = map[item.id];
+    const selected = item.variants?.find((variant) => variant.id === selectedVariant?.id && variant.isActive);
+    if (selected) {
+      return selected;
     }
-    return item.variants && item.variants.length > 0 ? item.variants[0] : null;
+    return item.variants?.find((variant) => variant.isActive && variant.stockQuantity > 0)
+      ?? item.variants?.find((variant) => variant.isActive)
+      ?? null;
+  }
+
+  getSelectedStock(item: ItemDto): number {
+    return this.cartService.getAvailableStock(item, this.getSelectedVariant(item));
+  }
+
+  getRemainingStock(item: ItemDto): number {
+    return this.cartService.getRemainingStock(item, this.getSelectedVariant(item));
   }
 
   onSelectVariant(item: ItemDto, variant: ItemVariantDto): void {
@@ -157,7 +169,7 @@ export class Catalog implements OnInit, OnDestroy {
   }
 
   onVariantChange(item: ItemDto, variantId: string): void {
-    const variant = item.variants.find((candidate) => candidate.id === variantId);
+    const variant = item.variants.find((candidate) => candidate.id === variantId && candidate.isActive);
     if (variant) {
       this.onSelectVariant(item, variant);
     }
@@ -181,7 +193,10 @@ export class Catalog implements OnInit, OnDestroy {
   addToCart(item: ItemDto, event: MouseEvent): void {
     event.stopPropagation();
     const variant = this.getSelectedVariant(item);
-    this.cartService.addToCart(item, variant, 1);
+    if (!this.cartService.addToCart(item, variant, 1)) {
+      this.snackBar.open('No additional stock is available for this item.', 'Close', { duration: 3000 });
+      return;
+    }
     const variantName = variant ? ` (${variant.name || variant.sku})` : '';
     this.snackBar.open(`Added "${item.name}${variantName}" to cart!`, 'View Cart', {
       duration: 3000,

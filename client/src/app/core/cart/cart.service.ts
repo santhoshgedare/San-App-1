@@ -26,6 +26,10 @@ export class CartService {
     this._items().reduce((sum, cartItem) => sum + cartItem.unitPrice * cartItem.quantity, 0)
   );
 
+  readonly hasInsufficientStock = computed(() =>
+    this._items().some((line) => line.quantity > this.getAvailableStock(line.item, line.variant))
+  );
+
   private loadFromStorage(): CartItem[] {
     try {
       const data = localStorage.getItem(CART_STORAGE_KEY);
@@ -38,15 +42,31 @@ export class CartService {
   private saveToStorage(): void {
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(this._items()));
-    } catch {}
+    } catch { }
   }
 
-  addToCart(item: ItemDto, variant: ItemVariantDto | null, quantity = 1): void {
-    if (quantity <= 0) return;
+  getAvailableStock(item: ItemDto, variant?: ItemVariantDto | null): number {
+    if (!item.isActive) return 0;
+    if (item.variants.length > 0 && !variant) return 0;
+    if (variant && !variant.isActive) return 0;
+    return variant ? variant.stockQuantity : item.stockQuantity;
+  }
+
+  getRemainingStock(item: ItemDto, variant?: ItemVariantDto | null): number {
+    const variantId = variant?.id ?? variant?.sku ?? 'base';
+    const cartLineId = `${item.id}_${variantId}`;
+    const inCart = this._items().find((line) => line.id === cartLineId)?.quantity ?? 0;
+    return Math.max(0, this.getAvailableStock(item, variant) - inCart);
+  }
+
+  addToCart(item: ItemDto, variant: ItemVariantDto | null, quantity = 1): boolean {
+    if (quantity <= 0) return false;
 
     const variantId = variant?.id ?? variant?.sku ?? 'base';
     const cartLineId = `${item.id}_${variantId}`;
     const unitPrice = variant ? variant.price : item.price;
+    const existingQuantity = this._items().find((line) => line.id === cartLineId)?.quantity ?? 0;
+    if (existingQuantity + quantity > this.getAvailableStock(item, variant)) return false;
 
     let selectedAttributesText = '';
     if (variant && variant.attributesJson) {
@@ -85,18 +105,23 @@ export class CartService {
     });
 
     this.saveToStorage();
+    return true;
   }
 
-  updateQuantity(cartLineId: string, quantity: number): void {
+  updateQuantity(cartLineId: string, quantity: number): boolean {
     if (quantity <= 0) {
       this.removeFromCart(cartLineId);
-      return;
+      return true;
     }
+
+    const line = this._items().find((current) => current.id === cartLineId);
+    if (!line || quantity > this.getAvailableStock(line.item, line.variant)) return false;
 
     this._items.update((current) =>
       current.map((line) => (line.id === cartLineId ? { ...line, quantity } : line))
     );
     this.saveToStorage();
+    return true;
   }
 
   removeFromCart(cartLineId: string): void {

@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { CartService } from '../../core/cart/cart.service';
+import { CartItem, CartService } from '../../core/cart/cart.service';
 import { OrderService } from '../../core/auth/order.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { PaymentSettingsService } from '../../core/auth/payment-settings.service';
@@ -38,10 +38,15 @@ export class Checkout implements OnInit {
   readonly items = this.cartService.items;
   readonly subtotal = this.cartService.subtotal;
   readonly totalItemsCount = this.cartService.totalItemsCount;
+  readonly hasInsufficientStock = this.cartService.hasInsufficientStock;
 
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly paymentSettings = signal<PaymentSettingsDto | null>(null);
+
+  getAvailableStock(line: CartItem): number {
+    return this.cartService.getAvailableStock(line.item, line.variant);
+  }
 
   // Form Fields
   customerName = '';
@@ -76,6 +81,11 @@ export class Checkout implements OnInit {
   }
 
   placeOrder(): void {
+    if (this.hasInsufficientStock()) {
+      this.errorMessage.set('One or more cart quantities exceed available stock. Return to your cart and adjust them before ordering.');
+      return;
+    }
+
     if (!this.customerName.trim() || !this.customerEmail.trim() || !this.customerPhone.trim() || !this.shippingAddress.trim()) {
       this.errorMessage.set('Please fill in all required customer and delivery details.');
       return;

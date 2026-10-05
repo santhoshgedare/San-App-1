@@ -10,10 +10,10 @@
   </header>
 
   @if (errorMessage(); as err) {
-    <div class="alert-box error">
-      <mat-icon>error_outline</mat-icon>
-      <span>{{ err }}</span>
-    </div>
+  <div class="alert-box error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ err }}</span>
+  </div>
   }
 
   <div class="checkout-layout">
@@ -34,30 +34,35 @@
 
           <div class="field-group">
             <label for="custEmail">Email Address *</label>
-            <input id="custEmail" type="email" [(ngModel)]="customerEmail" placeholder="e.g. john@example.com" required />
+            <input id="custEmail" type="email" [(ngModel)]="customerEmail" placeholder="e.g. john@example.com"
+              required />
           </div>
         </div>
 
         <div class="grid-2">
           <div class="field-group">
             <label for="custPhone">Phone Number *</label>
-            <input id="custPhone" type="tel" [(ngModel)]="customerPhone" placeholder="e.g. +1 (555) 019-2834" required />
+            <input id="custPhone" type="tel" [(ngModel)]="customerPhone" placeholder="e.g. +1 (555) 019-2834"
+              required />
           </div>
 
           <div class="field-group">
             <label for="billAddress">Billing Address (Optional)</label>
-            <input id="billAddress" type="text" [(ngModel)]="billingAddress" placeholder="Leave empty if same as shipping" />
+            <input id="billAddress" type="text" [(ngModel)]="billingAddress"
+              placeholder="Leave empty if same as shipping" />
           </div>
         </div>
 
         <div class="field-group">
           <label for="shipAddress">Shipping / Delivery Address *</label>
-          <textarea id="shipAddress" rows="3" [(ngModel)]="shippingAddress" placeholder="Street Address, City, State, ZIP code..." required></textarea>
+          <textarea id="shipAddress" rows="3" [(ngModel)]="shippingAddress"
+            placeholder="Street Address, City, State, ZIP code..." required></textarea>
         </div>
 
         <div class="field-group">
           <label for="ordNotes">Order / Delivery Instructions (Optional)</label>
-          <textarea id="ordNotes" rows="2" [(ngModel)]="orderNotes" placeholder="Special handling notes, gate codes, etc."></textarea>
+          <textarea id="ordNotes" rows="2" [(ngModel)]="orderNotes"
+            placeholder="Special handling notes, gate codes, etc."></textarea>
         </div>
       </section>
 
@@ -70,64 +75,55 @@
 
         <div class="upi-payment-box">
           @if (paymentSettings(); as settings) {
-            @if (settings.qrCodeImageUrl) {
-              <div class="qr-image-wrap">
-                <img [src]="settings.qrCodeImageUrl" alt="UPI QR Code" class="qr-image" />
-              </div>
-            } @else {
-              <div class="qr-missing-notice">
-                <mat-icon>qr_code_2</mat-icon>
-                <span>QR code has not been configured yet. Please use the UPI ID below to pay manually.</span>
-              </div>
-            }
-
-            <div class="upi-id-row">
-              <span class="label">UPI ID:</span>
-              <strong class="upi-id-value">{{ settings.upiId || 'Not configured' }}</strong>
-            </div>
-
-            @if (settings.payeeName) {
-              <div class="upi-id-row">
-                <span class="label">Payee Name:</span>
-                <strong>{{ settings.payeeName }}</strong>
-              </div>
-            }
-
-            <div class="upi-id-row">
-              <span class="label">Amount to Pay:</span>
-              <strong class="amount-value">{{ subtotal() | currency }}</strong>
-            </div>
-
-            @if (settings.instructions) {
-              <p class="upi-instructions">{{ settings.instructions }}</p>
-            }
+          @if (settings.qrCodeImageUrl) {
+          <div class="qr-image-wrap">
+            <img [src]="settings.qrCodeImageUrl" alt="UPI QR Code" class="qr-image" />
+          </div>
           } @else {
-            <div class="qr-missing-notice">
-              <mat-icon>hourglass_empty</mat-icon>
-              <span>Loading payment details...</span>
-            </div>
+          <div class="qr-missing-notice">
+            <mat-icon>qr_code_2</mat-icon>
+            <span>QR code has not been configured yet. Please use the UPI ID below to pay manually.</span>
+          </div>
+          }
+
+          <div class="upi-id-row">
+            <span class="label">UPI ID:</span>
+            <strong class="upi-id-value">{{ settings.upiId || 'Not configured' }}</strong>
+          </div>
+
+          @if (settings.payeeName) {
+          <div class="upi-id-row">
+            <span class="label">Payee Name:</span>
+            <strong>{{ settings.payeeName }}</strong>
+          </div>
+          }
+
+          <div class="upi-id-row">
+            <span class="label">Amount to Pay:</span>
+            <strong class="amount-value">{{ subtotal() | currency }}</strong>
+          </div>
+
+          @if (settings.instructions) {
+          <p class="upi-instructions">{{ settings.instructions }}</p>
+          }
+          } @else {
+          <div class="qr-missing-notice">
+            <mat-icon>hourglass_empty</mat-icon>
+            <span>Loading payment details...</span>
+          </div>
           }
         </div>
 
         <div class="field-group payment-notes-wrap">
           <label for="payRef">UPI Transaction / Reference ID (UTR) *</label>
-          <input
-            id="payRef"
-            type="text"
-            [(ngModel)]="paymentReferenceNumber"
-            placeholder="e.g. 123456789012"
-            required
-          />
+          <input id="payRef" type="text" [(ngModel)]="paymentReferenceNumber" placeholder="e.g. 123456789012"
+            required />
         </div>
 
         <div class="field-group payment-notes-wrap">
           <label for="payNotes">Additional Payment Notes (Optional)</label>
-          <input
-            id="payNotes"
-            type="text"
-            [(ngModel)]="offlinePaymentNotes"
-            placeholder="e.g. Paid via GPay / PhonePe / Paytm"
-          />
+          <input id="payNotes" type="text" [(ngModel)]="offlinePaymentNotes"
+            placeholder="e.g. Paid via GPay / PhonePe / Paytm" />
         </div>
       </section>
     </div>
@@ -139,23 +135,28 @@
 
         <div class="items-mini-list">
           @for (line of items(); track line.id) {
-            <div class="mini-item-row">
-              <div class="mini-info">
-                <span class="mini-name">{{ line.item.name }}</span>
-                @if (line.selectedAttributesText) {
-                  <span class="mini-attr">{{ line.selectedAttributesText }}</span>
-                }
-                <span class="mini-qty">Qty: {{ line.quantity }} &times; {{ line.unitPrice | currency }}</span>
-              </div>
-              <span class="mini-total">{{ (line.unitPrice * line.quantity) | currency }}</span>
+          <div class="mini-item-row">
+            <div class="mini-info">
+              <span class="mini-name">{{ line.item.name }}</span>
+              @if (line.selectedAttributesText) {
+              <span class="mini-attr">{{ line.selectedAttributesText }}</span>
+              }
+              <span class="mini-qty">Qty: {{ line.quantity }} &times; {{ line.unitPrice | currency }}</span>
+              @if (line.quantity > getAvailableStock(line)) {
+              <span class="text-danger small">
+                @if (getAvailableStock(line) <= 0) { Out of stock } @else { Only {{ getAvailableStock(line) }} available
+                  } </span>
+                  }
             </div>
+            <span class="mini-total">{{ (line.unitPrice * line.quantity) | currency }}</span>
+          </div>
           }
         </div>
 
         <div class="price-breakdown">
           <div class="calc-row"><span>Subtotal</span><span>{{ subtotal() | currency }}</span></div>
           <div class="calc-row"><span>Shipping</span><span class="text-success">Free Delivery</span></div>
-          <div class="calc-row"><span>Tax</span><span>$0.00</span></div>
+          <div class="calc-row"><span>Tax</span><span>{{ 0 | currency }}</span></div>
           <div class="calc-divider"></div>
           <div class="calc-row total-row">
             <span>Amount Payable</span>
@@ -163,23 +164,20 @@
           </div>
         </div>
 
-        <button
-          type="button"
-          class="btn-place-order"
-          [disabled]="isSubmitting()"
-          (click)="placeOrder()"
-        >
+        <button type="button" class="btn-place-order" [disabled]="isSubmitting() || hasInsufficientStock()"
+          (click)="placeOrder()">
           @if (isSubmitting()) {
-            <mat-icon class="spin-icon">sync</mat-icon>
-            <span>Placing Order...</span>
+          <mat-icon class="spin-icon">sync</mat-icon>
+          <span>Placing Order...</span>
           } @else {
-            <mat-icon>verified</mat-icon>
-            <span>Confirm & Place Order</span>
+          <mat-icon>verified</mat-icon>
+          <span>Confirm & Place Order</span>
           }
         </button>
 
         <p class="offline-terms-hint">
-          By placing this order, you confirm you have paid the amount above via UPI. Your order status will be updated once payment is verified.
+          By placing this order, you confirm you have paid the amount above via UPI. Your order status will be updated
+          once payment is verified.
         </p>
       </div>
     </aside>

@@ -1,3 +1,5 @@
+using System.Data;
+using System.Globalization;
 using IdentityHub.Application.Common.Interfaces;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Domain.Constants;
@@ -208,6 +210,8 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         IReadOnlyList<ItemVariantInput> variants,
         CancellationToken ct)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
         var item = await db.Items
             .Include(i => i.Images)
             .Include(i => i.Documents)
@@ -256,59 +260,116 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         item.IsActive = isActive;
         item.UpdatedAt = DateTimeOffset.UtcNow;
 
-        // Replace Images
-        db.ItemImages.RemoveRange(item.Images);
-        item.Images = images.Select((img, index) => new ItemImage
+        var existingImages = item.Images.ToDictionary(image => image.Id);
+        var retainedImageIds = new HashSet<Guid>();
+        var updatedImages = new List<ItemImage>(images.Count);
+        for (var index = 0; index < images.Count; index++)
         {
-            ItemId = item.Id,
-            Url = img.Url,
-            FileName = img.FileName,
-            Caption = img.Caption,
-            IsPrimary = img.IsPrimary,
-            SortOrder = img.SortOrder > 0 ? img.SortOrder : index + 1,
-            UploadedAt = DateTimeOffset.UtcNow
-        }).ToList();
+            var imageInput = images[index];
+            var image = imageInput.Id.HasValue && existingImages.TryGetValue(imageInput.Id.Value, out var existingImage)
+                && retainedImageIds.Add(imageInput.Id.Value)
+                ? existingImage
+                : new ItemImage();
+
+            image.ItemId = item.Id;
+            image.Url = imageInput.Url;
+            image.FileName = imageInput.FileName;
+            image.Caption = imageInput.Caption;
+            image.IsPrimary = imageInput.IsPrimary;
+            image.SortOrder = imageInput.SortOrder > 0 ? imageInput.SortOrder : index + 1;
+            image.UploadedAt = DateTimeOffset.UtcNow;
+            updatedImages.Add(image);
+        }
+
+        db.ItemImages.RemoveRange(item.Images.Where(image => !retainedImageIds.Contains(image.Id)));
+        item.Images = updatedImages;
 
         if (item.Images.Count > 0 && !item.Images.Any(i => i.IsPrimary))
         {
             item.Images[0].IsPrimary = true;
         }
 
-        // Replace Documents
-        db.ItemDocuments.RemoveRange(item.Documents);
-        item.Documents = documents.Select(doc => new ItemDocument
+        var existingDocuments = item.Documents.ToDictionary(document => document.Id);
+        var retainedDocumentIds = new HashSet<Guid>();
+        var updatedDocuments = new List<ItemDocument>(documents.Count);
+        foreach (var documentInput in documents)
         {
-            ItemId = item.Id,
-            Url = doc.Url,
-            FileName = doc.FileName,
-            DocumentType = doc.DocumentType,
-            FileSizeBytes = doc.FileSizeBytes,
-            Description = doc.Description,
-            UploadedAt = DateTimeOffset.UtcNow
-        }).ToList();
+            var document = documentInput.Id.HasValue && existingDocuments.TryGetValue(documentInput.Id.Value, out var existingDocument)
+                && retainedDocumentIds.Add(documentInput.Id.Value)
+                ? existingDocument
+                : new ItemDocument();
 
-        // Replace Variants
-        db.ItemVariants.RemoveRange(item.Variants);
-        item.Variants = variants.Select(v => new ItemVariant
+            document.ItemId = item.Id;
+            document.Url = documentInput.Url;
+            document.FileName = documentInput.FileName;
+            document.DocumentType = documentInput.DocumentType;
+            document.FileSizeBytes = documentInput.FileSizeBytes;
+            document.Description = documentInput.Description;
+            document.UploadedAt = DateTimeOffset.UtcNow;
+            updatedDocuments.Add(document);
+        }
+
+        db.ItemDocuments.RemoveRange(item.Documents.Where(document => !retainedDocumentIds.Contains(document.Id)));
+        item.Documents = updatedDocuments;
+
+        var existingVariants = item.Variants.ToDictionary(variant => variant.Id);
+        var retainedVariantIds = new HashSet<Guid>();
+        var updatedVariants = new List<ItemVariant>(variants.Count);
+        foreach (var variantInput in variants)
         {
-            ItemId = item.Id,
-            Sku = string.IsNullOrWhiteSpace(v.Sku) ? $"{trimmedCode}-{Guid.NewGuid().ToString()[..6].ToUpper()}" : v.Sku.Trim(),
-            Name = v.Name?.Trim() ?? string.Empty,
-            Barcode = string.IsNullOrWhiteSpace(v.Barcode) ? null : v.Barcode.Trim(),
-            AttributesJson = string.IsNullOrWhiteSpace(v.AttributesJson) ? "{}" : v.AttributesJson,
-            Price = v.Price,
-            CostPrice = v.CostPrice,
-            StockQuantity = v.StockQuantity,
-            IsActive = v.IsActive
-        }).ToList();
+            var variant = variantInput.Id.HasValue && existingVariants.TryGetValue(variantInput.Id.Value, out var existingVariant)
+                && retainedVariantIds.Add(variantInput.Id.Value)
+                ? existingVariant
+                : new ItemVariant();
+
+            variant.ItemId = item.Id;
+            variant.Sku = string.IsNullOrWhiteSpace(variantInput.Sku)
+                ? $"{trimmedCode}-{Guid.NewGuid().ToString()[..6].ToUpper()}"
+                : variantInput.Sku.Trim();
+            variant.Name = variantInput.Name?.Trim() ?? string.Empty;
+            variant.Barcode = string.IsNullOrWhiteSpace(variantInput.Barcode) ? null : variantInput.Barcode.Trim();
+            variant.AttributesJson = string.IsNullOrWhiteSpace(variantInput.AttributesJson) ? "{}" : variantInput.AttributesJson;
+            variant.Price = variantInput.Price;
+            variant.CostPrice = variantInput.CostPrice;
+            variant.StockQuantity = variantInput.StockQuantity;
+            variant.IsActive = variantInput.IsActive;
+            updatedVariants.Add(variant);
+        }
+
+        var removedVariants = item.Variants.Where(variant => !retainedVariantIds.Contains(variant.Id)).ToList();
+        var removedVariantIds = removedVariants.Select(variant => variant.Id).ToArray();
+        var variantsInOrderHistory = removedVariantIds.Length == 0
+            ? new HashSet<Guid>()
+            : await db.OrderItems
+                .IgnoreQueryFilters()
+                .Where(orderItem => orderItem.ItemVariantId.HasValue && removedVariantIds.Contains(orderItem.ItemVariantId.Value))
+                .Select(orderItem => orderItem.ItemVariantId!.Value)
+                .Distinct()
+                .ToHashSetAsync(ct);
+
+        foreach (var removedVariant in removedVariants)
+        {
+            if (variantsInOrderHistory.Contains(removedVariant.Id))
+            {
+                removedVariant.IsActive = false;
+                updatedVariants.Add(removedVariant);
+            }
+            else
+            {
+                db.ItemVariants.Remove(removedVariant);
+            }
+        }
+
+        item.Variants = updatedVariants;
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         await activityLog.LogAsync(
             EntityTypes.Item,
             item.Id.ToString(),
             "Updated",
-            $"Item {item.Code} ({item.Name}) updated; price={item.Price:C}, {item.Variants.Count} variant(s), {item.Images.Count} image(s), {item.Documents.Count} document(s).",
+            $"Item {item.Code} ({item.Name}) updated; price={item.Price.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}, {item.Variants.Count} variant(s), {item.Images.Count} image(s), {item.Documents.Count} document(s).",
             ct);
 
         return Result.Success();

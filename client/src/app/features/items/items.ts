@@ -124,6 +124,15 @@ export class Items implements OnInit, OnDestroy {
     return item.images.find((img) => img.isPrimary) ?? item.images[0];
   }
 
+  getAvailableStock(item: ItemDto): number {
+    if (item.variants.length > 0) {
+      return item.variants
+        .filter((variant) => variant.isActive)
+        .reduce((total, variant) => total + variant.stockQuantity, 0);
+    }
+    return item.stockQuantity;
+  }
+
   openDetail(item: ItemDto): void {
     this.router.navigate(['/items', item.id]);
   }

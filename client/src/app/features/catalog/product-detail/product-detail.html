@@ -7,224 +7,223 @@
     </a>
     <span class="divider">/</span>
     @if (item(); as itm) {
-      @if (itm.categoryName) {
-        <span class="category-name">{{ itm.categoryName }}</span>
-        <span class="divider">/</span>
-      }
-      <span class="current-page">{{ itm.name }}</span>
+    @if (itm.categoryName) {
+    <span class="category-name">{{ itm.categoryName }}</span>
+    <span class="divider">/</span>
+    }
+    <span class="current-page">{{ itm.name }}</span>
     }
   </nav>
 
   @if (isLoading()) {
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading product details...</p>
-    </div>
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading product details...</p>
+  </div>
   } @else if (item(); as itm) {
-    <div class="detail-layout">
-      <!-- Media Gallery Left Section -->
-      <div class="gallery-column">
-        <div class="main-image-wrapper">
-          @if (selectedImage(); as img) {
-            <img [src]="img.url" [alt]="img.caption || itm.name" class="main-image" />
-          } @else {
-            <div class="no-image-box">
-              <mat-icon>image_not_supported</mat-icon>
-              <span>No image uploaded for this item</span>
-            </div>
-          }
+  <div class="detail-layout">
+    <!-- Media Gallery Left Section -->
+    <div class="gallery-column">
+      <div class="main-image-wrapper">
+        @if (selectedImage(); as img) {
+        <img [src]="img.url" [alt]="img.caption || itm.name" class="main-image" />
+        } @else {
+        <div class="no-image-box">
+          <mat-icon>image_not_supported</mat-icon>
+          <span>No image uploaded for this item</span>
         </div>
-
-        @if (itm.images && itm.images.length > 1) {
-          <div class="thumbnails-row">
-            @for (img of itm.images; track img.id) {
-              <button
-                type="button"
-                class="thumb-btn"
-                [class.active]="selectedImage()?.id === img.id"
-                (click)="selectedImage.set(img)"
-              >
-                <img [src]="img.url" [alt]="img.caption || 'Product thumbnail'" />
-              </button>
-            }
-          </div>
         }
       </div>
 
-      <!-- Product Information Right Section -->
-      <div class="info-column">
-        <div class="meta-tags">
-          @if (itm.categoryName) {
-            <span class="tag category-tag">{{ itm.categoryName }}</span>
-          }
-          <span class="tag uom-tag">UoM: {{ itm.unitOfMeasurement }}</span>
-          <span class="tag sku-tag">Code: {{ selectedVariant()?.sku || itm.code }}</span>
-        </div>
+      @if (itm.images && itm.images.length > 1) {
+      <div class="thumbnails-row">
+        @for (img of itm.images; track img.id) {
+        <button type="button" class="thumb-btn" [class.active]="selectedImage()?.id === img.id"
+          (click)="selectedImage.set(img)">
+          <img [src]="img.url" [alt]="img.caption || 'Product thumbnail'" />
+        </button>
+        }
+      </div>
+      }
+    </div>
 
-        <h1 class="item-title">{{ itm.name }}</h1>
+    <!-- Product Information Right Section -->
+    <div class="info-column">
+      <div class="meta-tags">
+        @if (itm.categoryName) {
+        <span class="tag category-tag">{{ itm.categoryName }}</span>
+        }
+        <span class="tag uom-tag">UoM: {{ itm.unitOfMeasurement }}</span>
+        <span class="tag sku-tag">Code: {{ selectedVariant()?.sku || itm.code }}</span>
+      </div>
 
-        <!-- Price block -->
-        <div class="price-box">
-          <div class="price-value">{{ getEffectivePrice() | currency }}</div>
-          @if (selectedVariant(); as v) {
-            <span class="variant-selected-badge">Selected: {{ v.name || v.sku }}</span>
-          }
-        </div>
+      <h1 class="item-title">{{ itm.name }}</h1>
 
-        <p class="item-description">{{ itm.description || 'No detailed description provided.' }}</p>
+      <!-- Price block -->
+      <div class="price-box">
+        <div class="price-value">{{ getEffectivePrice() | currency }}</div>
+        @if (selectedVariant(); as v) {
+        <span class="variant-selected-badge">Selected: {{ v.name || v.sku }}</span>
+        }
+      </div>
+      <p class="stock-status" [class.out-of-stock]="getAvailableStock() <= 0">
+        @if (getAvailableStock() > 0) {
+        {{ getAvailableStock() }} available
+        } @else {
+        Out of stock
+        }
+      </p>
 
-        <!-- Dynamic Attribute Selector Blocks -->
-        @if (attributeKeys().length > 0) {
-          <div class="variant-attribute-selectors">
-            @for (key of attributeKeys(); track key) {
-              <div class="attr-group">
-                <div class="attr-header">
-                  <span class="attr-name">{{ key }}</span>
-                  <span class="attr-val-selected">{{ selectedAttributeValues()[key] || 'Select' }}</span>
-                </div>
-                <div class="attr-chips">
-                  @for (val of attributeOptions()[key]; track val) {
-                    <button
-                      type="button"
-                      class="attr-chip"
-                      [class.active]="selectedAttributeValues()[key] === val"
-                      (click)="onAttributeValueChange(key, val)"
-                    >
-                      {{ val }}
-                    </button>
-                  }
-                </div>
-              </div>
+      <p class="item-description">{{ itm.description || 'No detailed description provided.' }}</p>
+
+      <!-- Dynamic Attribute Selector Blocks -->
+      @if (attributeKeys().length > 0) {
+      <div class="variant-attribute-selectors">
+        @for (key of attributeKeys(); track key) {
+        <div class="attr-group">
+          <div class="attr-header">
+            <span class="attr-name">{{ key }}</span>
+            <span class="attr-val-selected">{{ selectedAttributeValues()[key] || 'Select' }}</span>
+          </div>
+          <div class="attr-chips">
+            @for (val of attributeOptions()[key]; track val) {
+            <button type="button" class="attr-chip" [class.active]="selectedAttributeValues()[key] === val"
+              (click)="onAttributeValueChange(key, val)">
+              {{ val }}
+            </button>
             }
           </div>
-        } @else if (itm.variants && itm.variants.length > 0) {
-          <!-- Fallback direct variant picker if variants don't follow JSON structure -->
-          <div class="variants-direct-list">
-            <span class="attr-name">Available Variants:</span>
-            <div class="attr-chips">
-              @for (v of itm.variants; track v.id) {
-                <button
-                  type="button"
-                  class="attr-chip"
-                  [class.active]="selectedVariant()?.id === v.id"
-                  (click)="selectVariant(v)"
-                >
-                  {{ v.name || v.sku }} ({{ v.price | currency }})
-                </button>
-              }
-            </div>
-          </div>
+        </div>
         }
+      </div>
+      } @else if (itm.variants && itm.variants.length > 0) {
+      <!-- Fallback direct variant picker if variants don't follow JSON structure -->
+      <div class="variants-direct-list">
+        <span class="attr-name">Available Variants:</span>
+        <div class="attr-chips">
+          @for (v of itm.variants; track v.id) {
+          <button type="button" class="attr-chip" [class.active]="selectedVariant()?.id === v.id"
+            [disabled]="!v.isActive" (click)="selectVariant(v)">
+            {{ v.name || v.sku }} ({{ v.price | currency }})
+            @if (v.stockQuantity <= 0) { <span>Out of stock</span> }
+          </button>
+          }
+        </div>
+      </div>
+      }
 
-        <!-- Add to Cart & Quantity Bar -->
-        <div class="purchase-actions-box">
-          <div class="quantity-picker">
-            <button type="button" class="qty-btn" (click)="decrementQuantity()" aria-label="Decrease quantity">
-              <mat-icon>remove</mat-icon>
-            </button>
-            <span class="qty-number">{{ quantity() }}</span>
-            <button type="button" class="qty-btn" (click)="incrementQuantity()" aria-label="Increase quantity">
-              <mat-icon>add</mat-icon>
-            </button>
-          </div>
-
-          <button type="button" class="btn-add-to-cart" (click)="addToCart()">
-            <mat-icon>shopping_cart</mat-icon>
-            <span>Add to Cart - {{ (getEffectivePrice() * quantity()) | currency }}</span>
+      <!-- Add to Cart & Quantity Bar -->
+      <div class="purchase-actions-box">
+        <div class="quantity-picker">
+          <button type="button" class="qty-btn" (click)="decrementQuantity()" aria-label="Decrease quantity">
+            <mat-icon>remove</mat-icon>
+          </button>
+          <span class="qty-number">{{ quantity() }}</span>
+          <button type="button" class="qty-btn" (click)="incrementQuantity()"
+            [disabled]="quantity() >= getRemainingStock()" aria-label="Increase quantity">
+            <mat-icon>add</mat-icon>
           </button>
         </div>
 
-        <!-- Value Propositon Features -->
-        <div class="features-list">
-          <div class="feature-item">
-            <mat-icon>verified</mat-icon>
-            <div>
-              <strong>Quality Guaranteed</strong>
-              <span>Verified genuine item from catalog master</span>
-            </div>
+        <button type="button" class="btn-add-to-cart" (click)="addToCart()"
+          [disabled]="getRemainingStock() <= 0 || quantity() > getRemainingStock()">
+          <mat-icon>shopping_cart</mat-icon>
+          <span>{{ getAvailableStock() <= 0 ? 'Out of Stock' : 'Add to Cart - ' + ((getEffectivePrice() * quantity()) |
+              currency) }}</span>
+        </button>
+      </div>
+
+      <!-- Value Propositon Features -->
+      <div class="features-list">
+        <div class="feature-item">
+          <mat-icon>verified</mat-icon>
+          <div>
+            <strong>Quality Guaranteed</strong>
+            <span>Verified genuine item from catalog master</span>
           </div>
-          <div class="feature-item">
-            <mat-icon>local_shipping</mat-icon>
-            <div>
-              <strong>Fast Fulfillment</strong>
-              <span>Standard dispatch within 24-48 hours</span>
-            </div>
+        </div>
+        <div class="feature-item">
+          <mat-icon>local_shipping</mat-icon>
+          <div>
+            <strong>Fast Fulfillment</strong>
+            <span>Standard dispatch within 24-48 hours</span>
           </div>
-          <div class="feature-item">
-            <mat-icon>assignment_turned_in</mat-icon>
-            <div>
-              <strong>Approval Verified</strong>
-              <span>Enterprise workflow audited & tracked</span>
-            </div>
+        </div>
+        <div class="feature-item">
+          <mat-icon>assignment_turned_in</mat-icon>
+          <div>
+            <strong>Approval Verified</strong>
+            <span>Enterprise workflow audited & tracked</span>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Product Details Tabs: Documents & Specifications -->
-    <section class="details-tabs-section">
-      <mat-tab-group animationDuration="200ms">
-        <!-- Documents & Downloads Tab -->
-        <mat-tab label="Documents & Downloads ({{ itm.documents?.length || 0 }})">
-          <div class="tab-pane-content">
-            @if (!itm.documents || itm.documents.length === 0) {
-              <div class="no-docs-box">
-                <mat-icon>folder_open</mat-icon>
-                <p>No downloadable documents or spec sheets attached to this product.</p>
+  <!-- Product Details Tabs: Documents & Specifications -->
+  <section class="details-tabs-section">
+    <mat-tab-group animationDuration="200ms">
+      <!-- Documents & Downloads Tab -->
+      <mat-tab label="Documents & Downloads ({{ itm.documents?.length || 0 }})">
+        <div class="tab-pane-content">
+          @if (!itm.documents || itm.documents.length === 0) {
+          <div class="no-docs-box">
+            <mat-icon>folder_open</mat-icon>
+            <p>No downloadable documents or spec sheets attached to this product.</p>
+          </div>
+          } @else {
+          <div class="documents-grid">
+            @for (doc of itm.documents; track doc.id) {
+            <a [href]="doc.url" target="_blank" rel="noopener noreferrer" class="document-card">
+              <div class="doc-icon-wrap">
+                <mat-icon>{{ getFileIcon(doc.documentType) }}</mat-icon>
               </div>
-            } @else {
-              <div class="documents-grid">
-                @for (doc of itm.documents; track doc.id) {
-                  <a [href]="doc.url" target="_blank" rel="noopener noreferrer" class="document-card">
-                    <div class="doc-icon-wrap">
-                      <mat-icon>{{ getFileIcon(doc.documentType) }}</mat-icon>
-                    </div>
-                    <div class="doc-info">
-                      <h4 class="doc-title">{{ doc.fileName }}</h4>
-                      <div class="doc-meta">
-                        <span class="doc-type">{{ doc.documentType || 'File' }}</span>
-                        <span class="dot">•</span>
-                        <span class="doc-size">{{ formatFileSize(doc.fileSizeBytes) }}</span>
-                      </div>
-                    </div>
-                    <mat-icon class="download-icon">download</mat-icon>
-                  </a>
-                }
+              <div class="doc-info">
+                <h4 class="doc-title">{{ doc.fileName }}</h4>
+                <div class="doc-meta">
+                  <span class="doc-type">{{ doc.documentType || 'File' }}</span>
+                  <span class="dot">•</span>
+                  <span class="doc-size">{{ formatFileSize(doc.fileSizeBytes) }}</span>
+                </div>
               </div>
+              <mat-icon class="download-icon">download</mat-icon>
+            </a>
             }
           </div>
-        </mat-tab>
+          }
+        </div>
+      </mat-tab>
 
-        <!-- Technical Specification Tab -->
-        <mat-tab label="Technical Specifications">
-          <div class="tab-pane-content">
-            <table class="specs-table">
-              <tbody>
-                <tr>
-                  <th>Product Code</th>
-                  <td>{{ itm.code }}</td>
-                </tr>
-                <tr>
-                  <th>Category</th>
-                  <td>{{ itm.categoryName || 'General' }}</td>
-                </tr>
-                <tr>
-                  <th>Unit of Measurement</th>
-                  <td>{{ itm.unitOfMeasurement }}</td>
-                </tr>
-                <tr>
-                  <th>Total Variants Configured</th>
-                  <td>{{ itm.variants?.length || 0 }}</td>
-                </tr>
-                <tr>
-                  <th>Active Status</th>
-                  <td>{{ itm.isActive ? 'Active & Available' : 'Inactive' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    </section>
+      <!-- Technical Specification Tab -->
+      <mat-tab label="Technical Specifications">
+        <div class="tab-pane-content">
+          <table class="specs-table">
+            <tbody>
+              <tr>
+                <th>Product Code</th>
+                <td>{{ itm.code }}</td>
+              </tr>
+              <tr>
+                <th>Category</th>
+                <td>{{ itm.categoryName || 'General' }}</td>
+              </tr>
+              <tr>
+                <th>Unit of Measurement</th>
+                <td>{{ itm.unitOfMeasurement }}</td>
+              </tr>
+              <tr>
+                <th>Total Variants Configured</th>
+                <td>{{ itm.variants?.length || 0 }}</td>
+              </tr>
+              <tr>
+                <th>Active Status</th>
+                <td>{{ itm.isActive ? 'Active & Available' : 'Inactive' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </section>
   }
 </div>

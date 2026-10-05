@@ -6,284 +6,268 @@
       <span>Back to Orders</span>
     </a>
     @if (order(); as ord) {
-      <div class="header-main">
-        <div class="header-titles">
-          <div class="badge-row">
-            <span class="order-id-badge">{{ ord.orderNumber }}</span>
-            <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
-            <span class="badge status-badge">{{ ord.status }}</span>
-          </div>
-          <h1 class="page-title">Order Details</h1>
-          <span class="timestamp">Placed on {{ ord.createdAt | date: 'medium' }}</span>
+    <div class="header-main">
+      <div class="header-titles">
+        <div class="badge-row">
+          <span class="order-id-badge">{{ ord.orderNumber }}</span>
+          <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
+          <span class="badge status-badge">{{ ord.status }}</span>
         </div>
-
-        <div class="header-total">
-          <span class="label">Total Amount</span>
-          <span class="amount">{{ ord.totalAmount | currency }}</span>
-        </div>
+        <h1 class="page-title">Order Details</h1>
+        <span class="timestamp">Placed on {{ ord.createdAt | date: 'medium' }}</span>
       </div>
+
+      <div class="header-total">
+        <span class="label">Total Amount</span>
+        <span class="amount">{{ ord.totalAmount | currency }}</span>
+      </div>
+    </div>
     }
   </header>
 
   @if (isLoading()) {
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading order details...</p>
-    </div>
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading order details...</p>
+  </div>
   } @else if (order(); as ord) {
-    <!-- Order Lifecycle Stepper -->
-    @if (ord.status !== 'Cancelled') {
-      <section class="stepper-card">
-        <div class="stepper-track">
-          @for (step of statusSteps; track step; let idx = $index) {
-            <div
-              class="step-item"
-              [class.completed]="getStepIndex(ord.status) >= idx"
-              [class.active]="ord.status === step"
-            >
-              <div class="step-circle">
-                @if (getStepIndex(ord.status) > idx) {
-                  <mat-icon>check</mat-icon>
-                } @else {
-                  <span>{{ idx + 1 }}</span>
-                }
-              </div>
-              <span class="step-label">{{ step }}</span>
-            </div>
-            @if (idx < statusSteps.length - 1) {
-              <div class="step-line" [class.filled]="getStepIndex(ord.status) > idx"></div>
-            }
+  <!-- Order Lifecycle Stepper -->
+  @if (ord.status !== 'Cancelled') {
+  <section class="stepper-card">
+    <div class="stepper-track">
+      @for (step of statusSteps; track step; let idx = $index) {
+      <div class="step-item" [class.completed]="getStepIndex(ord.status) >= idx" [class.active]="ord.status === step">
+        <div class="step-circle">
+          @if (getStepIndex(ord.status) > idx) {
+          <mat-icon>check</mat-icon>
+          } @else {
+          <span>{{ idx + 1 }}</span>
           }
         </div>
-      </section>
-    } @else {
-      <div class="cancelled-banner">
-        <mat-icon>cancel</mat-icon>
-        <span>This order has been cancelled.</span>
+        <span class="step-label">{{ step }}</span>
       </div>
-    }
-
-    <!-- 2-Column Grid -->
-    <div class="detail-grid">
-      <!-- Left: Line Items & Customer Details -->
-      <div class="left-col">
-        <!-- Line Items Card -->
-        <section class="card items-card">
-          <h3 class="card-title">Ordered Items ({{ ord.items.length }})</h3>
-
-          <div class="items-list">
-            @for (item of ord.items; track item.id) {
-              <div class="item-row">
-                <div class="item-img">
-                  @if (item.imageUrl) {
-                    <img [src]="item.imageUrl" [alt]="item.itemName" />
-                  } @else {
-                    <div class="no-img">
-                      <mat-icon>image_not_supported</mat-icon>
-                    </div>
-                  }
-                </div>
-
-                <div class="item-info">
-                  <a [routerLink]="['/catalog', item.itemId]" class="item-name">{{ item.itemName }}</a>
-                  <span class="item-sku">SKU: {{ item.variantSku || item.itemCode }}</span>
-                  @if (item.variantName) {
-                    <span class="item-variant">{{ item.variantName }}</span>
-                  }
-                </div>
-
-                <div class="item-qty">
-                  <span class="label">Qty</span>
-                  <span>{{ item.quantity }}</span>
-                </div>
-
-                <div class="item-unit">
-                  <span class="label">Unit Price</span>
-                  <span>{{ item.unitPrice | currency }}</span>
-                </div>
-
-                <div class="item-total">
-                  <span class="label">Total</span>
-                  <strong>{{ item.totalPrice | currency }}</strong>
-                </div>
-              </div>
-            }
-          </div>
-
-          <!-- Total Calculation Breakdown -->
-          <div class="order-totals-box">
-            <div class="calc-row"><span>Subtotal:</span><span>{{ ord.subtotalAmount | currency }}</span></div>
-            <div class="calc-row"><span>Shipping:</span><span class="text-success">Free</span></div>
-            <div class="calc-row"><span>Tax:</span><span>$0.00</span></div>
-            <div class="calc-row grand-total">
-              <span>Grand Total:</span>
-              <strong>{{ ord.totalAmount | currency }}</strong>
-            </div>
-          </div>
-        </section>
-
-        <!-- Customer & Delivery Details -->
-        <section class="card delivery-card">
-          <h3 class="card-title">Customer & Delivery Information</h3>
-          <div class="grid-2">
-            <div class="info-group">
-              <span class="info-label">Customer Name</span>
-              <span class="info-val">{{ ord.customerName }}</span>
-            </div>
-            <div class="info-group">
-              <span class="info-label">Email Address</span>
-              <span class="info-val">{{ ord.customerEmail }}</span>
-            </div>
-            <div class="info-group">
-              <span class="info-label">Contact Phone</span>
-              <span class="info-val">{{ ord.customerPhone }}</span>
-            </div>
-            <div class="info-group">
-              <span class="info-label">Shipping Address</span>
-              <span class="info-val">{{ ord.shippingAddress }}</span>
-            </div>
-            @if (ord.billingAddress) {
-              <div class="info-group">
-                <span class="info-label">Billing Address</span>
-                <span class="info-val">{{ ord.billingAddress }}</span>
-              </div>
-            }
-            @if (ord.orderNotes) {
-              <div class="info-group full-width">
-                <span class="info-label">Order / Handling Notes</span>
-                <span class="info-val notes">{{ ord.orderNotes }}</span>
-              </div>
-            }
-          </div>
-        </section>
-
-        <!-- Enterprise Workflow Approvals Panel -->
-        <app-approval-panel [entityType]="entityType" [entityId]="ord.id" />
-
-        <!-- Activity Audit Log Panel -->
-        <app-activity-log-panel [entityType]="entityType" [entityId]="ord.id" />
-      </div>
-
-      <!-- Right: Status Management & Payment Verification -->
-      <div class="right-col">
-        <!-- Offline Payment Info Card -->
-        <section class="card payment-card">
-          <div class="card-header-row">
-            <h3 class="card-title">UPI Payment Status</h3>
-            <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
-          </div>
-
-          <div class="info-group">
-            <span class="info-label">Payment Method</span>
-            <span class="info-val bold">UPI QR Code</span>
-          </div>
-
-          @if (ord.paymentReferenceNumber) {
-            <div class="info-group">
-              <span class="info-label">UPI Transaction / Reference ID</span>
-              <span class="info-val code">{{ ord.paymentReferenceNumber }}</span>
-            </div>
-          }
-
-          @if (ord.offlinePaymentNotes) {
-            <div class="info-group">
-              <span class="info-label">Payment Notes</span>
-              <span class="info-val">{{ ord.offlinePaymentNotes }}</span>
-            </div>
-          }
-
-          <!-- Admin Update Payment Status Form -->
-          @if (auth.isAdmin() || auth.isManager()) {
-            <div class="admin-action-box">
-              <span class="action-heading">Update Payment Verification</span>
-              <div class="field-row">
-                <label>Status</label>
-                <select [(ngModel)]="newPaymentStatus">
-                  <option value="Pending">Pending Verification</option>
-                  <option value="Paid">Mark as Paid / Verified</option>
-                  <option value="Failed">Payment Failed</option>
-                  <option value="Refunded">Refunded</option>
-                </select>
-              </div>
-
-              <div class="field-row">
-                <label>UPI Reference #</label>
-                <input type="text" [(ngModel)]="paymentReferenceNumber" placeholder="e.g. UPI transaction / UTR number" />
-              </div>
-
-              <div class="field-row">
-                <label>Memo</label>
-                <input type="text" [(ngModel)]="offlinePaymentNotes" placeholder="Verification notes" />
-              </div>
-
-              <button
-                type="button"
-                mat-flat-button
-                color="primary"
-                [disabled]="isUpdating()"
-                (click)="savePaymentStatus()"
-                class="btn-save"
-              >
-                Update Payment Status
-              </button>
-            </div>
-          }
-        </section>
-
-        <!-- Fulfillment & Shipping Status Card -->
-        <section class="card fulfillment-card">
-          <div class="card-header-row">
-            <h3 class="card-title">Order Fulfillment</h3>
-            <span class="badge status-badge">{{ ord.status }}</span>
-          </div>
-
-          @if (ord.trackingNumber) {
-            <div class="info-group">
-              <span class="info-label">Tracking Number</span>
-              <span class="info-val code">{{ ord.trackingNumber }} ({{ ord.shippingCarrier || 'Standard Carrier' }})</span>
-            </div>
-          }
-
-          <!-- Admin Update Fulfillment Form -->
-          @if (auth.isAdmin() || auth.isManager()) {
-            <div class="admin-action-box">
-              <span class="action-heading">Update Fulfillment Lifecycle</span>
-              <div class="field-row">
-                <label>Order Status</label>
-                <select [(ngModel)]="newStatus">
-                  <option value="Pending">Pending</option>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Processing">Processing / Packaging</option>
-                  <option value="Shipped">Shipped / In Transit</option>
-                  <option value="Delivered">Delivered / Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div class="field-row">
-                <label>Tracking #</label>
-                <input type="text" [(ngModel)]="trackingNumber" placeholder="e.g. FEDEX-998877" />
-              </div>
-
-              <div class="field-row">
-                <label>Carrier</label>
-                <input type="text" [(ngModel)]="shippingCarrier" placeholder="e.g. FedEx, DHL, Local Courier" />
-              </div>
-
-              <button
-                type="button"
-                mat-flat-button
-                color="primary"
-                [disabled]="isUpdating()"
-                (click)="saveStatus()"
-                class="btn-save"
-              >
-                Update Fulfillment Status
-              </button>
-            </div>
-          }
-        </section>
-      </div>
+      @if (idx < statusSteps.length - 1) { <div class="step-line" [class.filled]="getStepIndex(ord.status) > idx">
     </div>
-  }
+    }
+    }
+</div>
+</section>
+} @else {
+<div class="cancelled-banner">
+  <mat-icon>cancel</mat-icon>
+  <span>This order has been cancelled.</span>
+</div>
+}
+
+<!-- 2-Column Grid -->
+<div class="detail-grid">
+  <!-- Left: Line Items & Customer Details -->
+  <div class="left-col">
+    <!-- Line Items Card -->
+    <section class="card items-card">
+      <h3 class="card-title">Ordered Items ({{ ord.items.length }})</h3>
+
+      <div class="items-list">
+        @for (item of ord.items; track item.id) {
+        <div class="item-row">
+          <div class="item-img">
+            @if (item.imageUrl) {
+            <img [src]="item.imageUrl" [alt]="item.itemName" />
+            } @else {
+            <div class="no-img">
+              <mat-icon>image_not_supported</mat-icon>
+            </div>
+            }
+          </div>
+
+          <div class="item-info">
+            <a [routerLink]="['/catalog', item.itemId]" class="item-name">{{ item.itemName }}</a>
+            <span class="item-sku">SKU: {{ item.variantSku || item.itemCode }}</span>
+            @if (item.variantName) {
+            <span class="item-variant">{{ item.variantName }}</span>
+            }
+          </div>
+
+          <div class="item-qty">
+            <span class="label">Qty</span>
+            <span>{{ item.quantity }}</span>
+          </div>
+
+          <div class="item-unit">
+            <span class="label">Unit Price</span>
+            <span>{{ item.unitPrice | currency }}</span>
+          </div>
+
+          <div class="item-total">
+            <span class="label">Total</span>
+            <strong>{{ item.totalPrice | currency }}</strong>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Total Calculation Breakdown -->
+      <div class="order-totals-box">
+        <div class="calc-row"><span>Subtotal:</span><span>{{ ord.subtotalAmount | currency }}</span></div>
+        <div class="calc-row"><span>Shipping:</span><span class="text-success">Free</span></div>
+        <div class="calc-row"><span>Tax:</span><span>{{ 0 | currency }}</span></div>
+        <div class="calc-row grand-total">
+          <span>Grand Total:</span>
+          <strong>{{ ord.totalAmount | currency }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Customer & Delivery Details -->
+    <section class="card delivery-card">
+      <h3 class="card-title">Customer & Delivery Information</h3>
+      <div class="grid-2">
+        <div class="info-group">
+          <span class="info-label">Customer Name</span>
+          <span class="info-val">{{ ord.customerName }}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">Email Address</span>
+          <span class="info-val">{{ ord.customerEmail }}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">Contact Phone</span>
+          <span class="info-val">{{ ord.customerPhone }}</span>
+        </div>
+        <div class="info-group">
+          <span class="info-label">Shipping Address</span>
+          <span class="info-val">{{ ord.shippingAddress }}</span>
+        </div>
+        @if (ord.billingAddress) {
+        <div class="info-group">
+          <span class="info-label">Billing Address</span>
+          <span class="info-val">{{ ord.billingAddress }}</span>
+        </div>
+        }
+        @if (ord.orderNotes) {
+        <div class="info-group full-width">
+          <span class="info-label">Order / Handling Notes</span>
+          <span class="info-val notes">{{ ord.orderNotes }}</span>
+        </div>
+        }
+      </div>
+    </section>
+
+    <!-- Enterprise Workflow Approvals Panel -->
+    <app-approval-panel [entityType]="entityType" [entityId]="ord.id" />
+
+    <!-- Activity Audit Log Panel -->
+    <app-activity-log-panel [entityType]="entityType" [entityId]="ord.id" />
+  </div>
+
+  <!-- Right: Status Management & Payment Verification -->
+  <div class="right-col">
+    <!-- Offline Payment Info Card -->
+    <section class="card payment-card">
+      <div class="card-header-row">
+        <h3 class="card-title">UPI Payment Status</h3>
+        <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
+      </div>
+
+      <div class="info-group">
+        <span class="info-label">Payment Method</span>
+        <span class="info-val bold">UPI QR Code</span>
+      </div>
+
+      @if (ord.paymentReferenceNumber) {
+      <div class="info-group">
+        <span class="info-label">UPI Transaction / Reference ID</span>
+        <span class="info-val code">{{ ord.paymentReferenceNumber }}</span>
+      </div>
+      }
+
+      @if (ord.offlinePaymentNotes) {
+      <div class="info-group">
+        <span class="info-label">Payment Notes</span>
+        <span class="info-val">{{ ord.offlinePaymentNotes }}</span>
+      </div>
+      }
+
+      <!-- Admin Update Payment Status Form -->
+      @if (auth.isAdmin() || auth.isManager()) {
+      <div class="admin-action-box">
+        <span class="action-heading">Update Payment Verification</span>
+        <div class="field-row">
+          <label>Status</label>
+          <select [(ngModel)]="newPaymentStatus">
+            <option value="Pending">Pending Verification</option>
+            <option value="Paid">Mark as Paid / Verified</option>
+            <option value="Failed">Payment Failed</option>
+            <option value="Refunded">Refunded</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <label>UPI Reference #</label>
+          <input type="text" [(ngModel)]="paymentReferenceNumber" placeholder="e.g. UPI transaction / UTR number" />
+        </div>
+
+        <div class="field-row">
+          <label>Memo</label>
+          <input type="text" [(ngModel)]="offlinePaymentNotes" placeholder="Verification notes" />
+        </div>
+
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="savePaymentStatus()"
+          class="btn-save">
+          Update Payment Status
+        </button>
+      </div>
+      }
+    </section>
+
+    <!-- Fulfillment & Shipping Status Card -->
+    <section class="card fulfillment-card">
+      <div class="card-header-row">
+        <h3 class="card-title">Order Fulfillment</h3>
+        <span class="badge status-badge">{{ ord.status }}</span>
+      </div>
+
+      @if (ord.trackingNumber) {
+      <div class="info-group">
+        <span class="info-label">Tracking Number</span>
+        <span class="info-val code">{{ ord.trackingNumber }} ({{ ord.shippingCarrier || 'Standard Carrier' }})</span>
+      </div>
+      }
+
+      <!-- Admin Update Fulfillment Form -->
+      @if (auth.isAdmin() || auth.isManager()) {
+      <div class="admin-action-box">
+        <span class="action-heading">Update Fulfillment Lifecycle</span>
+        <div class="field-row">
+          <label>Order Status</label>
+          <select [(ngModel)]="newStatus">
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Processing">Processing / Packaging</option>
+            <option value="Shipped">Shipped / In Transit</option>
+            <option value="Delivered">Delivered / Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <label>Tracking #</label>
+          <input type="text" [(ngModel)]="trackingNumber" placeholder="e.g. FEDEX-998877" />
+        </div>
+
+        <div class="field-row">
+          <label>Carrier</label>
+          <input type="text" [(ngModel)]="shippingCarrier" placeholder="e.g. FedEx, DHL, Local Courier" />
+        </div>
+
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="saveStatus()"
+          class="btn-save">
+          Update Fulfillment Status
+        </button>
+      </div>
+      }
+    </section>
+  </div>
+</div>
+}
 </div>
