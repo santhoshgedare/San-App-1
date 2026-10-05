@@ -72,6 +72,39 @@
   }
 }
 
+@media (max-width: 720px) {
+  .checkout-page {
+    padding: 1rem;
+  }
+
+  .checkout-header {
+    .page-title {
+      font-size: 1.5rem;
+    }
+  }
+
+  .form-section {
+    padding: 1rem;
+  }
+
+  .checkout-layout,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .upi-payment-box {
+    .qr-image-wrap {
+      width: 100%;
+    }
+
+    .qr-image {
+      width: min(220px, 100%);
+      height: auto;
+      margin: 0 auto;
+    }
+  }
+}
+
 .checkout-forms {
   display: flex;
   flex-direction: column;

@@ -6,7 +6,8 @@
       <span>Return to Shopping Cart</span>
     </a>
     <h1 class="page-title">Checkout & Order Placement</h1>
-    <p class="subtitle">Complete your delivery address and pay securely using our UPI QR code.</p>
+    <p class="subtitle">Enter your delivery details to place the order. Payment instructions will be available on the
+      order page.</p>
   </header>
 
   @if (errorMessage(); as err) {
@@ -66,66 +67,6 @@
         </div>
       </section>
 
-      <!-- 2. UPI QR Payment -->
-      <section class="form-section">
-        <div class="section-title">
-          <mat-icon>qr_code_2</mat-icon>
-          <h2>2. Pay via UPI QR Code</h2>
-        </div>
-
-        <div class="upi-payment-box">
-          @if (paymentSettings(); as settings) {
-          @if (settings.qrCodeImageUrl) {
-          <div class="qr-image-wrap">
-            <img [src]="settings.qrCodeImageUrl" alt="UPI QR Code" class="qr-image" />
-          </div>
-          } @else {
-          <div class="qr-missing-notice">
-            <mat-icon>qr_code_2</mat-icon>
-            <span>QR code has not been configured yet. Please use the UPI ID below to pay manually.</span>
-          </div>
-          }
-
-          <div class="upi-id-row">
-            <span class="label">UPI ID:</span>
-            <strong class="upi-id-value">{{ settings.upiId || 'Not configured' }}</strong>
-          </div>
-
-          @if (settings.payeeName) {
-          <div class="upi-id-row">
-            <span class="label">Payee Name:</span>
-            <strong>{{ settings.payeeName }}</strong>
-          </div>
-          }
-
-          <div class="upi-id-row">
-            <span class="label">Amount to Pay:</span>
-            <strong class="amount-value">{{ subtotal() | currency }}</strong>
-          </div>
-
-          @if (settings.instructions) {
-          <p class="upi-instructions">{{ settings.instructions }}</p>
-          }
-          } @else {
-          <div class="qr-missing-notice">
-            <mat-icon>hourglass_empty</mat-icon>
-            <span>Loading payment details...</span>
-          </div>
-          }
-        </div>
-
-        <div class="field-group payment-notes-wrap">
-          <label for="payRef">UPI Transaction / Reference ID (UTR) *</label>
-          <input id="payRef" type="text" [(ngModel)]="paymentReferenceNumber" placeholder="e.g. 123456789012"
-            required />
-        </div>
-
-        <div class="field-group payment-notes-wrap">
-          <label for="payNotes">Additional Payment Notes (Optional)</label>
-          <input id="payNotes" type="text" [(ngModel)]="offlinePaymentNotes"
-            placeholder="e.g. Paid via GPay / PhonePe / Paytm" />
-        </div>
-      </section>
     </div>
 
     <!-- Summary Right Panel -->
@@ -171,13 +112,13 @@
           <span>Placing Order...</span>
           } @else {
           <mat-icon>verified</mat-icon>
-          <span>Confirm & Place Order</span>
+          <span>Place Order</span>
           }
         </button>
 
         <p class="offline-terms-hint">
-          By placing this order, you confirm you have paid the amount above via UPI. Your order status will be updated
-          once payment is verified.
+          Your order will be created immediately. Payment confirmation and UPI reference can be added later for
+          verification.
         </p>
       </div>
     </aside>

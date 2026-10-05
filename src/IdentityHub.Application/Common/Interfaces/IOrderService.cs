@@ -39,4 +39,15 @@ public interface IOrderService
         string? paymentReferenceNumber,
         string? offlinePaymentNotes,
         CancellationToken ct = default);
+    Task<Result> SubmitPaymentDetailsAsync(
+        Guid id,
+        string paymentReferenceNumber,
+        string? offlinePaymentNotes,
+        CancellationToken ct = default);
+    Task<Result> RecordRefundAsync(
+        Guid id,
+        decimal refundAmount,
+        string refundReferenceNumber,
+        string? refundNotes,
+        CancellationToken ct = default);
 }

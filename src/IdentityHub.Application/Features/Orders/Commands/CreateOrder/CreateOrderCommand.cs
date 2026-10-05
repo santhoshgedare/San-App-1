@@ -27,8 +27,10 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
         RuleFor(x => x.CustomerEmail).NotEmpty().EmailAddress().MaximumLength(200);
         RuleFor(x => x.CustomerPhone).NotEmpty().MaximumLength(50);
         RuleFor(x => x.ShippingAddress).NotEmpty().MaximumLength(500);
-        RuleFor(x => x.PaymentReferenceNumber).NotEmpty().MaximumLength(100)
-            .WithMessage("Please enter the UPI transaction / reference number after completing payment.");
+        RuleFor(x => x.PaymentReferenceNumber)
+            .MaximumLength(100)
+            .When(x => !string.IsNullOrWhiteSpace(x.PaymentReferenceNumber))
+            .WithMessage("UPI transaction reference cannot exceed 100 characters.");
         RuleFor(x => x.Items).NotEmpty().WithMessage("At least one item is required in the order.");
         RuleForEach(x => x.Items).ChildRules(item =>
         {

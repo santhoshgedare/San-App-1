@@ -63,3 +63,23 @@
 .content {
   min-height: 100%;
 }
+
+@media screen and (max-width: 767px) {
+  .app-toolbar {
+    padding-inline: 0.5rem;
+
+    .brand {
+      margin-left: 0;
+      max-width: calc(100% - 120px);
+
+      .brand-logo {
+        max-width: 120px;
+        height: 38px;
+      }
+    }
+  }
+
+  .app-sidenav-container {
+    top: 56px;
+  }
+}

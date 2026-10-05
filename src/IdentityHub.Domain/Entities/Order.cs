@@ -24,6 +24,10 @@ public sealed class Order
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
     public string? PaymentReferenceNumber { get; set; }
     public string? OfflinePaymentNotes { get; set; }
+    public decimal? RefundAmount { get; set; }
+    public string? RefundReferenceNumber { get; set; }
+    public string? RefundNotes { get; set; }
+    public DateTimeOffset? RefundedAt { get; set; }
 
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string? TrackingNumber { get; set; }

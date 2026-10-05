@@ -8,9 +8,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CartItem, CartService } from '../../core/cart/cart.service';
 import { OrderService } from '../../core/auth/order.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { PaymentSettingsService } from '../../core/auth/payment-settings.service';
 import { PaymentMethod } from '../../core/models/auth.models';
-import type { CreateOrderRequest, OrderItemRequest, PaymentSettingsDto } from '../../core/models/auth.models';
+import type { CreateOrderRequest, OrderItemRequest } from '../../core/models/auth.models';
 
 @Component({
   selector: 'app-checkout',
@@ -31,7 +30,6 @@ export class Checkout implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly orderService = inject(OrderService);
   private readonly authService = inject(AuthService);
-  private readonly paymentSettingsService = inject(PaymentSettingsService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
 
@@ -42,7 +40,6 @@ export class Checkout implements OnInit {
 
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly paymentSettings = signal<PaymentSettingsDto | null>(null);
 
   getAvailableStock(line: CartItem): number {
     return this.cartService.getAvailableStock(line.item, line.variant);
@@ -55,10 +52,6 @@ export class Checkout implements OnInit {
   shippingAddress = '';
   billingAddress = '';
   orderNotes = '';
-
-  // UPI payment confirmation
-  paymentReferenceNumber = '';
-  offlinePaymentNotes = '';
 
   readonly PaymentMethod = PaymentMethod;
 
@@ -74,10 +67,6 @@ export class Checkout implements OnInit {
       this.customerEmail = user.email;
     }
 
-    this.paymentSettingsService.get().subscribe({
-      next: (settings) => this.paymentSettings.set(settings),
-      error: () => this.paymentSettings.set(null),
-    });
   }
 
   placeOrder(): void {
@@ -88,11 +77,6 @@ export class Checkout implements OnInit {
 
     if (!this.customerName.trim() || !this.customerEmail.trim() || !this.customerPhone.trim() || !this.shippingAddress.trim()) {
       this.errorMessage.set('Please fill in all required customer and delivery details.');
-      return;
-    }
-
-    if (!this.paymentReferenceNumber.trim()) {
-      this.errorMessage.set('Please enter the UPI transaction / reference number after completing your payment.');
       return;
     }
 
@@ -120,19 +104,22 @@ export class Checkout implements OnInit {
       billingAddress: this.billingAddress || null,
       orderNotes: this.orderNotes || null,
       paymentMethod: PaymentMethod.UpiQr,
-      paymentReferenceNumber: this.paymentReferenceNumber,
-      offlinePaymentNotes: this.offlinePaymentNotes || null,
       items: orderItems,
     };
 
     this.orderService.create(request).subscribe({
       next: (createdOrder) => {
         this.cartService.clearCart();
-        this.snackBar.open(`Order ${createdOrder.orderNumber} placed successfully!`, 'View Order', {
-          duration: 5000,
-        }).onAction().subscribe(() => {
-          this.router.navigate(['/orders', createdOrder.id]);
-        });
+        this.snackBar
+          .open(
+            `Order ${createdOrder.orderNumber} has been placed. Please confirm payment details later to complete verification.`,
+            'View Order',
+            { duration: 6000 }
+          )
+          .onAction()
+          .subscribe(() => {
+            this.router.navigate(['/orders', createdOrder.id]);
+          });
         this.router.navigate(['/orders', createdOrder.id]);
       },
       error: (err) => {

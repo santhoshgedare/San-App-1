@@ -232,6 +232,10 @@ export interface OrderDto {
   paymentStatus: PaymentStatus | string;
   paymentReferenceNumber?: string | null;
   offlinePaymentNotes?: string | null;
+  refundAmount?: number | null;
+  refundReferenceNumber?: string | null;
+  refundNotes?: string | null;
+  refundedAt?: string | null;
   status: OrderStatus | string;
   trackingNumber?: string | null;
   shippingCarrier?: string | null;
@@ -280,6 +284,17 @@ export interface UpdateOrderPaymentStatusRequest {
   paymentStatus: string;
   paymentReferenceNumber?: string | null;
   offlinePaymentNotes?: string | null;
+}
+
+export interface SubmitOrderPaymentDetailsRequest {
+  paymentReferenceNumber: string;
+  offlinePaymentNotes?: string | null;
+}
+
+export interface RecordOrderRefundRequest {
+  refundAmount: number;
+  refundReferenceNumber: string;
+  refundNotes?: string | null;
 }
 
 export interface PaymentSettingsDto {

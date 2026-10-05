@@ -234,15 +234,14 @@ public sealed class OrderService(
 
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
 
-        // Record Activity Log
         await activityLogs.LogAsync(
             EntityTypes.Order,
             order.Id.ToString(),
             "Created",
             $"Order {order.OrderNumber} placed by {order.CustomerName} for {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} ({order.PaymentMethod})",
             ct);
+        await transaction.CommitAsync(ct);
 
         // Raise approval if approval workflow configured for Orders
         await approvals.RequestAsync(
@@ -314,14 +313,13 @@ public sealed class OrderService(
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-
         await activityLogs.LogAsync(
             EntityTypes.Order,
             order.Id.ToString(),
             "StatusUpdated",
             $"Order status changed from {oldStatus} to {status}. Tracking: {order.TrackingNumber ?? "N/A"}",
             ct);
+        await transaction.CommitAsync(ct);
 
         return Result.Success();
     }
@@ -333,23 +331,44 @@ public sealed class OrderService(
         string? offlinePaymentNotes,
         CancellationToken ct = default)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
         if (order is null)
         {
             return Result.Failure("Order not found.");
         }
 
+        if (paymentStatus == PaymentStatus.Refunded)
+        {
+            return Result.Failure("Use the refund workflow to record a refund.");
+        }
+        if (order.Status is OrderStatus.Pending or OrderStatus.Cancelled)
+        {
+            return Result.Failure("Payment can be updated only after the order is confirmed.");
+        }
+
         var oldPaymentStatus = order.PaymentStatus;
+        if (oldPaymentStatus == PaymentStatus.Refunded)
+        {
+            return Result.Failure("A refunded payment cannot be changed.");
+        }
+
+        if (oldPaymentStatus == PaymentStatus.Paid)
+        {
+            return Result.Failure("A paid payment cannot be changed; use the refund workflow if necessary.");
+        }
+
+        if (paymentStatus == PaymentStatus.Paid &&
+            string.IsNullOrWhiteSpace(paymentReferenceNumber) &&
+            string.IsNullOrWhiteSpace(order.PaymentReferenceNumber))
+        {
+            return Result.Failure("A payment reference is required before confirming payment.");
+        }
+
         order.PaymentStatus = paymentStatus;
         if (!string.IsNullOrWhiteSpace(paymentReferenceNumber)) order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
         if (!string.IsNullOrWhiteSpace(offlinePaymentNotes)) order.OfflinePaymentNotes = offlinePaymentNotes.Trim();
         order.UpdatedAt = DateTimeOffset.UtcNow;
-
-        // Auto-confirm order if payment is marked Paid and order is still Pending
-        if (paymentStatus == PaymentStatus.Paid && order.Status == OrderStatus.Pending)
-        {
-            order.Status = OrderStatus.Confirmed;
-        }
 
         await db.SaveChangesAsync(ct);
 
@@ -359,6 +378,95 @@ public sealed class OrderService(
             "PaymentUpdated",
             $"Payment status changed from {oldPaymentStatus} to {paymentStatus}. Ref: {order.PaymentReferenceNumber ?? "N/A"}",
             ct);
+        await transaction.CommitAsync(ct);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> SubmitPaymentDetailsAsync(
+        Guid id,
+        string paymentReferenceNumber,
+        string? offlinePaymentNotes,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(paymentReferenceNumber))
+        {
+            return Result.Failure("A payment reference is required.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (order is null)
+        {
+            return Result.Failure("Order not found.");
+        }
+        if (order.PaymentStatus is PaymentStatus.Paid or PaymentStatus.Refunded)
+        {
+            return Result.Failure("Payment has already been confirmed.");
+        }
+        if (order.Status is OrderStatus.Pending or OrderStatus.Cancelled)
+        {
+            return Result.Failure("Payment details can be submitted only after the order is confirmed.");
+        }
+
+        order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
+        order.OfflinePaymentNotes = offlinePaymentNotes?.Trim();
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await activityLogs.LogAsync(
+            EntityTypes.Order,
+            order.Id.ToString(),
+            "PaymentDetailsSubmitted",
+            "Payment details submitted for verification.",
+            ct);
+        await transaction.CommitAsync(ct);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> RecordRefundAsync(
+        Guid id,
+        decimal refundAmount,
+        string refundReferenceNumber,
+        string? refundNotes,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(refundReferenceNumber))
+        {
+            return Result.Failure("A refund transaction reference is required.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (order is null)
+        {
+            return Result.Failure("Order not found.");
+        }
+        if (order.PaymentStatus != PaymentStatus.Paid)
+        {
+            return Result.Failure("Only a paid order can be refunded.");
+        }
+        if (refundAmount != order.TotalAmount)
+        {
+            return Result.Failure("Only a full refund for the order total is supported.");
+        }
+
+        order.PaymentStatus = PaymentStatus.Refunded;
+        order.RefundAmount = refundAmount;
+        order.RefundReferenceNumber = refundReferenceNumber.Trim();
+        order.RefundNotes = refundNotes?.Trim();
+        order.RefundedAt = DateTimeOffset.UtcNow;
+        order.UpdatedAt = order.RefundedAt;
+        await db.SaveChangesAsync(ct);
+
+        await activityLogs.LogAsync(
+            EntityTypes.Order,
+            order.Id.ToString(),
+            "RefundRecorded",
+            $"Full refund of {refundAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} recorded. Refund reference: {order.RefundReferenceNumber}.",
+            ct);
+        await transaction.CommitAsync(ct);
 
         return Result.Success();
     }
@@ -378,6 +486,10 @@ public sealed class OrderService(
         PaymentStatus = o.PaymentStatus.ToString(),
         PaymentReferenceNumber = o.PaymentReferenceNumber,
         OfflinePaymentNotes = o.OfflinePaymentNotes,
+        RefundAmount = o.RefundAmount,
+        RefundReferenceNumber = o.RefundReferenceNumber,
+        RefundNotes = o.RefundNotes,
+        RefundedAt = o.RefundedAt,
         Status = o.Status.ToString(),
         TrackingNumber = o.TrackingNumber,
         ShippingCarrier = o.ShippingCarrier,

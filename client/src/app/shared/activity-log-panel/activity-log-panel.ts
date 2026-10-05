@@ -23,18 +23,24 @@ export class ActivityLogPanel implements OnChanges {
 
   readonly entries = signal<ActivityLogDto[]>([]);
   readonly isLoading = signal(true);
+  readonly hasError = signal(false);
 
   ngOnChanges(): void {
     if (!this.entityType() || !this.entityId()) {
       return;
     }
     this.isLoading.set(true);
+    this.hasError.set(false);
+    this.entries.set([]);
     this.activityLogService.getForEntity(this.entityType(), this.entityId()).subscribe({
       next: (entries) => {
         this.entries.set(entries);
         this.isLoading.set(false);
       },
-      error: () => this.isLoading.set(false),
+      error: () => {
+        this.hasError.set(true);
+        this.isLoading.set(false);
+      },
     });
   }
 }

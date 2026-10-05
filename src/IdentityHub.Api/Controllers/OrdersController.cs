@@ -2,11 +2,14 @@ using System.Security.Claims;
 using IdentityHub.Api.Contracts;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.Orders.Commands.CreateOrder;
+using IdentityHub.Application.Features.Orders.Commands.RecordOrderRefund;
+using IdentityHub.Application.Features.Orders.Commands.SubmitPaymentDetails;
 using IdentityHub.Application.Features.Orders.Commands.UpdateOrderStatus;
 using IdentityHub.Application.Features.Orders.Commands.UpdatePaymentStatus;
 using IdentityHub.Application.Features.Orders.Queries.GetOrderById;
 using IdentityHub.Application.Features.Orders.Queries.GetOrders;
 using IdentityHub.Domain.Constants;
+using IdentityHub.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +32,9 @@ public sealed class OrdersController(ISender sender) : ControllerBase
         CancellationToken ct = default)
     {
         var isPrivileged = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
-        Guid? customerId = isPrivileged ? null : GetCurrentUserId();
+        var currentUserId = GetCurrentUserId();
+        if (!isPrivileged && !currentUserId.HasValue) return Unauthorized();
+        Guid? customerId = isPrivileged ? null : currentUserId;
 
         var result = await sender.Send(new GetOrdersPagedQuery(
             search,
@@ -51,7 +56,7 @@ public sealed class OrdersController(ISender sender) : ControllerBase
 
         var isPrivileged = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
         var currentUserId = GetCurrentUserId();
-        if (!isPrivileged && order.CustomerId.HasValue && order.CustomerId.Value != currentUserId)
+        if (!isPrivileged && (!currentUserId.HasValue || order.CustomerId != currentUserId))
         {
             return Forbid();
         }
@@ -64,6 +69,7 @@ public sealed class OrdersController(ISender sender) : ControllerBase
     public async Task<ActionResult<OrderDto>> Create(CreateOrderRequest request, CancellationToken ct)
     {
         var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue) return Unauthorized();
 
         var itemInputs = request.Items.Select(i => new OrderItemInput(
             i.ItemId,
@@ -112,6 +118,47 @@ public sealed class OrdersController(ISender sender) : ControllerBase
         var result = await sender.Send(new UpdatePaymentStatusCommand(
             id,
             request.PaymentStatus,
+            request.PaymentReferenceNumber,
+            request.OfflinePaymentNotes), ct);
+
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Records a full refund already processed through the offline payment provider.</summary>
+    [HttpPost("{id:guid}/refund")]
+    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    public async Task<IActionResult> RecordRefund(Guid id, RecordOrderRefundRequest request, CancellationToken ct)
+    {
+        var result = await sender.Send(new RecordOrderRefundCommand(
+            id,
+            request.RefundAmount,
+            request.RefundReferenceNumber,
+            request.RefundNotes), ct);
+
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Submits payment reference details for verification without changing payment status.</summary>
+    [HttpPut("{id:guid}/payment-details")]
+    public async Task<IActionResult> SubmitPaymentDetails(Guid id, SubmitOrderPaymentDetailsRequest request, CancellationToken ct)
+    {
+        var currentOrder = await sender.Send(new GetOrderByIdQuery(id), ct);
+        if (currentOrder is null) return NotFound();
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue) return Unauthorized();
+        if (currentOrder.CustomerId != currentUserId) return Forbid();
+        if (currentOrder.Status is nameof(OrderStatus.Pending) or nameof(OrderStatus.Cancelled))
+        {
+            return Conflict(new { error = "Payment can be submitted after the order is confirmed." });
+        }
+        if (string.Equals(currentOrder.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(currentOrder.PaymentStatus, "Refunded", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new { error = "Payment has already been confirmed." });
+        }
+
+        var result = await sender.Send(new SubmitPaymentDetailsCommand(
+            id,
             request.PaymentReferenceNumber,
             request.OfflinePaymentNotes), ct);
 

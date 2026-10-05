@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 import type {
   CreateOrderRequest,
   OrderDto,
+  RecordOrderRefundRequest,
+  SubmitOrderPaymentDetailsRequest,
   UpdateOrderPaymentStatusRequest,
   UpdateOrderStatusRequest,
 } from '../models/auth.models';
@@ -48,5 +50,13 @@ export class OrderService {
 
   updatePaymentStatus(id: string, request: UpdateOrderPaymentStatusRequest): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/${id}/payment-status`, request);
+  }
+
+  submitPaymentDetails(id: string, request: SubmitOrderPaymentDetailsRequest): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/payment-details`, request);
+  }
+
+  recordRefund(id: string, request: RecordOrderRefundRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/refund`, request);
   }
 }

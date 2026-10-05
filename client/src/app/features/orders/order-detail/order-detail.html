@@ -169,10 +169,51 @@
         <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
       </div>
 
+      @if (isPrivileged() || isPaymentAvailable(ord)) {
       <div class="info-group">
         <span class="info-label">Payment Method</span>
         <span class="info-val bold">UPI QR Code</span>
       </div>
+      }
+
+      @if (!isPrivileged() && ord.status === 'Pending') {
+      <div class="payment-waiting-notice">Payment will be available after your order is confirmed.</div>
+      }
+
+      @if (!isPrivileged() && isPaymentAvailable(ord) && ord.paymentStatus !== 'Paid' && ord.paymentStatus !==
+      'Refunded') {
+      @if (paymentSettings(); as settings) {
+      @if (settings.qrCodeImageUrl) {
+      <div class="qr-image-wrap">
+        <img [src]="settings.qrCodeImageUrl" alt="UPI QR Code" class="qr-image" />
+      </div>
+      } @else {
+      <div class="qr-missing-notice">QR code is not configured. Use the UPI ID below to pay manually.</div>
+      }
+      @if (settings.upiId) {
+      <div class="info-group">
+        <span class="info-label">UPI ID</span>
+        <span class="info-val code">{{ settings.upiId }}</span>
+      </div>
+      }
+      @if (settings.payeeName) {
+      <div class="info-group">
+        <span class="info-label">Payee Name</span>
+        <span class="info-val">{{ settings.payeeName }}</span>
+      </div>
+      }
+      <div class="info-group">
+        <span class="info-label">Amount to Pay</span>
+        <span class="info-val bold">{{ ord.totalAmount | currency }}</span>
+      </div>
+      @if (settings.instructions) {
+      <div class="info-group">
+        <span class="info-label">Payment Instructions</span>
+        <span class="info-val">{{ settings.instructions }}</span>
+      </div>
+      }
+      }
+      }
 
       @if (ord.paymentReferenceNumber) {
       <div class="info-group">
@@ -188,8 +229,32 @@
       </div>
       }
 
-      <!-- Admin Update Payment Status Form -->
-      @if (auth.isAdmin() || auth.isManager()) {
+      @if (ord.paymentStatus === 'Refunded') {
+      <div class="info-group">
+        <span class="info-label">Refund Amount</span>
+        <span class="info-val bold">{{ ord.refundAmount | currency }}</span>
+      </div>
+      @if (ord.refundReferenceNumber) {
+      <div class="info-group">
+        <span class="info-label">Refund Transaction Reference</span>
+        <span class="info-val code">{{ ord.refundReferenceNumber }}</span>
+      </div>
+      }
+      @if (ord.refundedAt) {
+      <div class="info-group">
+        <span class="info-label">Refunded At</span>
+        <span class="info-val">{{ ord.refundedAt | date: 'medium' }}</span>
+      </div>
+      }
+      @if (ord.refundNotes) {
+      <div class="info-group">
+        <span class="info-label">Refund Notes</span>
+        <span class="info-val">{{ ord.refundNotes }}</span>
+      </div>
+      }
+      }
+
+      @if (canUpdatePaymentStatus(ord)) {
       <div class="admin-action-box">
         <span class="action-heading">Update Payment Verification</span>
         <div class="field-row">
@@ -198,13 +263,13 @@
             <option value="Pending">Pending Verification</option>
             <option value="Paid">Mark as Paid / Verified</option>
             <option value="Failed">Payment Failed</option>
-            <option value="Refunded">Refunded</option>
           </select>
         </div>
 
         <div class="field-row">
-          <label>UPI Reference #</label>
-          <input type="text" [(ngModel)]="paymentReferenceNumber" placeholder="e.g. UPI transaction / UTR number" />
+          <label for="payment-reference-admin">UPI Transaction Reference ID</label>
+          <input id="payment-reference-admin" type="text" [(ngModel)]="paymentReferenceNumber"
+            placeholder="e.g. UPI transaction / UTR number" />
         </div>
 
         <div class="field-row">
@@ -212,9 +277,54 @@
           <input type="text" [(ngModel)]="offlinePaymentNotes" placeholder="Verification notes" />
         </div>
 
-        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="savePaymentStatus()"
-          class="btn-save">
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()"
+          (click)="isPrivileged() ? savePaymentStatus() : submitPaymentDetails()" class="btn-save">
           Update Payment Status
+        </button>
+      </div>
+      }
+
+      @if (canSubmitPaymentDetails(ord)) {
+      <div class="admin-action-box">
+        <span class="action-heading">Submit Payment Details</span>
+        <div class="field-row">
+          <label for="payment-reference-customer">UPI Transaction Reference ID</label>
+          <input id="payment-reference-customer" type="text" [(ngModel)]="paymentReferenceNumber"
+            placeholder="e.g. UPI transaction / UTR number" />
+        </div>
+        <div class="field-row">
+          <label for="payment-notes-customer">Payment Notes (Optional)</label>
+          <input id="payment-notes-customer" type="text" [(ngModel)]="offlinePaymentNotes"
+            placeholder="Paid using your UPI app" />
+        </div>
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="submitPaymentDetails()"
+          class="btn-save">
+          Submit for Verification
+        </button>
+      </div>
+      }
+
+      @if (isPrivileged() && ord.paymentStatus === 'Paid') {
+      <div class="admin-action-box">
+        <span class="action-heading">Record Completed Full Refund</span>
+        <p class="refund-guidance">Send the refund through your payment provider first, then record its transaction
+          reference here.</p>
+        <div class="field-row">
+          <label for="refund-amount">Full Refund Amount</label>
+          <input id="refund-amount" type="text" [value]="ord.totalAmount | currency" readonly />
+        </div>
+        <div class="field-row">
+          <label for="refund-reference">Refund Transaction Reference</label>
+          <input id="refund-reference" type="text" [(ngModel)]="refundReferenceNumber"
+            placeholder="Refund UTR / transaction ID" />
+        </div>
+        <div class="field-row">
+          <label for="refund-notes">Refund Notes</label>
+          <input id="refund-notes" type="text" [(ngModel)]="refundNotes" placeholder="Reason or additional details" />
+        </div>
+        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="recordRefund()"
+          class="btn-save">
+          Record Full Refund
         </button>
       </div>
       }

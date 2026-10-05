@@ -174,7 +174,7 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 1rem;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -375,6 +375,32 @@
     color: #64748b;
     max-width: 400px;
     margin-bottom: 1.25rem;
+  }
+}
+
+@media (max-width: 820px) {
+  .orders-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .controls-card .search-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .orders-table {
+    min-width: 820px;
   }
 }
 

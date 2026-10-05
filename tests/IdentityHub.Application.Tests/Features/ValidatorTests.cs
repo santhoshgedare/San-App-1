@@ -355,7 +355,7 @@ public sealed class CreateOrderCommandValidatorTests
     }
 
     [Fact]
-    public void Fails_when_payment_reference_number_is_missing()
+    public void Succeeds_without_payment_reference_number_until_payment_is_verified_later()
     {
         var result = _validator.Validate(new IdentityHub.Application.Features.Orders.Commands.CreateOrder.CreateOrderCommand(
             Guid.NewGuid(),
@@ -382,8 +382,7 @@ public sealed class CreateOrderCommandValidatorTests
                     1)
             ]));
 
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "PaymentReferenceNumber");
+        result.IsValid.Should().BeTrue();
     }
 
     [Fact]

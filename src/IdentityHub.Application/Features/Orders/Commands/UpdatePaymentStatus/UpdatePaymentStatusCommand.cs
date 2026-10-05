@@ -18,6 +18,11 @@ public sealed class UpdatePaymentStatusCommandValidator : AbstractValidator<Upda
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.PaymentStatus).NotEmpty().IsEnumName(typeof(PaymentStatus), caseSensitive: false);
+        RuleFor(x => x.PaymentStatus)
+            .Must(status => !string.Equals(status, nameof(PaymentStatus.Refunded), StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Use the refund workflow to record a refund.");
+        RuleFor(x => x.PaymentReferenceNumber).MaximumLength(100);
+        RuleFor(x => x.OfflinePaymentNotes).MaximumLength(1000);
     }
 }
 

@@ -130,6 +130,15 @@ public sealed record UpdateOrderPaymentStatusRequest(
     string? PaymentReferenceNumber,
     string? OfflinePaymentNotes);
 
+public sealed record SubmitOrderPaymentDetailsRequest(
+    string PaymentReferenceNumber,
+    string? OfflinePaymentNotes);
+
+public sealed record RecordOrderRefundRequest(
+    decimal RefundAmount,
+    string RefundReferenceNumber,
+    string? RefundNotes);
+
 public sealed record UpdatePaymentSettingsRequest(
     string UpiId,
     string? PayeeName,

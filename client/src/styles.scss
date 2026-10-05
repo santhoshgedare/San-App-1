@@ -42,6 +42,23 @@ body {
   background-color: #f4f6fb;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 app-admin-shell .content > router-outlet + *,
 app-user-shell .user-content > router-outlet + * {
   display: block;
@@ -106,8 +123,66 @@ app-user-shell .user-content {
 }
 
 @media screen and (max-width: 767px) {
+  body {
+    overflow-x: hidden;
+  }
+
   app-admin-shell .content > router-outlet + *,
   app-user-shell .user-content > router-outlet + * {
     padding: 1rem;
+  }
+
+  .catalog-page,
+  .cart-page,
+  .checkout-page,
+  .orders-page,
+  .order-detail-page,
+  .product-detail-page,
+  .dashboard-page,
+  .profile-page,
+  .items-page,
+  .categories-page,
+  .roles-page,
+  .users-page,
+  .payment-settings-page,
+  .approval-workflows-page {
+    padding: 1rem !important;
+  }
+
+  .page-header,
+  .hero-heading,
+  .catalog-controls,
+  .controls-card .search-filter-row,
+  .checkout-layout,
+  .grid-2,
+  .detail-grid,
+  .split-layout,
+  .two-column-layout,
+  .create-edit-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    align-items: stretch !important;
+  }
+
+  .catalog-controls .search-input-wrapper,
+  .search-box,
+  .catalog-controls .sort-wrapper,
+  .controls-card .search-filter-row .search-box,
+  .field-group,
+  .checkout-layout > *,
+  .grid-2 > *,
+  .detail-grid > *,
+  .split-layout > *,
+  .two-column-layout > * {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .category-filter-bar,
+  .status-tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

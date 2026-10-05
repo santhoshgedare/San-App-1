@@ -323,6 +323,10 @@ public sealed class OrderDto
     public string PaymentStatus { get; init; } = string.Empty;
     public string? PaymentReferenceNumber { get; init; }
     public string? OfflinePaymentNotes { get; init; }
+    public decimal? RefundAmount { get; init; }
+    public string? RefundReferenceNumber { get; init; }
+    public string? RefundNotes { get; init; }
+    public DateTimeOffset? RefundedAt { get; init; }
     public string Status { get; init; } = string.Empty;
     public string? TrackingNumber { get; init; }
     public string? ShippingCarrier { get; init; }

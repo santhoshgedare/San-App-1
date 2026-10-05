@@ -218,6 +218,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(o => o.PaymentStatus).HasConversion<string>().HasMaxLength(50);
             entity.Property(o => o.PaymentReferenceNumber).HasMaxLength(100);
             entity.Property(o => o.OfflinePaymentNotes).HasMaxLength(1000);
+            entity.Property(o => o.RefundAmount).HasPrecision(18, 2);
+            entity.Property(o => o.RefundReferenceNumber).HasMaxLength(100);
+            entity.Property(o => o.RefundNotes).HasMaxLength(1000);
             entity.Property(o => o.Status).HasConversion<string>().HasMaxLength(50);
             entity.Property(o => o.TrackingNumber).HasMaxLength(100);
             entity.Property(o => o.ShippingCarrier).HasMaxLength(100);
