@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { AfterViewChecked, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, input, signal } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, OnChanges, OnDestroy, SimpleChanges, ViewChild, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -23,13 +23,17 @@ const SELLER_REPLIES = [
   templateUrl: './order-chat.html',
   styleUrl: './order-chat.scss',
 })
-export class OrderChatPanel implements OnInit, OnDestroy, AfterViewChecked {
+export class OrderChatPanel implements OnChanges, OnDestroy, AfterViewChecked {
   private readonly service = inject(OrderChatService);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly orderId = input.required<string>();
+  readonly compact = input(false);
+  readonly refreshKey = input(0);
   readonly chat = signal<OrderChat | null>(null);
+  readonly chatLoaded = output<OrderChat>();
   readonly isSending = signal(false);
+  readonly loadError = signal(false);
   readonly replies = SELLER_REPLIES;
   text = '';
 
@@ -37,9 +41,19 @@ export class OrderChatPanel implements OnInit, OnDestroy, AfterViewChecked {
   private timer?: ReturnType<typeof setInterval>;
   private lastCount = 0;
 
-  ngOnInit(): void {
-    this.load();
-    this.timer = setInterval(() => this.load(), POLL_MS);
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['orderId']) {
+      clearInterval(this.timer);
+      this.chat.set(null);
+      this.loadError.set(false);
+      this.isSending.set(false);
+      this.text = '';
+      this.lastCount = 0;
+      this.load();
+      this.timer = setInterval(() => this.load(), POLL_MS);
+    } else if (changes['refreshKey']) {
+      this.load();
+    }
   }
 
   ngOnDestroy(): void {
@@ -55,7 +69,18 @@ export class OrderChatPanel implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private load(): void {
-    this.service.get(this.orderId()).subscribe({ next: (c) => this.chat.set(c), error: () => undefined });
+    const orderId = this.orderId();
+    this.service.get(orderId).subscribe({
+      next: (c) => {
+        if (orderId !== this.orderId()) return;
+        this.chat.set(c);
+        this.chatLoaded.emit(c);
+        this.loadError.set(false);
+      },
+      error: () => {
+        if (orderId === this.orderId()) this.loadError.set(true);
+      },
+    });
   }
 
   send(): void {
@@ -81,14 +106,18 @@ export class OrderChatPanel implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private submit(body?: string, faqId?: string): void {
+    const orderId = this.orderId();
     this.isSending.set(true);
-    this.service.send(this.orderId(), body, faqId).subscribe({
+    this.service.send(orderId, body, faqId).subscribe({
       next: (c) => {
-        this.chat.set(c);
-        this.text = '';
+        if (orderId !== this.orderId()) return;
         this.isSending.set(false);
+        this.chat.set(c);
+        this.loadError.set(false);
+        this.text = '';
       },
       error: (err) => {
+        if (orderId !== this.orderId()) return;
         this.isSending.set(false);
         this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Could not send message.', 'Close', { panelClass: ['snack-error'] });
       },

@@ -8,7 +8,9 @@ import { SELECT_DEFAULTS } from '../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CanRenderDirective } from '../../core/directives/can-render.directive';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, Subscription, Observable, debounceTime, distinctUntilChanged } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { AuthService } from '../../core/auth/auth.service';
 import { ItemService } from '../../core/auth/item.service';
 import { CategoryService } from '../../core/auth/category.service';
 import { SectionAccessStore } from '../../core/auth/section-access.store';
@@ -33,6 +35,34 @@ export class Items implements OnInit, OnDestroy {
   private readonly categoryService = inject(CategoryService);
   protected readonly sectionAccess = inject(SectionAccessStore);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  private readonly snackBar = inject(MatSnackBar);
+  protected readonly isAdmin = this.auth.isAdmin;
+
+  private apply(call: Observable<void>, msg: string): void {
+    call.subscribe({
+      next: () => {
+        this.snackBar.open(msg, 'Close');
+        this.reload();
+      },
+      error: (err) => this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Action failed.', 'Close'),
+    });
+  }
+
+  approve(item: ItemDto): void {
+    this.apply(this.itemService.approve(item.id), `${item.name} approved.`);
+  }
+
+  reject(item: ItemDto): void {
+    this.apply(this.itemService.reject(item.id), `${item.name} rejected.`);
+  }
+
+  toggleActive(item: ItemDto): void {
+    this.apply(
+      this.itemService.setActive(item.id, !item.isActive),
+      item.isActive ? `${item.name} hidden from catalog.` : `${item.name} is now on the catalog.`,
+    );
+  }
   private readonly searchInput$ = new Subject<string>();
 
   @ViewChild('scrollContainer') scrollContainer?: ElementRef<HTMLDivElement>;
@@ -48,6 +78,7 @@ export class Items implements OnInit, OnDestroy {
   readonly statusFilter = signal<'' | 'active' | 'inactive'>('');
 
   private page = 1;
+  private pageSub?: Subscription;
   private hasMore = true;
 
   ngOnInit(): void {
@@ -60,6 +91,7 @@ export class Items implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.pageSub?.unsubscribe();
     this.searchInput$.complete();
   }
 
@@ -109,7 +141,8 @@ export class Items implements OnInit, OnDestroy {
     const request = this.sectionAccess.can('section-items-manage')
       ? this.itemService.getManagementPaged(params)
       : this.itemService.getPaged(params);
-    request
+    this.pageSub?.unsubscribe();
+    this.pageSub = request
       .subscribe({
         next: (result) => {
           this.items.update((existing) => [...existing, ...result.items]);
@@ -144,6 +177,10 @@ export class Items implements OnInit, OnDestroy {
 
   openDetail(item: ItemDto): void {
     this.router.navigate(['/items', item.id]);
+  }
+
+  openEdit(item: ItemDto): void {
+    this.router.navigate(['/items', item.id, 'edit']);
   }
 
   create(): void {

@@ -26,6 +26,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ItemVariant> ItemVariants => Set<ItemVariant>();
     public DbSet<ItemReview> ItemReviews => Set<ItemReview>();
     public DbSet<SellerProfile> SellerProfiles => Set<SellerProfile>();
+    public DbSet<SellerEmployee> SellerEmployees => Set<SellerEmployee>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PaymentSettings> PaymentSettings => Set<PaymentSettings>();
@@ -250,6 +251,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(i => i.UnitOfMeasurement).HasConversion<string>().HasMaxLength(50);
             entity.Property(i => i.Price).HasPrecision(18, 2);
             entity.Property(i => i.CostPrice).HasPrecision(18, 2);
+            entity.Property(i => i.ApprovalStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(i => i.ApprovalNote).HasMaxLength(500);
 
             entity.HasOne(i => i.Category).WithMany().HasForeignKey(i => i.CategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.HasMany(i => i.Images).WithOne(img => img.Item).HasForeignKey(img => img.ItemId).OnDelete(DeleteBehavior.Cascade);
@@ -308,10 +311,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(s => s.UpiId).HasMaxLength(100);
             entity.Property(s => s.PayeeName).HasMaxLength(200);
             entity.Property(s => s.BankDetails).HasMaxLength(1000);
+            entity.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(s => s.StatusNote).HasMaxLength(500);
             entity.Property(s => s.InviteEmail).HasMaxLength(256);
             entity.Property(s => s.InviteTokenHash).HasMaxLength(128);
             entity.HasIndex(s => s.InviteTokenHash);
             entity.HasIndex(s => s.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+        });
+
+        builder.Entity<SellerEmployee>(entity =>
+        {
+            entity.HasIndex(e => e.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            entity.HasIndex(e => e.SellerId);
+            entity.HasIndex(e => e.InviteTokenHash);
+            entity.Property(e => e.InviteEmail).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.InviteTokenHash).HasMaxLength(128);
+            entity.HasOne<SellerProfile>().WithMany().HasForeignKey(e => e.SellerId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ItemReview>(entity =>

@@ -9,57 +9,40 @@
           onerror="this.style.display='none'"
         />
         <h3 class="mt-2 mb-0">Create an account</h3>
-        <p class="text-muted small">Join SRIVIDIKA in a few seconds</p>
+        <p class="text-muted small">Sign up with your email or phone number</p>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="submit()">
-        <div class="row">
-          <div class="col-6 mb-3">
-            <label class="form-label">First name</label>
-            <input type="text" class="form-control" formControlName="firstName" placeholder="Jane" />
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">Last name</label>
-            <input type="text" class="form-control" formControlName="lastName" placeholder="Doe" />
-          </div>
+        <div class="mb-3">
+          <label for="register-identifier" class="form-label">Email or phone number</label>
+          <input id="register-identifier" type="text" class="form-control" formControlName="identifier" autocomplete="username"
+            placeholder="you@example.com or +91 98765 43210" />
+          @if (form.controls.identifier.invalid && form.controls.identifier.touched) {
+            <div class="form-text text-danger">Enter a valid email address or phone number.</div>
+          }
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input type="email" class="form-control" formControlName="email" autocomplete="email" placeholder="you@example.com" />
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Password</label>
-          <app-password-field formControlName="password" autocomplete="new-password" placeholder="At least 8 characters" />
+          <label for="register-password" class="form-label">Password</label>
+          <app-password-field inputId="register-password" formControlName="password" autocomplete="new-password"
+            placeholder="At least 8 characters" />
           @if (form.controls.password.invalid && form.controls.password.touched) {
             <div class="form-text text-danger">Password must be at least 8 characters.</div>
           }
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Phone number <span class="text-danger">*</span></label>
-          <input type="tel" class="form-control" formControlName="phoneNumber" autocomplete="tel" placeholder="+91 98765 43210" />
-          @if (form.controls.phoneNumber.invalid && form.controls.phoneNumber.touched) {
-            <div class="form-text text-danger">Enter a valid phone number.</div>
-          }
-        </div>
-
-        <h6 class="mt-4 mb-2">Delivery address</h6>
-        <p class="text-muted small">Add one address now. You can add more later from your profile.</p>
-        <div class="mb-3"><app-address-fields [model]="address" /></div>
-
         @if (errorMessage(); as message) {
-          <div class="alert alert-danger py-2 small">{{ message }}</div>
+          <div class="alert alert-danger py-2 small" role="alert">{{ message }}</div>
         }
 
         <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
           @if (isSubmitting()) {
-            <span class="spinner-border spinner-border-sm me-2"></span>
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
           }
           {{ isSubmitting() ? 'Creating account...' : 'Create Account' }}
         </button>
       </form>
+      <app-social-login (completed)="onRegistered()" />
 
       <p class="text-center small mt-3 mb-0">
         Already have an account? <a routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }">Sign in</a>

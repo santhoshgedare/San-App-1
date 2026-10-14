@@ -13,6 +13,11 @@ public sealed record SendOrderMessageRequest(string? Body, string? FaqId);
 [Authorize]
 public sealed class OrderMessagesController(IOrderChatService chat) : ControllerBase
 {
+    [HttpGet("/api/orders/messages/notifications")]
+    [RequireSection("section-orders-view")]
+    public async Task<ActionResult<IReadOnlyList<OrderChatNotificationDto>>> GetNotifications(CancellationToken ct)
+        => Ok(await chat.GetNotificationsAsync(ct));
+
     [HttpGet]
     [RequireSection("section-orders-view")]
     public async Task<ActionResult<OrderChatDto>> Get(Guid orderId, CancellationToken ct)

@@ -1,5 +1,7 @@
 namespace IdentityHub.Domain.Entities;
 
+using IdentityHub.Domain.Enums;
+
 /// <summary>
 /// Company profile of a seller (a user in the Manager role). Items and orders are linked to it
 /// so each seller manages only their own catalogue and orders.
@@ -40,4 +42,14 @@ public sealed class SellerProfile
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAt { get; set; }
+
+    /// <summary>Admin approval state. Sellers registering through an invite start as Pending.</summary>
+    public SellerStatus Status { get; set; } = SellerStatus.Pending;
+
+    /// <summary>Admins can deactivate a seller; their products are then hidden from the storefront.</summary>
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset? StatusChangedAt { get; set; }
+    public string? StatusNote { get; set; }
+
+    public bool CanSell => Status == SellerStatus.Approved && IsActive;
 }

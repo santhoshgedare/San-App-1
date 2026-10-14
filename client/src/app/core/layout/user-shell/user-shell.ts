@@ -14,6 +14,7 @@ import { AuthService } from '../../auth/auth.service';
 import { SectionAccessStore } from '../../auth/section-access.store';
 import { CartService } from '../../cart/cart.service';
 import { FavouritesService } from '../../cart/favourites.service';
+import { OrderChatWidget } from '../../../shared/order-chat/order-chat-widget';
 
 /**
  * Layout used for plain Users and guests: a clean, storefront-style single page
@@ -34,6 +35,7 @@ import { FavouritesService } from '../../cart/favourites.service';
     MatTooltipModule,
     MatBadgeModule,
     MatDividerModule,
+    OrderChatWidget,
   ],
   templateUrl: './user-shell.html',
   styleUrl: './user-shell.scss',

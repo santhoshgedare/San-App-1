@@ -20,6 +20,10 @@
       <div class="header-total">
         <span class="label">Total Amount</span>
         <span class="amount">{{ ord.totalAmount | currency }}</span>
+        <button type="button" mat-stroked-button class="order-chat-button" (click)="openOrderChat(ord.id)">
+          <mat-icon>chat</mat-icon>
+          Chat about this order
+        </button>
       </div>
     </div>
     }
@@ -32,27 +36,7 @@
   </div>
   } @else if (order(); as ord) {
   <!-- Order Lifecycle Stepper -->
-  @if (ord.status !== 'Cancelled') {
-  <section class="stepper-card">
-    <div class="stepper-track">
-      @for (step of statusSteps; track step; let idx = $index) {
-      <div class="step-item" [class.completed]="getStepIndex(ord.status) >= idx" [class.active]="ord.status === step">
-        <div class="step-circle">
-          @if (getStepIndex(ord.status) > idx) {
-          <mat-icon>check</mat-icon>
-          } @else {
-          <span>{{ idx + 1 }}</span>
-          }
-        </div>
-        <span class="step-label">{{ step }}</span>
-      </div>
-      @if (idx < statusSteps.length - 1) { <div class="step-line" [class.filled]="getStepIndex(ord.status) > idx">
-    </div>
-    }
-    }
-</div>
-</section>
-} @else {
+  @if (ord.status === 'Cancelled') {
 <div class="cancelled-banner">
   <mat-icon>cancel</mat-icon>
   <span>This order has been cancelled.</span>
@@ -190,36 +174,42 @@
     @if (ord.customRequestId) {
     <app-order-progress [orderId]="ord.id" [updates]="ord.progressUpdates ?? []" [canPost]="!!ord.canManage && ord.status !== 'Pending' && ord.status !== 'Cancelled'" (changed)="loadOrder(ord.id)" />
     }
-    <app-order-chat [orderId]="ord.id" />
-
     <!-- Enterprise Workflow Approvals Panel -->
-    <app-approval-panel [entityType]="entityType" [entityId]="ord.id" />
+    <section class="card approval-card">
+      <app-approval-panel [entityType]="entityType" [entityId]="ord.id" (decided)="onApprovalChanged()" />
+    </section>
 
     <!-- Activity Audit Log Panel -->
-    <app-activity-log-panel [entityType]="entityType" [entityId]="ord.id" />
+    <section class="card activity-card">
+      <app-activity-log-panel [entityType]="entityType" [entityId]="ord.id" />
+    </section>
   </div>
 
   <!-- Right: Status Management & Payment Verification -->
   <div class="right-col">
     <!-- Offline Payment Info Card -->
+    @if (isPrivileged() || isPaymentAvailable(ord) || ord.amountPaid > 0 || ord.paymentStatus === 'Refunded') {
     <section class="card payment-card">
       <div class="card-header-row">
-        <h3 class="card-title">UPI Payment Status</h3>
-        <span class="badge" [class.paid]="ord.paymentStatus === 'Paid'">{{ ord.paymentStatus }}</span>
+        <h3 class="card-title">{{ ord.paymentStage === 'Advance' ? 'Advance Payment' : ord.paymentStage === 'Final' ? 'Final Payment' : 'Payments' }}</h3>
+        <span class="badge" [class.paid]="stagePaymentStatus(ord) === 'Paid'">{{ ord.paymentStage === 'None' ? ord.paymentStatus : stagePaymentStatus(ord) }}</span>
       </div>
 
-      @if (isPrivileged() || isPaymentAvailable(ord)) {
+      @if (ord.advanceAmount > 0) {
+      <div class="info-group">
+        <span class="info-label">Advance booking</span>
+        <span class="info-val">{{ ord.advanceAmount | currency }} · {{ ord.advanceStatus }}@if (ord.advanceReferenceNumber && ord.paymentStage !== 'Advance') { · Ref {{ ord.advanceReferenceNumber }} }</span>
+      </div>
+      }
+
+      @if (isPaymentAvailable(ord)) {
       <div class="info-group">
         <span class="info-label">Payment Method</span>
         <span class="info-val bold">UPI QR Code</span>
       </div>
       }
 
-      @if (!isPrivileged() && ord.status === 'Pending') {
-      <div class="payment-waiting-notice">Payment will be available after your order is confirmed.</div>
-      }
-
-      @if (!isPrivileged() && isPaymentAvailable(ord) && ord.paymentStatus !== 'Paid' && ord.paymentStatus !==
+      @if (!isPrivileged() && isPaymentAvailable(ord) && stagePaymentStatus(ord) !== 'Paid' && ord.paymentStatus !==
       'Refunded') {
       @if (paymentSettings(); as settings) {
       @if (settings.qrCodeImageUrl) {
@@ -243,7 +233,7 @@
       }
       <div class="info-group">
         <span class="info-label">Amount to Pay</span>
-        <span class="info-val bold">{{ ord.totalAmount | currency }}</span>
+        <span class="info-val bold">{{ ord.amountDue | currency }}</span>
       </div>
       @if (settings.instructions) {
       <div class="info-group">
@@ -256,10 +246,10 @@
       }
       }
 
-      @if (ord.paymentReferenceNumber) {
+      @if (ord.paymentStage === 'Advance' ? ord.advanceReferenceNumber : ord.paymentReferenceNumber) {
       <div class="info-group">
         <span class="info-label">UPI Transaction / Reference ID</span>
-        <span class="info-val code">{{ ord.paymentReferenceNumber }}</span>
+        <span class="info-val code">{{ ord.paymentStage === 'Advance' ? ord.advanceReferenceNumber : ord.paymentReferenceNumber }}</span>
       </div>
       }
 
@@ -347,12 +337,12 @@
 
       @if (canRecordRefund(ord)) {
       <div class="admin-action-box">
-        <span class="action-heading">Record Completed Full Refund</span>
+        <span class="action-heading">Record Completed Refund of {{ ord.amountPaid | currency }}</span>
         <p class="refund-guidance">Send the refund through your payment provider first, then record its transaction
           reference here.</p>
         <div class="field-row">
           <label for="refund-amount">Full Refund Amount</label>
-          <input id="refund-amount" type="text" [value]="ord.totalAmount | currency" readonly />
+          <input id="refund-amount" type="text" [value]="ord.amountPaid | currency" readonly />
         </div>
         <div class="field-row">
           <label for="refund-reference">Refund Transaction Reference</label>
@@ -370,12 +360,12 @@
       </div>
       }
     </section>
+    }
 
     <!-- Fulfillment & Shipping Status Card -->
-    <section class="card fulfillment-card">
+    <section class="card fulfillment-card journey-card">
       <div class="card-header-row">
-        <h3 class="card-title">Order Fulfillment</h3>
-        <span class="badge status-badge">{{ ord.status }}</span>
+        <h3 class="card-title">Order Journey</h3>
       </div>
 
       @if (canCancelOwn(ord)) {
@@ -396,50 +386,144 @@
       <div class="payment-waiting-notice">This order is fulfilled by {{ ord.sellerName }}. Only the fulfilling seller can update its status, delivery charge, payment or refund.</div>
       }
 
-      <!-- Admin Update Fulfillment Form -->
-      @if (canUpdateOrderStatus(ord) && !["Shipped", "Delivered", "Cancelled"].includes(ord.status) && !["Paid", "Refunded"].includes(ord.paymentStatus)) {
-      <div class="admin-action-box">
-        <span class="action-heading">Delivery Charge {{ ord.shippingFeeConfirmed ? "(confirmed)" : "(not yet confirmed)" }}</span>
-        <div class="field-row">
-          <label>Amount</label>
-          <input type="number" min="0" step="1" [(ngModel)]="shippingFeeInput" placeholder="0 for free delivery" />
-        </div>
-        <div class="field-row">
-          <label>Note</label>
-          <input type="text" [(ngModel)]="shippingFeeNote" maxlength="200" placeholder="e.g. Courier to Hyderabad" />
-        </div>
-        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="saveShippingFee()" class="btn-save">
-          Save Delivery Charge
-        </button>
-      </div>
-      }
+      <!-- Sequential journey -->
+      <ol class="journey">
+        @for (step of journey(ord); track step.key; let idx = $index) {
+        <li class="journey-step" [class.done]="step.state === 'done'" [class.current]="step.state === 'current'"
+          [class.blocked]="step.state === 'blocked'" [class.upcoming]="step.state === 'upcoming'">
+          <div class="journey-marker">
+            @if (step.state === 'done') { <mat-icon>check</mat-icon> } @else { <span>{{ idx + 1 }}</span> }
+          </div>
+          <div class="journey-body">
+            <div class="journey-head">
+              <span class="journey-title">{{ step.title }}</span>
+              @if (step.state === 'done') { <span class="journey-summary">{{ step.summary }}</span> }
+              @else if (step.state === 'upcoming') { <span class="journey-summary">Waiting for earlier steps</span> }
+            </div>
 
-      @if (canUpdateOrderStatus(ord)) {
-      <div class="admin-action-box">
-        <span class="action-heading">Update Fulfillment Lifecycle</span>
-        <div class="field-row">
-          <label>Order Status</label>
-          <mat-select class="app-select" [(ngModel)]="newStatus" aria-label="Order status">
-            @for (s of statusOptions(ord); track s) {
-              <mat-option [value]="s">{{ s }}</mat-option>
+            @if ((step.state === 'current' || step.state === 'blocked') && ord.status !== 'Cancelled') {
+            @switch (step.key) {
+            @case ('approval') {
+              @if (ord.approvalStatus === 'Rejected') {
+              <div class="payment-waiting-notice">Approval was rejected. This order can only be cancelled.</div>
+              } @else {
+              <div class="payment-waiting-notice">Waiting for approval. Nothing else can happen until the order is approved (see Approvals below).</div>
+              }
             }
-          </mat-select>
-        </div>
+            @case ('charge') {
+              @if (canUpdateOrderStatus(ord)) {
+              <div class="journey-form">
+                <div class="field-row">
+                  <label>Delivery charge</label>
+                  <input type="number" min="0" step="1" [(ngModel)]="shippingFeeInput" placeholder="0 for free delivery" />
+                </div>
+                <div class="field-row">
+                  <label>Note</label>
+                  <input type="text" [(ngModel)]="shippingFeeNote" maxlength="200" placeholder="e.g. Courier to Hyderabad" />
+                </div>
+                <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="saveShippingFee()" class="btn-save">Send delivery charge to buyer</button>
+              </div>
+              } @else {
+              <div class="payment-waiting-notice">The seller is calculating your delivery charge. You will be asked to confirm it next.</div>
+              }
+            }
+            @case ('accept') {
+              @if (isBuyer(ord)) {
+              <div class="journey-form">
+                <p class="journey-text">Delivery charge {{ ord.shippingFee | currency }}. Order total <strong>{{ ord.totalAmount | currency }}</strong>.</p>
+                <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="acceptCharges()" class="btn-save">Accept charge &amp; total {{ ord.totalAmount | currency }}</button>
+              </div>
+              } @else {
+              <div class="payment-waiting-notice">Delivery charge {{ ord.shippingFee | currency }} sent. Waiting for the buyer to accept the total of {{ ord.totalAmount | currency }}.</div>
+              }
+            }
+            @case ('advance') {
+              @if (ord.status === 'Pending') {
+                @if (canUpdateOrderStatus(ord)) {
+                <div class="journey-form">
+                  @if (ord.customRequestId) {
+                  <div class="field-row">
+                    <label>Payment option</label>
+                    <select [(ngModel)]="paymentMode">
+                      <option value="advance">Advance booking</option>
+                      <option value="full">Full payment up front</option>
+                    </select>
+                  </div>
+                  @if (paymentMode === 'advance') {
+                  <div class="field-row">
+                    <label>Advance booking amount</label>
+                    <input type="number" min="1" [max]="ord.totalAmount" step="1" [(ngModel)]="advanceInput" />
+                  </div>
+                  }
+                  <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="confirmOrder()" class="btn-save">Confirm order &amp; request {{ paymentMode === 'advance' ? 'advance' : 'full payment' }}</button>
+                  } @else {
+                  <p class="journey-text">In-stock order: the full amount of <strong>{{ ord.totalAmount | currency }}</strong> is collected up front.</p>
+                  <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="confirmOrder()" class="btn-save">Confirm order &amp; request full payment</button>
+                  }
+                </div>
+                } @else {
+                <div class="payment-waiting-notice">Waiting for the seller to confirm your order and request payment.</div>
+                }
+              } @else {
+              <div class="payment-waiting-notice">
+                @if (ord.advanceAmount > 0) { Order confirmed. Advance of {{ ord.advanceAmount | currency }} is {{ ord.advanceStatus === 'Pending' ? 'awaiting payment' : ord.advanceStatus.toLowerCase() }}. Use the payment card below. }
+                @else { Order confirmed. Full payment of {{ ord.totalAmount | currency }} is {{ ord.paymentStatus === 'Pending' ? 'awaiting payment' : ord.paymentStatus.toLowerCase() }}. Use the payment card below. }
+              </div>
+              }
+            }
+            @case ('fulfilment') {
+              @if (canUpdateOrderStatus(ord)) {
+              <div class="journey-form">
+                <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="startFulfilment()" class="btn-save">Start fulfilment</button>
+              </div>
+              } @else {
+              <div class="payment-waiting-notice">Advance received. The seller will start preparing your order.</div>
+              }
+            }
+            @case ('final') {
+              <div class="payment-waiting-notice">
+                @if (isBuyer(ord)) { Order is being fulfilled. Pay the balance of {{ ord.amountDue | currency }} using the payment card below. }
+                @else { Waiting for the buyer's final payment of {{ ord.amountDue | currency }}. Verify it in the payment card below. }
+              </div>
+            }
+            @case ('ship') {
+              @if (canUpdateOrderStatus(ord)) {
+              <div class="journey-form">
+                <div class="field-row">
+                  <label>Tracking #</label>
+                  <input type="text" [(ngModel)]="trackingNumber" placeholder="e.g. FEDEX-998877" />
+                </div>
+                <div class="field-row">
+                  <label>Carrier</label>
+                  <input type="text" [(ngModel)]="shippingCarrier" placeholder="e.g. FedEx, DHL, Local Courier" />
+                </div>
+                <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="markShipped()" class="btn-save">Mark as shipped</button>
+              </div>
+              } @else {
+              <div class="payment-waiting-notice">Payment complete. Your order will be shipped soon.</div>
+              }
+            }
+            @case ('deliver') {
+              @if (canUpdateOrderStatus(ord)) {
+              <div class="journey-form">
+                @if (ord.trackingNumber) { <p class="journey-text">Tracking: {{ ord.trackingNumber }} ({{ ord.shippingCarrier || 'Standard Carrier' }})</p> }
+                <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="markDelivered()" class="btn-save">Mark as delivered</button>
+              </div>
+              } @else {
+              <div class="payment-waiting-notice">Your order is on its way.@if (ord.trackingNumber) { Tracking: {{ ord.trackingNumber }} ({{ ord.shippingCarrier || 'Standard Carrier' }}). }</div>
+              }
+            }
+            }
+            }
+          </div>
+        </li>
+        }
+      </ol>
 
-        <div class="field-row">
-          <label>Tracking #</label>
-          <input type="text" [(ngModel)]="trackingNumber" placeholder="e.g. FEDEX-998877" />
-        </div>
-
-        <div class="field-row">
-          <label>Carrier</label>
-          <input type="text" [(ngModel)]="shippingCarrier" placeholder="e.g. FedEx, DHL, Local Courier" />
-        </div>
-
-        <button type="button" mat-flat-button color="primary" [disabled]="isUpdating()" (click)="saveStatus()"
-          class="btn-save">
-          Update Fulfillment Status
-        </button>
+      @if (canUpdateOrderStatus(ord) && !['Shipped', 'Delivered', 'Cancelled'].includes(ord.status)) {
+      <div class="cancel-box">
+        <span>Cancel this order{{ ord.amountPaid > 0 ? ' (refund the payment received first)' : '' }}.</span>
+        <button type="button" class="btn-cancel-order" [disabled]="isUpdating() || ord.amountPaid > 0" (click)="cancelOrder()">Cancel order</button>
       </div>
       }
     </section>

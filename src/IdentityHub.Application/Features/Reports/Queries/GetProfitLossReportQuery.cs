@@ -4,7 +4,7 @@ using MediatR;
 
 namespace IdentityHub.Application.Features.Reports.Queries;
 
-public sealed record GetProfitLossReportQuery(DateOnly StartDate, DateOnly EndDate)
+public sealed record GetProfitLossReportQuery(DateOnly StartDate, DateOnly EndDate, Guid? SellerId = null)
     : IRequest<ProfitLossReportDto>;
 
 public sealed class GetProfitLossReportQueryHandler(IOrderService orderService)
@@ -20,6 +20,7 @@ public sealed class GetProfitLossReportQueryHandler(IOrderService orderService)
             endExclusive,
             request.StartDate,
             request.EndDate,
+            request.SellerId,
             ct);
     }
 }

@@ -1,7 +1,11 @@
 namespace IdentityHub.Api.Contracts;
 
-public sealed record LoginRequest(string Email, string Password);
-public sealed record RegisterRequest(string Email, string Password, string FirstName, string LastName, string PhoneNumber, AddressRequest Address);
+public sealed record LoginRequest(string Identifier, string Password);
+public sealed record RegisterRequest(string? Email, string Password, string? FirstName, string? LastName, string? PhoneNumber);
+
+public sealed record UpdateProfileRequest(string FirstName, string? LastName, string? Email, string? PhoneNumber);
+public sealed record OtpRequest(string Identifier, string Purpose, string? FirstName, string? LastName);
+public sealed record OtpVerifyRequest(string Identifier, string Code, string Purpose, string? FirstName, string? LastName);
 /// <summary>Requests a password-reset email without revealing whether the address is registered.</summary>
 public sealed record ForgotPasswordRequest(string Email);
 /// <summary>Completes a password reset using a one-time Identity token.</summary>
@@ -131,7 +135,8 @@ public sealed record CreateOrderRequest(
 public sealed record UpdateOrderStatusRequest(
     string Status,
     string? TrackingNumber,
-    string? ShippingCarrier);
+    string? ShippingCarrier,
+    decimal? AdvanceAmount = null);
 
 public sealed record SetOrderShippingFeeRequest(decimal ShippingFee, string? Note);
 

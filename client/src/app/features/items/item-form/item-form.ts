@@ -1,3 +1,4 @@
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -53,6 +54,7 @@ export class ItemForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly itemService = inject(ItemService);
   private readonly categoryService = inject(CategoryService);
   private readonly authService = inject(AuthService);
@@ -496,9 +498,10 @@ export class ItemForm implements OnInit {
 
     if (this.isNew()) {
       this.itemService.create(payload).subscribe({
-        next: (created) => {
+        next: () => {
           this.isSaving.set(false);
-          this.router.navigate(['/items', created.id]);
+          this.snackBar.open(this.isAdmin() ? 'Item created.' : 'Item created. It will show in the catalog once an admin approves it.', 'Close', { duration: 4000 });
+          this.router.navigate(['/items']);
         },
         error: (err) => {
           this.isSaving.set(false);
@@ -516,6 +519,7 @@ export class ItemForm implements OnInit {
     this.itemService.update(existing.id, payload).subscribe({
       next: () => {
         this.isSaving.set(false);
+        this.snackBar.open(this.isAdmin() ? 'Item saved.' : 'Item saved. Changes need admin approval before they show in the catalog.', 'Close', { duration: 4000 });
         this.router.navigate(['/items']);
       },
       error: (err) => {

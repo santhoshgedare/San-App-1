@@ -24,7 +24,13 @@ public sealed class Item
     public decimal CostPrice { get; set; }
     public int StockQuantity { get; set; }
 
+    /// <summary>Vendor-controlled visibility switch.</summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Admin review state. Only Approved items are shown on the storefront.</summary>
+    public ItemApprovalStatus ApprovalStatus { get; set; } = ItemApprovalStatus.Approved;
+    public string? ApprovalNote { get; set; }
+    public DateTimeOffset? ApprovalChangedAt { get; set; }
 
     /// <summary>Seller fulfilling this item. Null means the platform (SRIVIDIKA) itself.</summary>
     public Guid? SellerId { get; set; }

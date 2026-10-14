@@ -17,14 +17,13 @@ namespace IdentityHub.Api.Controllers;
 [ApiController]
 [Route("api/activity-logs")]
 [Authorize]
-public sealed class ActivityLogsController(ISender sender) : ControllerBase
+public sealed class ActivityLogsController(ISender sender, IdentityHub.Application.Common.Interfaces.ISellerService sellers) : ControllerBase
 {
     /// <summary>Gets the full audit trail for a single entity instance, newest first.</summary>
     [HttpGet("{entityType}/{entityId}")]
     public async Task<ActionResult<IReadOnlyList<ActivityLogDto>>> GetForEntity(string entityType, string entityId, CancellationToken ct)
     {
-        var isPrivileged = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
-        if (isPrivileged)
+        if (User.IsInRole(Roles.Admin))
         {
             return Ok(await sender.Send(new GetEntityActivityQuery(entityType, entityId), ct));
         }
@@ -40,7 +39,9 @@ public sealed class ActivityLogsController(ISender sender) : ControllerBase
 
         var order = await sender.Send(new GetOrderByIdQuery(orderId), ct);
         if (order is null) return NotFound();
-        if (order.CustomerId != currentUserId) return Forbid();
+        var mySellerId = await sellers.GetSellerIdForUserAsync(currentUserId.Value, ct);
+        var isMyCompanyOrder = mySellerId.HasValue && order.SellerId == mySellerId;
+        if (order.CustomerId != currentUserId && !isMyCompanyOrder) return Forbid();
 
         var entries = await sender.Send(new GetEntityActivityQuery(EntityTypes.Order, orderId.ToString()), ct);
         return Ok(entries.Select(entry => new ActivityLogDto
@@ -56,7 +57,7 @@ public sealed class ActivityLogsController(ISender sender) : ControllerBase
 
     /// <summary>Gets a paged, optionally entity-filtered activity feed, newest first.</summary>
     [HttpGet]
-    [Authorize(Roles = $"{Roles.Admin},{Roles.Manager}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PagedResult<ActivityLogDto>>> GetPaged(
         [FromQuery] string? entityType,
         [FromQuery] string? entityId,

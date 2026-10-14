@@ -9,6 +9,7 @@ using IdentityHub.Application.Features.Items.Commands.UpdateItem;
 using IdentityHub.Application.Features.Items.Queries.GetItemById;
 using IdentityHub.Application.Features.Items.Queries.GetItems;
 using IdentityHub.Domain.Constants;
+using IdentityHub.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,7 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
     public async Task<ActionResult<IReadOnlyList<ItemDto>>> GetAll(CancellationToken ct)
     {
         var items = await sender.Send(new GetItemsQuery(), ct);
-        return Ok(items.Select(HideInternalCosts).ToArray());
+        return Ok(items.Where(i => i.SellerAvailable && i.IsActive).Select(HideInternalCosts).ToArray());
     }
 
     /// <summary>Lists items with search, category filter, active filter, and pagination. Public/anonymous access for catalog browsing.</summary>
@@ -40,7 +41,7 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetItemsPagedQuery(search, categoryId, isActive, page, pageSize), ct);
+        var result = await itemService.GetPagedAsync(new ItemListQuery(search, categoryId, isActive, page, pageSize, null, StorefrontOnly: true), ct);
         return Ok(new PagedResult<ItemDto>
         {
             Items = result.Items.Select(HideInternalCosts).ToArray(),
@@ -56,7 +57,7 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
     public async Task<ActionResult<ItemDto>> GetById(Guid id, CancellationToken ct)
     {
         var item = await sender.Send(new GetItemByIdQuery(id), ct);
-        return item is null ? NotFound() : Ok(HideInternalCosts(item));
+        return item is null || !item.SellerAvailable ? NotFound() : Ok(HideInternalCosts(item));
     }
 
     /// <summary>Gets up to 5 active items from the same category, most purchased first. Public/anonymous access.</summary>
@@ -143,8 +144,16 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
             variantInputs), ct);
 
         return result.Succeeded
-            ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
+            ? await FinishCreateAsync(result.Data!, scope.Scoped, ct)
             : BadRequest(new { errors = result.Errors });
+    }
+
+    private async Task<ActionResult<ItemDto>> FinishCreateAsync(ItemDto created, bool scoped, CancellationToken ct)
+    {
+        // Admin-created items are approved immediately; vendor items wait for admin review.
+        if (!scoped) await itemService.SetApprovalAsync(created.Id, ItemApprovalStatus.Approved, null, ct);
+        var item = await itemService.GetByIdAsync(created.Id, ct) ?? created;
+        return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
     /// <summary>Updates an existing item master.</summary>
@@ -191,17 +200,47 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
             documentInputs,
             variantInputs), ct);
 
-        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+        if (!result.Succeeded) return BadRequest(new { errors = result.Errors });
+
+        // Vendor edits go back to admin review; admin edits stay approved.
+        if (scope.Scoped) await itemService.SetApprovalAsync(id, ItemApprovalStatus.Pending, null, ct);
+        return NoContent();
     }
 
     /// <summary>Soft-deletes an item.</summary>
     [HttpDelete("{id:guid}")]
-    [RequireSection("section-items-manage")]
+    [Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         if (!await CanManageAsync(id, ct)) return NotFound();
 
         var result = await sender.Send(new DeleteItemCommand(id), ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Vendor (or admin) shows/hides an item on the catalog.</summary>
+    [HttpPut("{id:guid}/active")]
+    [RequireSection("section-items-manage")]
+    public async Task<IActionResult> SetActive(Guid id, SellerActiveRequest request, CancellationToken ct)
+    {
+        if (!await CanManageAsync(id, ct)) return NotFound();
+        var result = await itemService.SetActiveAsync(id, request.IsActive, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpPost("{id:guid}/approve")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Approve(Guid id, ItemApprovalRequest request, CancellationToken ct)
+    {
+        var result = await itemService.SetApprovalAsync(id, ItemApprovalStatus.Approved, request.Note, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Reject(Guid id, ItemApprovalRequest request, CancellationToken ct)
+    {
+        var result = await itemService.SetApprovalAsync(id, ItemApprovalStatus.Rejected, request.Note, ct);
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
 
@@ -225,7 +264,9 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
         Id = item.Id,
         SellerId = item.SellerId,
         SellerName = item.SellerName,
-        Code = item.Code,
+        SellerAvailable = item.SellerAvailable,
+        ApprovalStatus = item.ApprovalStatus,
+        ApprovalNote = item.ApprovalNote,
         Name = item.Name,
         Description = item.Description,
         Barcode = item.Barcode,

@@ -176,6 +176,7 @@ public sealed class CustomRequestService(
         if (!IsBiddable(request)) return Result<CustomRequestDetailDto>.Failure("This request is no longer open for quotes.");
 
         var seller = await db.SellerProfiles.AsNoTracking().FirstAsync(s => s.Id == actor.SellerId.Value, ct);
+        if (!seller.CanSell) return Result<CustomRequestDetailDto>.Failure("Your company must be approved and active before you can quote on requests.");
         var text = (message ?? string.Empty).Trim();
         if (text.Length > MaxMessageLength) return Result<CustomRequestDetailDto>.Failure($"Messages can be at most {MaxMessageLength} characters.");
 
@@ -241,6 +242,10 @@ public sealed class CustomRequestService(
         var request = await LoadAsync(id, tracking: true, ct);
         var thread = request?.Threads.FirstOrDefault(t => t.Id == threadId);
         if (request is null || thread is null || thread.SellerId != actor.SellerId) return Result<CustomRequestDetailDto>.Failure("Conversation not found.");
+        if (actor.SellerId is { } quotingSellerId && !await db.SellerProfiles.AnyAsync(s => s.Id == quotingSellerId && s.IsActive && s.Status == SellerStatus.Approved, ct))
+        {
+            return Result<CustomRequestDetailDto>.Failure("Your company must be approved and active before you can quote on requests.");
+        }
         if (!IsBiddable(request) || thread.Status != CustomRequestThreadStatus.Active)
         {
             return Result<CustomRequestDetailDto>.Failure("This request is no longer open for quotes.");
@@ -322,7 +327,9 @@ public sealed class CustomRequestService(
         }
 
         var seller = thread.Seller!;
-        if (seller.UserId == request.CustomerId) return Result<Guid>.Failure("You cannot order from your own company.");
+        if (seller.UserId == request.CustomerId
+            || await db.SellerEmployees.AnyAsync(e => e.SellerId == seller.Id && e.UserId == request.CustomerId, ct))
+            return Result<Guid>.Failure("You cannot order from your own company.");
 
         var category = await db.Categories.FirstOrDefaultAsync(c => c.Name == CustomCategoryName, ct);
         if (category is null)
@@ -377,6 +384,7 @@ public sealed class CustomRequestService(
             ShippingFee = shippingFee,
             ShippingFeeConfirmed = thread.QuoteShippingFee.HasValue,
             ShippingFeeNote = thread.QuoteShippingFee.HasValue ? "As per the accepted quote" : null,
+            ChargesAcceptedAt = thread.QuoteShippingFee.HasValue ? DateTimeOffset.UtcNow : null,
             TotalAmount = subtotal + shippingFee,
             CustomRequestId = request.Id,
             Items =

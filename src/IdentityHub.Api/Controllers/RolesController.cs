@@ -13,7 +13,7 @@ namespace IdentityHub.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
 public sealed class RolesController(ISender sender) : ControllerBase
 {
     /// <summary>Lists all roles with their assigned user counts.</summary>

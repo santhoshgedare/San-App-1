@@ -1,0 +1,112 @@
+<div class="id-top">
+  <button type="button" class="btn btn-link px-0" (click)="back()"><mat-icon>arrow_back</mat-icon> Items</button>
+</div>
+
+@if (isLoading()) {
+  <p class="text-muted">Loading item details…</p>
+} @else if (errorMessage()) {
+  <div class="alert alert-danger py-2 small">{{ errorMessage() }}</div>
+} @else if (item(); as it) {
+  <section class="id-hero">
+    <div>
+      <div class="id-code">{{ it.code }}</div>
+      <h2>{{ it.name }}</h2>
+      <div class="id-chips">
+        <span class="id-chip"><mat-icon>category</mat-icon>{{ it.categoryName }}</span>
+        @if (it.sellerName) { <span class="id-chip"><mat-icon>storefront</mat-icon>{{ it.sellerName }}</span> }
+        @if (it.approvalStatus === 'Pending') { <span class="id-chip warn"><mat-icon>hourglass_top</mat-icon>Pending approval</span> }
+        @else if (it.approvalStatus === 'Rejected') { <span class="id-chip bad"><mat-icon>block</mat-icon>Rejected</span> }
+        @else if (it.isActive) { <span class="id-chip ok"><mat-icon>check_circle</mat-icon>Active</span> }
+        @else { <span class="id-chip"><mat-icon>visibility_off</mat-icon>Inactive</span> }
+      </div>
+    </div>
+    @if (canManage()) {
+      <div class="id-actions">
+        @if (isAdmin() && it.approvalStatus !== 'Approved') { <button type="button" class="btn btn-success btn-sm" (click)="approve()">Approve</button> }
+        @if (isAdmin() && it.approvalStatus === 'Pending') { <button type="button" class="btn btn-light btn-sm" (click)="reject()">Reject</button> }
+        @if (it.approvalStatus === 'Approved') {
+          <button type="button" class="btn btn-light btn-sm" (click)="toggleActive()">{{ it.isActive ? 'Hide from catalog' : 'Show on catalog' }}</button>
+        }
+        <button type="button" class="btn id-edit" (click)="edit()"><mat-icon>edit</mat-icon> Edit item</button>
+      </div>
+    }
+  </section>
+
+  @if (it.approvalNote && it.approvalStatus !== 'Approved') {
+    <div class="alert alert-warning py-2 small">Admin note: {{ it.approvalNote }}</div>
+  }
+
+  <div class="id-layout">
+    <div>
+      <section class="id-card">
+        <h5><mat-icon>photo_library</mat-icon> Photos</h5>
+        @if (images().length) {
+          <img class="id-main" [src]="images()[selectedImage()].url" [alt]="it.name" />
+          @if (images().length > 1) {
+            <div class="id-thumbs">
+              @for (img of images(); track $index) {
+                <img [src]="img.url" [class.active]="$index === selectedImage()" (click)="selectedImage.set($index)" alt="" />
+              }
+            </div>
+          }
+        } @else {
+          <p class="text-muted mb-0">No photos added.</p>
+        }
+      </section>
+
+      <section class="id-card">
+        <h5><mat-icon>notes</mat-icon> Description</h5>
+        <p class="id-text">{{ it.description || 'No description added.' }}</p>
+      </section>
+
+      @if (it.variants?.length) {
+        <section class="id-card">
+          <h5><mat-icon>tune</mat-icon> Variants</h5>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr><th>SKU</th><th>Options</th><th class="text-end">Price</th><th class="text-end">Stock</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                @for (v of it.variants; track v.id ?? v.sku) {
+                  <tr>
+                    <td>{{ v.sku }}</td>
+                    <td>{{ attributes(v) || v.name || '—' }}</td>
+                    <td class="text-end">{{ v.price | currency: 'INR' }}</td>
+                    <td class="text-end">{{ v.stockQuantity }}</td>
+                    <td>{{ v.isActive ? 'Active' : 'Inactive' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    </div>
+
+    <aside>
+      <section class="id-card">
+        <h5><mat-icon>sell</mat-icon> Pricing &amp; stock</h5>
+        <dl class="id-dl">
+          <div><dt>Price</dt><dd class="id-price">{{ it.price | currency: 'INR' }}</dd></div>
+          @if (canManage() && it.costPrice !== null) { <div><dt>Cost</dt><dd>{{ it.costPrice | currency: 'INR' }}</dd></div> }
+          <div><dt>Unit</dt><dd>{{ it.unitOfMeasurement }}</dd></div>
+          <div><dt>In stock</dt><dd>{{ stock() > 0 ? stock() : 'Out of stock' }}</dd></div>
+          <div><dt>Barcode</dt><dd>{{ it.barcode || '—' }}</dd></div>
+          @if (it.createdAt) { <div><dt>Added</dt><dd>{{ it.createdAt | date: 'mediumDate' }}</dd></div> }
+        </dl>
+      </section>
+
+      @if (it.documents?.length) {
+        <section class="id-card">
+          <h5><mat-icon>attach_file</mat-icon> Documents</h5>
+          @for (d of it.documents; track d.id ?? d.url) {
+            <a class="id-doc" [href]="d.url" target="_blank" rel="noopener" [attr.download]="d.fileName">
+              <mat-icon>description</mat-icon>{{ d.fileName }}
+            </a>
+          }
+        </section>
+      }
+    </aside>
+  </div>
+}

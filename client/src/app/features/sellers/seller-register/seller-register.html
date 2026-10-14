@@ -5,7 +5,7 @@
         <img src="logo.png" alt="SRIVIDIKA Logo" class="auth-logo mb-2" onerror="this.style.display='none'" />
         <h3 class="mt-2 mb-0">Become a SRIVIDIKA seller</h3>
         @if (invite(); as inv) {
-          <p class="text-muted small mb-0">You have been invited as <strong>{{ inv.companyName }}</strong> ({{ inv.email }})</p>
+          <p class="text-muted small mb-0">You have been invited as <strong>{{ inv.companyName || inv.email }}</strong>@if (inv.companyName) { ({{ inv.email }}) }</p>
         }
       </div>
 

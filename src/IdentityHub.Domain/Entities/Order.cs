@@ -40,6 +40,12 @@ public sealed class Order
     public SellerProfile? Seller { get; set; }
     public bool ShippingFeeConfirmed { get; set; } = true;
     public string? ShippingFeeNote { get; set; }
+    /// <summary>When the buyer accepted the delivery charge and total; reset whenever the charge changes.</summary>
+    public DateTimeOffset? ChargesAcceptedAt { get; set; }
+    /// <summary>Advance (booking) amount due when the order is confirmed; 0 means no advance.</summary>
+    public decimal AdvanceAmount { get; set; }
+    public PaymentStatus AdvanceStatus { get; set; } = PaymentStatus.Pending;
+    public string? AdvanceReferenceNumber { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
 

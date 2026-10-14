@@ -1,0 +1,26 @@
+<section class="sp-section">
+  <h5><mat-icon>group_add</mat-icon> Employees</h5>
+  <div class="sp-sub">Invite staff by email. They register themselves and get the same access as you for this company.</div>
+  <div class="d-flex gap-2 mb-3">
+    <input class="form-control" type="email" name="employeeEmail" placeholder="employee@email.com" [(ngModel)]="email" (keyup.enter)="invite()" />
+    <button type="button" class="btn btn-primary" (click)="invite()" [disabled]="isBusy() || !email.trim()">Invite</button>
+  </div>
+  @for (e of employees(); track e.id) {
+    <div class="d-flex align-items-center justify-content-between border-top py-2 gap-2">
+      <div class="min-w-0">
+        <div class="fw-semibold text-truncate">{{ e.isPending ? e.email : e.name }}</div>
+        <div class="small text-muted text-truncate">
+          {{ e.isPending ? 'Invitation pending' : e.email }}@if (!e.isPending && !e.isActive) { · Inactive }
+        </div>
+      </div>
+      <div class="d-flex gap-1">
+        @if (!e.isPending) {
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggle(e)">{{ e.isActive ? 'Deactivate' : 'Activate' }}</button>
+        }
+        <button type="button" class="btn btn-sm btn-outline-danger" (click)="remove(e)">{{ e.isPending ? 'Cancel' : 'Remove' }}</button>
+      </div>
+    </div>
+  } @empty {
+    <div class="small text-muted">No employees yet.</div>
+  }
+</section>

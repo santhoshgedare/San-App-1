@@ -12,6 +12,16 @@ namespace IdentityHub.Api.Controllers;
 [Authorize]
 public sealed class SellersController(ISellerService sellers, IConfiguration configuration) : ControllerBase
 {
+    /// <summary>Creates a seller shell for the email and emails the registration invite straight away.</summary>
+    [HttpPost("invite")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> InviteNew(SellerInviteRequest request, CancellationToken ct)
+    {
+        var baseUrl = configuration["Client:BaseUrl"] ?? "http://localhost:4200";
+        var result = await sellers.InviteNewAsync(request.Email, baseUrl, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
     [HttpPost("{id:guid}/invite")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<SellerInviteResultDto>> Invite(Guid id, SellerInviteRequest request, CancellationToken ct)
@@ -108,6 +118,30 @@ public sealed class SellersController(ISellerService sellers, IConfiguration con
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
 
+    [HttpPost("{id:guid}/approve")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Approve(Guid id, SellerStatusRequest? request, CancellationToken ct)
+    {
+        var result = await sellers.SetStatusAsync(id, IdentityHub.Domain.Enums.SellerStatus.Approved, request?.Note, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Reject(Guid id, SellerStatusRequest? request, CancellationToken ct)
+    {
+        var result = await sellers.SetStatusAsync(id, IdentityHub.Domain.Enums.SellerStatus.Rejected, request?.Note, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpPut("{id:guid}/active")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> SetActive(Guid id, SellerActiveRequest request, CancellationToken ct)
+    {
+        var result = await sellers.SetActiveAsync(id, request.IsActive, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
@@ -142,6 +176,67 @@ public sealed class SellersController(ISellerService sellers, IConfiguration con
 
     private Guid? GetUserId()
         => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var id) ? id : null;
+
+    [HttpGet("employee-invite/{token}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<EmployeeInviteInfoDto>> GetEmployeeInvite(string token, CancellationToken ct)
+    {
+        var info = await sellers.GetEmployeeInviteAsync(token, ct);
+        return info is null ? NotFound(new { errors = new[] { "This invitation is invalid or has expired." } }) : Ok(info);
+    }
+
+    [HttpPost("employee-invite/{token}/accept")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResultDto>> AcceptEmployeeInvite(string token, EmployeeRegistrationInput input, CancellationToken ct)
+    {
+        var result = await sellers.AcceptEmployeeInviteAsync(token, input, ct);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpGet("mine/employees")]
+    [Authorize(Roles = Roles.Manager)]
+    public async Task<IActionResult> GetEmployees(CancellationToken ct)
+    {
+        var sellerId = await MySellerIdAsync(ct);
+        return sellerId is null ? NotFound() : Ok(await sellers.GetEmployeesAsync(sellerId.Value, ct));
+    }
+
+    [HttpPost("mine/employees/invite")]
+    [Authorize(Roles = Roles.Manager)]
+    public async Task<IActionResult> InviteEmployee(SellerEmployeeInviteRequest request, CancellationToken ct)
+    {
+        var sellerId = await MySellerIdAsync(ct);
+        if (sellerId is null) return NotFound();
+        var baseUrl = configuration["Client:BaseUrl"] ?? "http://localhost:4200";
+        var result = await sellers.InviteEmployeeAsync(sellerId.Value, request.Email, baseUrl, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpPut("mine/employees/{employeeId:guid}/active")]
+    [Authorize(Roles = Roles.Manager)]
+    public async Task<IActionResult> SetEmployeeActive(Guid employeeId, SellerActiveRequest request, CancellationToken ct)
+    {
+        var sellerId = await MySellerIdAsync(ct);
+        if (sellerId is null) return NotFound();
+        var result = await sellers.SetEmployeeActiveAsync(sellerId.Value, employeeId, request.IsActive, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    [HttpDelete("mine/employees/{employeeId:guid}")]
+    [Authorize(Roles = Roles.Manager)]
+    public async Task<IActionResult> RemoveEmployee(Guid employeeId, CancellationToken ct)
+    {
+        var sellerId = await MySellerIdAsync(ct);
+        if (sellerId is null) return NotFound();
+        var result = await sellers.RemoveEmployeeAsync(sellerId.Value, employeeId, ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    private async Task<Guid?> MySellerIdAsync(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        return userId is null ? null : await sellers.GetSellerIdForUserAsync(userId.Value, ct);
+    }
 }
 
 public sealed class SellerInviteEmailForm

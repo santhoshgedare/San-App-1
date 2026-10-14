@@ -12,4 +12,6 @@ public sealed class OrderMessage
     public string SenderName { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <summary>When the other party opened the conversation and saw this message.</summary>
+    public DateTimeOffset? ReadAt { get; set; }
 }

@@ -67,6 +67,10 @@ export class OrderService {
         return this.http.post<void>(`${this.baseUrl}/${id}/cancel`, {});
       }
 
+  acceptCharges(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/accept-charges`, {});
+  }
+
   updatePaymentStatus(id: string, request: UpdateOrderPaymentStatusRequest): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/${id}/payment-status`, request);
   }

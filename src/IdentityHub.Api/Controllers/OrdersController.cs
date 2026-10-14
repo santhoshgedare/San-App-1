@@ -92,9 +92,9 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
         var order = await sender.Send(new GetOrderByIdQuery(id), ct);
         var me = GetCurrentUserId();
         if (order is null || me is null || order.CustomerId != me) return NotFound();
-        if (order.Status is nameof(OrderStatus.Pending) or nameof(OrderStatus.Cancelled) || order.PaymentStatus is "Paid" or "Refunded")
+        if (order.Status is nameof(OrderStatus.Pending) or nameof(OrderStatus.Cancelled) || order.PaymentStage == "None")
         {
-            return Conflict(new { errors = new[] { "Payment details are available only after confirmation and until payment is received." } });
+            return Conflict(new { errors = new[] { "Payment details are shown only while an advance or final payment is due." } });
         }
 
         if (order.SellerId is null) return Ok(await sender.Send(new GetPaymentSettingsQuery(), ct));
@@ -160,12 +160,23 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
     {
         if (!await CanActOnOrderAsync(id, ct)) return NotFound();
 
-        var result = await sender.Send(new UpdateOrderStatusCommand(id, request.Status, request.TrackingNumber, request.ShippingCarrier), ct);
+        var result = await sender.Send(new UpdateOrderStatusCommand(id, request.Status,         request.TrackingNumber, request.ShippingCarrier, request.AdvanceAmount), ct);
         return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
     }
 
-    /// <summary>Lets a customer cancel their own order while it is still Pending (not yet confirmed).</summary>
-    [HttpPost("{id:guid}/cancel")]
+            /// <summary>Lets the buyer accept the delivery charge and order total set by the seller.</summary>
+            [HttpPost("{id:guid}/accept-charges")]
+            [RequireSection("section-orders-view")]
+            public async Task<IActionResult> AcceptCharges(Guid id, [FromServices] IOrderService orders, CancellationToken ct)
+            {
+                var currentUserId = GetCurrentUserId();
+                if (!currentUserId.HasValue) return Unauthorized();
+                var result = await orders.AcceptChargesAsync(id, currentUserId.Value, ct);
+                return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+            }
+
+            /// <summary>Lets a customer cancel their own order while it is still Pending (not yet confirmed).</summary>
+            [HttpPost("{id:guid}/cancel")]
     [RequireSection("section-orders-view")]
     public async Task<IActionResult> CancelOwn(Guid id, [FromServices] IOrderService orders, CancellationToken ct)
     {
@@ -229,12 +240,11 @@ public sealed class OrdersController(ISender sender, IModuleAccessService module
         if (currentOrder.CustomerId != currentUserId) return Forbid();
         if (currentOrder.Status is nameof(OrderStatus.Pending) or nameof(OrderStatus.Cancelled))
         {
-            return Conflict(new { error = "Payment can be submitted after the order is confirmed." });
+            return Conflict(new { errors = new[] { "Payment can be submitted after the order is confirmed." } });
         }
-        if (string.Equals(currentOrder.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(currentOrder.PaymentStatus, "Refunded", StringComparison.OrdinalIgnoreCase))
+        if (currentOrder.PaymentStage == "None")
         {
-            return Conflict(new { error = "Payment has already been confirmed." });
+            return Conflict(new { errors = new[] { "No payment is due at this stage of the order." } });
         }
 
         var result = await sender.Send(new SubmitPaymentDetailsCommand(

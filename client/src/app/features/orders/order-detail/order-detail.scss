@@ -88,85 +88,11 @@
         font-weight: 800;
         color: #382a2d;
       }
-    }
-  }
-}
 
-// Stepper
-.stepper-card {
-  background: #fffdfa;
-  border: 1px solid #e9dfd4;
-  border-radius: 1rem;
-  padding: 1.5rem 2rem;
-
-  .stepper-track {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    .step-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      position: relative;
-      z-index: 1;
-
-      .step-circle {
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: 50%;
-        background: #efe8df;
-        border: 2px solid #ddd2c8;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: #716068;
-        transition: all 0.2s;
-
-        mat-icon {
-          font-size: 1.125rem;
-          width: 1.125rem;
-          height: 1.125rem;
-        }
-      }
-
-      .step-label {
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: #716068;
-      }
-
-      &.completed {
-        .step-circle {
-          background: #76283a;
-          border-color: #76283a;
-          color: #fffdfa;
-        }
-        .step-label {
-          color: #49383d;
-        }
-      }
-
-      &.active {
-        .step-circle {
-          border-color: #76283a;
-          box-shadow: 0 0 0 3px rgba(118, 40, 58, 0.2);
-        }
-      }
-    }
-
-    .step-line {
-      flex: 1;
-      height: 3px;
-      background: #e9dfd4;
-      margin: 0 0.5rem;
-      transform: translateY(-12px);
-
-      &.filled {
-        background: #76283a;
+      .order-chat-button {
+        margin-top: .5rem;
+        color: #76283a;
+        border-color: #d9c5b2;
       }
     }
   }
@@ -201,10 +127,50 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+
+  .journey-card { order: -1; }
+}
+
+.journey { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.journey-step {
+  display: flex; gap: .85rem; position: relative; padding-bottom: 1rem;
+  &:not(:last-child)::before { content: ''; position: absolute; left: 1.05rem; top: 2.2rem; bottom: 0; width: 2px; background: #e9dfd4; }
+  &.done:not(:last-child)::before { background: #76283a; }
+  &:last-child { padding-bottom: 0; }
+}
+.journey-marker {
+  flex: 0 0 2.1rem; height: 2.1rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: #efe8df; border: 2px solid #ddd2c8; color: #716068; font-size: .8rem; font-weight: 700;
+  mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
+}
+.journey-step.done .journey-marker { background: #76283a; border-color: #76283a; color: #fffdfa; }
+.journey-step.current .journey-marker { border-color: #76283a; color: #76283a; box-shadow: 0 0 0 3px rgba(118, 40, 58, .2); background: #fffdfa; }
+.journey-step.blocked .journey-marker { border-color: #b3261e; color: #b3261e; }
+.journey-body { flex: 1; min-width: 0; }
+.journey-head { display: flex; flex-direction: column; gap: .1rem; min-height: 2.1rem; justify-content: center; }
+.journey-title { font-weight: 700; color: #49383d; }
+.journey-step.upcoming .journey-title { color: #9a8d93; font-weight: 600; }
+.journey-summary { font-size: .8rem; color: #716068; }
+.journey-form { display: flex; flex-direction: column; gap: .7rem; margin-top: .6rem; padding: 1rem; background: #f7f1e9; border: 1px dashed #ddd2c8; border-radius: .75rem; }
+.journey-text { margin: 0; font-size: .875rem; color: #49383d; }
+.journey-body .payment-waiting-notice { margin-top: .5rem; }
+.journey-card .cancel-box { margin-top: 1rem; }
+
+.approval-card,
+.activity-card {
+  ::ng-deep h6 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #382a2d !important;
+    text-transform: none;
+    letter-spacing: normal;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #efe8df;
+    margin-bottom: 1rem !important;
+  }
 }
 
 .card {
-  background: #fffdfa;
   border: 1px solid #e9dfd4;
   border-radius: 1rem;
   padding: 1.5rem;
@@ -527,20 +493,6 @@
 
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-
-  .stepper-card {
-    padding: 1rem;
-  }
-
-  .stepper-track {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 0.75rem;
-
-    .step-line {
-      display: none;
-    }
   }
 }
 

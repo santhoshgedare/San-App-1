@@ -7,6 +7,9 @@
       <p>{{ isLoading() ? 'Loading saved company and payment details...' : model.tagline || (mine ? 'Manage how your company appears to customers.' : isNew() ? 'Set up the company, then invite its manager.' : 'Edit company details, payment and invite.') }}</p>
     </div>
   </div>
+  @if (mine && !editing() && !isLoading() && !errorMessage()) {
+    <button type="button" class="btn sp-edit-btn" (click)="editing.set(true)"><mat-icon>edit</mat-icon> Edit company</button>
+  }
 </section>
 
 @if (isLoading()) {
@@ -19,9 +22,77 @@
   <div class="alert alert-danger py-2 small">{{ message }}</div>
 }
 
+@if (approval(); as a) {
+  @if (!a.canSell) {
+    <div class="alert alert-warning py-2 small">
+      <mat-icon class="align-middle me-1">info</mat-icon>
+      @if (a.status === 'Pending') { <b>Pending admin approval.</b> }
+      @else if (a.status === 'Rejected') { <b>Registration rejected.</b> }
+      @else { <b>Company is inactive.</b> }
+      @if (mine) { Your products are hidden from customers and new orders and quotes are blocked until an administrator approves and activates your company. }
+      @else { Products are hidden from customers and ordering is blocked. }
+      @if (a.statusNote) { <span> Note: {{ a.statusNote }}</span> }
+    </div>
+  }
+  @if (!mine && !isNew() && a.userEmail) {
+    <div class="sp-section d-flex flex-wrap gap-2 align-items-center">
+      <span>Status: <b>{{ a.status }}</b> &middot; {{ a.isActive ? 'Active' : 'Inactive' }}</span>
+      @if (a.status !== 'Approved') { <button type="button" class="btn btn-sm btn-success" (click)="approve()">Approve</button> }
+      @if (a.status === 'Pending') { <button type="button" class="btn btn-sm btn-outline-secondary" (click)="reject()">Reject</button> }
+      @if (a.status === 'Approved') { <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleActive()">{{ a.isActive ? 'Deactivate' : 'Activate' }}</button> }
+    </div>
+  }
+}
+
 @if (!isLoading() && (mine ? !errorMessage() : true)) {
 <div class="sp-layout">
   <div>
+    @if (mine && !editing()) {
+    @if (approval(); as a) {
+    <section class="sp-section">
+      <div class="sp-chips">
+        <span class="sp-chip" [class.ok]="a.status === 'Approved'" [class.warn]="a.status === 'Pending'" [class.bad]="a.status === 'Rejected'">
+          <mat-icon>{{ a.status === 'Approved' ? 'verified' : a.status === 'Pending' ? 'hourglass_top' : 'block' }}</mat-icon>{{ a.status }}
+        </span>
+        <span class="sp-chip" [class.ok]="a.isActive" [class.bad]="!a.isActive"><mat-icon>{{ a.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>{{ a.isActive ? 'Active' : 'Inactive' }}</span>
+        <span class="sp-chip"><mat-icon>inventory_2</mat-icon>{{ a.itemCount }} {{ a.itemCount === 1 ? 'product' : 'products' }}</span>
+      </div>
+    </section>
+    }
+    <section class="sp-section">
+      <h5><mat-icon>storefront</mat-icon> About</h5>
+      <p class="sp-about">{{ model.description || 'No company description added yet.' }}</p>
+    </section>
+
+    <section class="sp-section">
+      <h5><mat-icon>contact_mail</mat-icon> Contact &amp; address</h5>
+      <dl class="sp-dl">
+        <div><dt><mat-icon>mail</mat-icon>Email</dt><dd>{{ model.contactEmail || '—' }}</dd></div>
+        <div><dt><mat-icon>call</mat-icon>Phone</dt><dd>{{ model.contactPhone || '—' }}</dd></div>
+        <div><dt><mat-icon>language</mat-icon>Website</dt><dd>{{ model.website || '—' }}</dd></div>
+        <div>
+          <dt><mat-icon>place</mat-icon>Address</dt>
+          <dd>
+            @if (model.addressLine1 || model.city || model.state || model.postalCode) {
+              {{ model.addressLine1 }}<br />{{ cityLine() }}<br />{{ model.country }}
+            } @else { — }
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="sp-section">
+      <h5><mat-icon>account_balance_wallet</mat-icon> Payment details</h5>
+      <div class="d-flex flex-wrap gap-4 align-items-start">
+        <dl class="sp-dl flex-grow-1 mb-0">
+          <div><dt><mat-icon>qr_code_2</mat-icon>UPI ID</dt><dd>{{ model.upiId || '—' }}</dd></div>
+          <div><dt><mat-icon>badge</mat-icon>Payee name</dt><dd>{{ model.payeeName || '—' }}</dd></div>
+          <div><dt><mat-icon>account_balance</mat-icon>Bank details</dt><dd class="sp-pre">{{ model.bankDetails || '—' }}</dd></div>
+        </dl>
+        @if (model.qrCodeImageUrl) { <img class="sp-qr" [src]="model.qrCodeImageUrl" alt="Payment QR code" /> }
+      </div>
+    </section>
+    } @else {
     <section class="sp-section">
       <h5><mat-icon>storefront</mat-icon> Company</h5>
       <div class="sp-sub">Shown to customers as &ldquo;Fulfilled by&rdquo; on your products.</div>
@@ -85,6 +156,7 @@
         </div>
       </div>
     </section>
+    }
   </div>
 
   <aside>
@@ -128,6 +200,9 @@
       </div>
     </section>
     }
+    @if (mine) {
+      <app-seller-employees />
+    }
     <section class="sp-section">
       <h5><mat-icon>tips_and_updates</mat-icon> Tips</h5>
       <div class="sp-sub mb-0">A clear logo, a short tagline and a working QR make customers trust the company and pay faster.</div>
@@ -135,12 +210,16 @@
   </aside>
 </div>
 
+@if (!mine || editing()) {
 <div class="sp-actions">
   <button class="btn btn-primary" (click)="save()" [disabled]="isSaving() || isProcessingImages()">
     {{ isProcessingImages() ? 'Preparing image...' : isSaving() ? 'Saving...' : 'Save' }}
   </button>
   @if (!mine) {
     <button class="btn btn-outline-secondary" (click)="router.navigate(['/sellers'])">Cancel</button>
+  } @else {
+    <button class="btn btn-outline-secondary" (click)="cancelEdit()" [disabled]="isSaving()">Cancel</button>
   }
 </div>
+}
 }

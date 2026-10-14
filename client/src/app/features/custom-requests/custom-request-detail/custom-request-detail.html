@@ -1,5 +1,5 @@
 @if (isLoading()) {
-<p class="crd-state">Loading…</p>
+<p class="crd-state">Loadingâ€¦</p>
 } @else if (request(); as r) {
 <div class="crd-page">
   <a routerLink="/custom-requests" class="crd-back"><mat-icon>arrow_back</mat-icon> Custom requests</a>
@@ -23,7 +23,7 @@
         }
       </div>
       <div class="crd-details">
-        <span class="crd-number">{{ r.requestNumber }} · <span class="crd-status" [attr.data-status]="r.status">{{ r.status }}</span></span>
+        <span class="crd-number">{{ r.requestNumber }} Â· <span class="crd-status" [attr.data-status]="r.status">{{ r.status }}</span></span>
         <h1>{{ r.title }}</h1>
         <p class="crd-desc">{{ r.description }}</p>
         <dl>
@@ -78,12 +78,12 @@
         @if (t.quoteTotal) {
         <div class="crd-quote">
           <div>
-            <strong>{{ t.quoteUnitPrice | currency: 'INR' }}</strong> × {{ r.quantity }}
+            <strong>{{ t.quoteUnitPrice | currency: 'INR' }}</strong> Â· {{ r.quantity }}
             @if (t.quoteShippingFee) { + {{ t.quoteShippingFee | currency: 'INR' }} shipping }
             = <strong>{{ t.quoteTotal | currency: 'INR' }}</strong>
           </div>
           <div class="crd-muted">
-            @if (t.quoteLeadTimeDays) { Ready in {{ t.quoteLeadTimeDays }} days · }
+            @if (t.quoteLeadTimeDays) { Ready in {{ t.quoteLeadTimeDays }} days Â· }
             Quote v{{ t.quoteRevision }}
           </div>
           @if (t.quoteNote) { <div class="crd-muted">{{ t.quoteNote }}</div> }

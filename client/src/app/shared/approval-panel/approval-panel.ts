@@ -1,4 +1,4 @@
-import { Component, OnChanges, inject, input, signal } from '@angular/core';
+import { Component, OnChanges, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,6 +39,7 @@ export class ApprovalPanel implements OnChanges {
   readonly entityId = input.required<string>();
   /** Default title used when requesting approval from this panel's inline request form. */
   readonly requestTitle = input<string>('Change approval');
+  readonly decided = output<void>();
 
   readonly approvals = signal<ApprovalDto[]>([]);
   /** Workflow config keyed by entityType, so stage role-eligibility can be resolved for the badge/gating logic. */
@@ -196,6 +197,7 @@ export class ApprovalPanel implements OnChanges {
         this.isBusy.set(false);
         this.decidingId.set(null);
         this.reload();
+        this.decided.emit();
       },
       error: () => this.isBusy.set(false),
     });
@@ -208,6 +210,7 @@ export class ApprovalPanel implements OnChanges {
         this.isBusy.set(false);
         this.decidingId.set(null);
         this.reload();
+        this.decided.emit();
       },
       error: () => this.isBusy.set(false),
     });

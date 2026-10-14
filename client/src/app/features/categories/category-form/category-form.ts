@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
 import { MatButtonModule } from '@angular/material/button';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CategoryService } from '../../../core/auth/category.service';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
@@ -31,6 +32,7 @@ export class CategoryForm implements OnInit {
   private readonly confirmService = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly categoryService = inject(CategoryService);
+  readonly isAdmin = inject(AuthService).isAdmin;
 
   readonly entityType = ENTITY_TYPES.category;
   readonly isNew = signal(true);

@@ -16,7 +16,7 @@ namespace IdentityHub.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
 public sealed class UsersController(ISender sender) : ControllerBase
 {
     /// <summary>Lists all users. Admin/Manager only.</summary>

@@ -88,3 +88,7 @@
 <main class="user-content" [class.with-tab-bar]="isCompact() && navLinks().length > 1">
   <router-outlet />
 </main>
+
+@if (auth.isAuthenticated() && sectionAccess.can('section-orders-view')) {
+<app-order-chat-widget [bottomOffset]="isCompact() && navLinks().length > 1 ? 60 : 0" />
+}

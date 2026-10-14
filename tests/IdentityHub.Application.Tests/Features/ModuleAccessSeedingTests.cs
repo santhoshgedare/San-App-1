@@ -40,13 +40,13 @@ public sealed class ModuleAccessSeedingTests
         (await userManager.IsInRoleAsync(defaultAdmin, Roles.Admin)).Should().BeTrue();
         (await userManager.IsInRoleAsync(defaultAdmin, Roles.Manager)).Should().BeFalse();
         (await db.SellerProfiles.CountAsync()).Should().Be(0);
-        (await db.Categories.CountAsync()).Should().Be(0);
+        (await db.Categories.CountAsync()).Should().Be(8);
         (await db.Items.CountAsync()).Should().Be(0);
 
         var expectedRoutes = new[]
         {
-            "/catalog", "/cart", "/checkout", "/orders", "/categories", "/items",
-            "/users", "/roles", "/approval-workflows", "/profile", "/payment-settings", "/dashboard"
+            "/catalog", "/cart", "/checkout", "/orders", "/custom-requests", "/categories", "/items",
+            "/users", "/roles", "/approval-workflows", "/profile", "/dashboard"
         };
         var seededRoutes = await db.Pages.Select(page => page.Url).ToListAsync();
         seededRoutes.Should().Contain(expectedRoutes);

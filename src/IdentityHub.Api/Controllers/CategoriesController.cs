@@ -46,7 +46,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Creates a new category master with unit of measurement and variant definitions.</summary>
     [HttpPost]
-    [RequireSection("section-categories-manage")]
+    [Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
     public async Task<ActionResult<CategoryDto>> Create(CreateCategoryRequest request, CancellationToken ct)
     {
         var variantInputs = (request.VariantDefinitions ?? [])
@@ -67,7 +67,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Updates an existing category.</summary>
     [HttpPut("{id:guid}")]
-    [RequireSection("section-categories-manage")]
+    [Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
     public async Task<IActionResult> Update(Guid id, UpdateCategoryRequest request, CancellationToken ct)
     {
         var variantInputs = (request.VariantDefinitions ?? [])
@@ -87,7 +87,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
 
     /// <summary>Soft-deletes a category.</summary>
     [HttpDelete("{id:guid}")]
-    [RequireSection("section-categories-manage")]
+    [Authorize(Roles = IdentityHub.Domain.Constants.Roles.Admin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new DeleteCategoryCommand(id), ct);

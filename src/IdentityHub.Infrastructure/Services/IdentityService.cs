@@ -12,21 +12,34 @@ public sealed class IdentityService(
     RoleManager<ApplicationRole> roleManager,
     IActivityLogService activityLog) : IIdentityService
 {
-    public async Task<Result<UserDto>> RegisterAsync(string email, string password, string firstName, string lastName, string? phoneNumber, CancellationToken ct)
+    public async Task<Result<UserDto>> RegisterAsync(string? email, string password, string firstName, string lastName, string? phoneNumber, CancellationToken ct)
     {
-        var existing = await userManager.FindByEmailAsync(email);
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        var normalizedPhone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+        var identifier = normalizedEmail ?? normalizedPhone;
+        if (identifier is null)
+        {
+            return Result<UserDto>.Failure("An email address or phone number is required.");
+        }
+
+        var existing = normalizedEmail is null ? null : await userManager.FindByEmailAsync(normalizedEmail);
         if (existing is not null)
         {
             return Result<UserDto>.Failure("An account with this email already exists.");
         }
+        if (normalizedPhone is not null &&
+            await userManager.Users.AnyAsync(user => user.PhoneNumber == normalizedPhone, ct))
+        {
+            return Result<UserDto>.Failure("An account with this phone number already exists.");
+        }
 
         var user = new ApplicationUser
         {
-            UserName = email,
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName,
-            PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim()
+            UserName = identifier,
+            Email = normalizedEmail,
+            FirstName = firstName.Trim(),
+            LastName = lastName.Trim(),
+            PhoneNumber = normalizedPhone
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -37,17 +50,20 @@ public sealed class IdentityService(
 
         await userManager.AddToRoleAsync(user, Domain.Constants.Roles.User);
 
-        await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "Created", $"User {email} registered.", ct);
+        await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "Created", $"User {identifier} registered.", ct);
 
         return Result<UserDto>.Success(await ToDto(user));
     }
 
-    public async Task<Result<UserDto>> ValidateCredentialsAsync(string email, string password, CancellationToken ct)
+    public async Task<Result<UserDto>> ValidateCredentialsAsync(string identifier, string password, CancellationToken ct)
     {
-        var user = await userManager.FindByEmailAsync(email);
+        var loginIdentifier = identifier.Trim();
+        var user = await userManager.FindByEmailAsync(loginIdentifier)
+            ?? await userManager.FindByNameAsync(loginIdentifier)
+            ?? await userManager.Users.FirstOrDefaultAsync(candidate => candidate.PhoneNumber == loginIdentifier, ct);
         if (user is null || !await userManager.CheckPasswordAsync(user, password))
         {
-            return Result<UserDto>.Failure("Invalid email or password.");
+            return Result<UserDto>.Failure("Invalid email/phone number or password.");
         }
 
         return Result<UserDto>.Success(await ToDto(user));
@@ -162,6 +178,66 @@ public sealed class IdentityService(
         return Result<UserDto>.Success(await ToDto(user));
     }
 
+    public async Task<bool> AccountExistsAsync(OtpTarget target, CancellationToken ct)
+        => await FindByTargetAsync(target, ct) is not null;
+
+    public async Task<Result<UserDto>> AuthenticateOtpAsync(OtpTarget target, string firstName, string lastName, bool allowCreate, CancellationToken ct)
+    {
+        var user = await FindByTargetAsync(target, ct);
+        if (user is null)
+        {
+            if (!allowCreate) return Result<UserDto>.Failure("No account found. Please register first.");
+
+            var isEmail = target.Channel == OtpChannel.Email;
+            user = new ApplicationUser
+            {
+                UserName = target.Value,
+                Email = isEmail ? target.Value : null,
+                EmailConfirmed = isEmail,
+                PhoneNumber = isEmail ? null : target.Value,
+                PhoneNumberConfirmed = !isEmail,
+                FirstName = firstName.Trim(),
+                LastName = lastName.Trim(),
+                IsActive = true
+            };
+
+            var createResult = await userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+            {
+                return Result<UserDto>.Failure(createResult.Errors.Select(error => error.Description).ToArray());
+            }
+
+            var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
+            if (!roleResult.Succeeded)
+            {
+                await userManager.DeleteAsync(user);
+                return Result<UserDto>.Failure(roleResult.Errors.Select(error => error.Description).ToArray());
+            }
+
+            await activityLog.LogAsync(EntityTypes.User, user.Id.ToString(), "Created", $"User {target.Value} registered with a one-time passcode.", ct);
+        }
+        else
+        {
+            if (!user.IsActive) return Result<UserDto>.Failure("This account has been deactivated.");
+
+            // Receiving the code proves ownership of the contact point.
+            var confirmed = target.Channel == OtpChannel.Email ? user.EmailConfirmed : user.PhoneNumberConfirmed;
+            if (!confirmed)
+            {
+                if (target.Channel == OtpChannel.Email) user.EmailConfirmed = true;
+                else user.PhoneNumberConfirmed = true;
+                await userManager.UpdateAsync(user);
+            }
+        }
+
+        return Result<UserDto>.Success(await ToDto(user));
+    }
+
+    private Task<ApplicationUser?> FindByTargetAsync(OtpTarget target, CancellationToken ct)
+        => target.Channel == OtpChannel.Email
+            ? userManager.FindByEmailAsync(target.Value)
+            : userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == target.Value, ct);
+
     public async Task<UserDto?> FindByIdAsync(Guid userId, CancellationToken ct)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
@@ -255,6 +331,73 @@ public sealed class IdentityService(
 
         await activityLog.LogAsync(EntityTypes.User, userId.ToString(), "Updated", $"Profile updated; active={isActive}.", ct);
         return Result.Success();
+    }
+
+    public async Task<Result<UserDto>> UpdateOwnProfileAsync(Guid userId, string firstName, string lastName, string? email, string? phoneNumber, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return Result<UserDto>.Failure("User not found.");
+        }
+
+        var newEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        var newPhone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+        if (newEmail is null && newPhone is null)
+        {
+            return Result<UserDto>.Failure("Keep at least an email address or a phone number.");
+        }
+
+        var emailChanged = !string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase);
+        var phoneChanged = newPhone != user.PhoneNumber;
+        if (emailChanged && newEmail is not null)
+        {
+            var owner = await userManager.FindByEmailAsync(newEmail);
+            if (owner is not null && owner.Id != userId)
+            {
+                return Result<UserDto>.Failure("Another account already uses this email address.");
+            }
+        }
+        if (phoneChanged && newPhone is not null
+            && await userManager.Users.AnyAsync(u => u.PhoneNumber == newPhone && u.Id != userId, ct))
+        {
+            return Result<UserDto>.Failure("Another account already uses this phone number.");
+        }
+
+        // The login name mirrors the original identifier, so keep it in sync when that identifier changes.
+        var loginWasEmail = user.UserName is not null && string.Equals(user.UserName, user.Email, StringComparison.OrdinalIgnoreCase);
+        var loginWasPhone = user.UserName is not null && user.UserName == user.PhoneNumber;
+
+        user.FirstName = firstName.Trim();
+        user.LastName = lastName.Trim();
+        if (emailChanged)
+        {
+            user.Email = newEmail;
+            user.EmailConfirmed = false;
+        }
+        if (phoneChanged)
+        {
+            user.PhoneNumber = newPhone;
+            user.PhoneNumberConfirmed = false;
+        }
+        if ((emailChanged && loginWasEmail) || (phoneChanged && loginWasPhone))
+        {
+            var desired = newEmail ?? newPhone!;
+            var taken = await userManager.FindByNameAsync(desired);
+            if (taken is null || taken.Id == userId)
+            {
+                user.UserName = desired;
+            }
+        }
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return Result<UserDto>.Failure(result.Errors.Select(e => e.Description).ToArray());
+        }
+
+        await activityLog.LogAsync(EntityTypes.User, userId.ToString(), "Updated", "Profile updated by the user.", ct);
+        return Result<UserDto>.Success(await ToDto(user));
     }
 
     /// <summary>Soft-deletes a user: marks it deleted/inactive rather than removing the row, so its history/audit trail is preserved.</summary>

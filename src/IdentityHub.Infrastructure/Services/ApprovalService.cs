@@ -24,6 +24,7 @@ public sealed class ApprovalService(
     ICurrentUserService currentUser,
     IActivityLogService activityLog,
     IApprovalWorkflowService workflowService,
+    IOrderNotifier orderNotifier,
     UserManager<ApplicationUser> userManager) : IApprovalService
 {
     public async Task<ApprovalDto> RequestAsync(string entityType, string entityId, string title, string? details, CancellationToken ct)
@@ -225,6 +226,12 @@ public sealed class ApprovalService(
         var detail = comment ?? $"{currentStageName}: {decision}";
         await activityLog.LogAsync(approval.EntityType, approval.EntityId, action, detail, ct);
 
+        if (approval.EntityType == EntityTypes.Order && Guid.TryParse(approval.EntityId, out var decidedOrderId))
+        {
+            await orderNotifier.NotifyAsync(decidedOrderId, OrderNotice.ApprovalDecided,
+                decision == ApprovalStatus.Rejected ? "Your order was not approved." : approval.Status == ApprovalStatus.Approved ? "Your order was approved." : null, ct);
+        }
+
         return await ToDtoAsync(approval, ct);
     }
 
@@ -234,14 +241,15 @@ public sealed class ApprovalService(
         var ownership = await GetOrderOwnershipAsync(approval, ct);
         if (ownership is not null)
         {
-            return ownership.Value.SellerUserId is null
-                ? currentUser.IsInRole(Domain.Constants.Roles.Admin)
-                : ownership.Value.SellerUserId == currentUser.UserId;
+            if (ownership.Value.SellerId is not { } ownerSellerId) return currentUser.IsInRole(Domain.Constants.Roles.Admin);
+            if (currentUser.UserId is not { } me) return false;
+            return await db.SellerProfiles.AnyAsync(s => s.Id == ownerSellerId && s.UserId == me, ct)
+                || await db.SellerEmployees.AnyAsync(e => e.SellerId == ownerSellerId && e.UserId == me, ct);
         }
 
         if (approval.WorkflowId is null)
         {
-            return currentUser.IsInRole(Domain.Constants.Roles.Admin) || currentUser.IsInRole(Domain.Constants.Roles.Manager);
+            return currentUser.IsInRole(Domain.Constants.Roles.Admin);
         }
 
         var eligibleRoles = await GetStageRolesAsync(approval, approval.CurrentStageIndex, ct);
@@ -333,10 +341,11 @@ public sealed class ApprovalService(
 
         if (!currentUser.IsInRole(Domain.Constants.Roles.Admin) && currentUser.UserId is { } me)
         {
-            var mySellerId = await db.SellerProfiles.Where(s => s.UserId == me).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct);
+            var mySellerId = await db.SellerProfiles.Where(s => s.UserId == me).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct)
+                ?? await db.SellerEmployees.Where(e => e.UserId == me).Select(e => (Guid?)e.SellerId).FirstOrDefaultAsync(ct);
             var orderType = EntityTypes.Order;
             var myOrderIds = db.Orders.Where(o => o.SellerId == mySellerId && mySellerId != null).Select(o => o.Id.ToString());
-            approvalsQuery = approvalsQuery.Where(a => a.EntityType != orderType || myOrderIds.Contains(a.EntityId));
+            approvalsQuery = approvalsQuery.Where(a => a.EntityType == orderType && myOrderIds.Contains(a.EntityId));
         }
 
         var totalCount = await approvalsQuery.CountAsync(ct);

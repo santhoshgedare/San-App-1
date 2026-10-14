@@ -1,5 +1,6 @@
 using IdentityHub.Application.Common.Interfaces;
 using IdentityHub.Application.Common.Models;
+using IdentityHub.Api.Contracts;
 using IdentityHub.Application.Features.ModuleAccess.Queries.GetMySections;
 using IdentityHub.Application.Features.Users.Queries.GetUserById;
 using IdentityHub.Domain.Constants;
@@ -25,6 +26,31 @@ public sealed class MeController(ISender sender, ICurrentUserService currentUser
 
         var user = await sender.Send(new GetUserByIdQuery(userId), ct);
         return user is null ? NotFound() : Ok(user);
+    }
+
+    /// <summary>Lets the signed-in user update their own name, email and phone number.</summary>
+    [HttpPut]
+    public async Task<ActionResult<UserDto>> Update(UpdateProfileRequest request, [FromServices] IIdentityService identityService, CancellationToken ct)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+        if (string.IsNullOrWhiteSpace(request.FirstName))
+        {
+            return BadRequest(new { errors = new[] { "First name is required." } });
+        }
+        if (!string.IsNullOrWhiteSpace(request.Email) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(request.Email))
+        {
+            return BadRequest(new { errors = new[] { "Enter a valid email address." } });
+        }
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && !System.Text.RegularExpressions.Regex.IsMatch(request.PhoneNumber, @"^[+\d][\d\s-]{6,19}$"))
+        {
+            return BadRequest(new { errors = new[] { "Enter a valid phone number." } });
+        }
+
+        var result = await identityService.UpdateOwnProfileAsync(userId, request.FirstName, request.LastName ?? string.Empty, request.Email, request.PhoneNumber, ct);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(new { errors = result.Errors });
     }
 
     /// <summary>

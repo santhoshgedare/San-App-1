@@ -1,0 +1,39 @@
+<div class="auth-wrapper d-flex align-items-center justify-content-center">
+  <div class="card auth-card shadow-sm" style="max-width: 480px; width: 100%;">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <img src="logo.png" alt="SRIVIDIKA Logo" class="auth-logo mb-2" onerror="this.style.display='none'" />
+        <h3 class="mt-2 mb-0">Join your team</h3>
+        @if (invite(); as inv) {
+          <p class="text-muted small mb-0">You have been invited to join <strong>{{ inv.companyName }}</strong></p>
+        }
+      </div>
+
+      @if (isLoading()) {
+        <p class="text-center text-muted">Checking your invitation...</p>
+      } @else if (!invite()) {
+        <div class="alert alert-danger small">{{ errorMessage() }}</div>
+        <a routerLink="/login">Back to sign in</a>
+      } @else {
+        <form (ngSubmit)="submit()">
+          <div class="row g-2 mb-3">
+            <div class="col-6"><label class="form-label">First name</label><input class="form-control" name="firstName" [(ngModel)]="firstName" /></div>
+            <div class="col-6"><label class="form-label">Last name</label><input class="form-control" name="lastName" [(ngModel)]="lastName" /></div>
+            <div class="col-12"><label class="form-label">Email</label><input class="form-control" [value]="invite()!.email" disabled /></div>
+            <div class="col-12"><label class="form-label">Phone number (optional)</label><input type="tel" class="form-control" name="phone" [(ngModel)]="phoneNumber" /></div>
+            <div class="col-12"><label class="form-label">Password</label><app-password-field name="password" [(ngModel)]="password" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+            <div class="col-12"><label class="form-label">Confirm password</label><app-password-field name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password" /></div>
+          </div>
+
+          @if (errorMessage(); as message) {
+            <div class="alert alert-danger py-2 small">{{ message }}</div>
+          }
+
+          <button type="submit" class="btn btn-primary w-100" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Creating your account...' : 'Complete registration' }}
+          </button>
+        </form>
+      }
+    </div>
+  </div>
+</div>

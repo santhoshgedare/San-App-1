@@ -64,7 +64,7 @@
         </tr>
         } @else {
         @for (item of items(); track item.id) {
-        <tr>
+        <tr class="item-row" (click)="openDetail(item)">
           <td>
             @if (getPrimaryImage(item); as img) {
             <img [src]="img.url" alt="" class="rounded item-thumbnail border" />
@@ -115,21 +115,39 @@
           </td>
           <td>
             <div class="d-flex gap-2 text-muted small">
-              <span title="Images"><i class="bi bi-image me-1"></i>{{ item.images?.length ?? 0 }}</span>
-              <span title="Documents"><i class="bi bi-file-earmark-text me-1"></i>{{ item.documents?.length ?? 0
-                }}</span>
+              <span title="Images"><i class="bi bi-image me-1"></i>{{ item.imageCount ?? item.images?.length ?? 0 }}</span>
+              <span title="Documents"><i class="bi bi-file-earmark-text me-1"></i>{{ item.documentCount ?? item.documents?.length ?? 0 }}</span>
             </div>
           </td>
           <td>
-            @if (item.isActive) {
+            @if (item.approvalStatus === 'Pending') {
+            <span class="badge text-bg-warning" title="Waiting for admin approval - not on catalog yet">Pending approval</span>
+            } @else if (item.approvalStatus === 'Rejected') {
+            <span class="badge text-bg-danger" [title]="item.approvalNote || 'Rejected by admin'">Rejected</span>
+            } @else if (item.isActive) {
             <span class="badge text-bg-success">Active</span>
             } @else {
             <span class="badge text-bg-secondary">Inactive</span>
             }
           </td>
-          <td class="text-end">
+          <td class="text-end" (click)="$event.stopPropagation()">
+            @if (isAdmin() && item.approvalStatus !== 'Approved') {
+            <button type="button" mat-icon-button matTooltip="Approve" (click)="approve(item)"><mat-icon>check_circle</mat-icon></button>
+            }
+            @if (isAdmin() && item.approvalStatus === 'Pending') {
+            <button type="button" mat-icon-button matTooltip="Reject" (click)="reject(item)"><mat-icon>cancel</mat-icon></button>
+            }
+            @if (item.approvalStatus === 'Approved') {
+            <button *canRender="'section-items-manage'" type="button" mat-icon-button
+              [matTooltip]="item.isActive ? 'Hide from catalog' : 'Show on catalog'" (click)="toggleActive(item)">
+              <mat-icon>{{ item.isActive ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            }
+            <button type="button" mat-icon-button matTooltip="View details" (click)="openDetail(item)">
+              <mat-icon>info</mat-icon>
+            </button>
             <button *canRender="'section-items-manage'" type="button" mat-icon-button matTooltip="Edit Item"
-              (click)="openDetail(item)">
+              (click)="openEdit(item)">
               <mat-icon>edit</mat-icon>
             </button>
           </td>

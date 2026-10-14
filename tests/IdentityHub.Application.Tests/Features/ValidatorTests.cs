@@ -11,12 +11,12 @@ public sealed class LoginCommandValidatorTests
     private readonly LoginCommandValidator _validator = new();
 
     [Fact]
-    public void Fails_when_email_is_invalid()
+    public void Fails_when_identifier_is_empty()
     {
-        var result = _validator.Validate(new LoginCommand("not-an-email", "password123"));
+        var result = _validator.Validate(new LoginCommand("", "password123"));
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(LoginCommand.Email));
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(LoginCommand.Identifier));
     }
 
     [Fact]
@@ -35,6 +35,14 @@ public sealed class LoginCommandValidatorTests
 
         result.IsValid.Should().BeTrue();
     }
+
+    [Fact]
+    public void Succeeds_for_phone_number_identifier()
+    {
+        var result = _validator.Validate(new LoginCommand("+91 98765 43210", "password123"));
+
+        result.IsValid.Should().BeTrue();
+    }
 }
 
 public sealed class RegisterCommandValidatorTests
@@ -42,21 +50,24 @@ public sealed class RegisterCommandValidatorTests
     private readonly RegisterCommandValidator _validator = new();
 
     [Theory]
-    [InlineData("", "password123", "Jane", "Doe")]
-    [InlineData("user@example.com", "short", "Jane", "Doe")]
-    [InlineData("user@example.com", "password123", "", "Doe")]
-    [InlineData("user@example.com", "password123", "Jane", "")]
-    public void Fails_for_invalid_input(string email, string password, string firstName, string lastName)
+    [InlineData(null, "password123", null, null, null)]
+    [InlineData("user@example.com", "short", null, null, null)]
+    [InlineData("not-an-email", "password123", null, null, null)]
+    [InlineData(null, "password123", null, null, "invalid")]
+    [InlineData("user@example.com", "password123", null, null, "+91 98765 43210")]
+    public void Fails_for_invalid_input(string? email, string password, string? firstName, string? lastName, string? phoneNumber)
     {
-        var result = _validator.Validate(new RegisterCommand(email, password, firstName, lastName, null));
+        var result = _validator.Validate(new RegisterCommand(email, password, firstName, lastName, phoneNumber));
 
         result.IsValid.Should().BeFalse();
     }
 
-    [Fact]
-    public void Succeeds_for_valid_registration()
+    [Theory]
+    [InlineData("user@example.com", null)]
+    [InlineData(null, "+91 98765 43210")]
+    public void Succeeds_with_either_email_or_phone_without_profile_names(string? email, string? phoneNumber)
     {
-        var result = _validator.Validate(new RegisterCommand("user@example.com", "password123", "Jane", "Doe", null));
+        var result = _validator.Validate(new RegisterCommand(email, "password123", null, null, phoneNumber));
 
         result.IsValid.Should().BeTrue();
     }
@@ -422,6 +433,3 @@ public sealed class CreateOrderCommandValidatorTests
         result.IsValid.Should().BeTrue();
     }
 }
-
-
-

@@ -10,6 +10,7 @@ export interface OrderChatMessage {
   body: string;
   createdAt: string;
   isMine: boolean;
+  readAt?: string | null;
 }
 
 export interface OrderChat {
@@ -21,12 +22,27 @@ export interface OrderChat {
   faqs: { id: string; question: string }[];
 }
 
+export interface OrderChatNotification {
+  orderId: string;
+  orderNumber: string;
+  messageId: string;
+  senderRole: 'Buyer' | 'Seller';
+  senderName: string;
+  preview: string;
+  createdAt: string;
+  isMine: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OrderChatService {
   private readonly http = inject(HttpClient);
 
   get(orderId: string): Observable<OrderChat> {
     return this.http.get<OrderChat>(`${environment.apiUrl}/orders/${orderId}/messages`);
+  }
+
+  getNotifications(): Observable<OrderChatNotification[]> {
+    return this.http.get<OrderChatNotification[]>(`${environment.apiUrl}/orders/messages/notifications`);
   }
 
   send(orderId: string, body?: string, faqId?: string): Observable<OrderChat> {

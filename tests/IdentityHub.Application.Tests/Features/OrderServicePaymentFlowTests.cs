@@ -20,7 +20,7 @@ public sealed class OrderServicePaymentFlowTests
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
         var activityLog = new RecordingActivityLogService();
-        var service = new OrderService(db, activityLog, new StubApprovalService());
+        var service = new OrderService(db, activityLog, new StubApprovalService(), new NoOpOrderNotifier());
 
         var result = await service.RecordRefundAsync(order.Id, order.TotalAmount, "REFUND-UTR-9", "Cancelled order");
 
@@ -44,7 +44,7 @@ public sealed class OrderServicePaymentFlowTests
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
         var activityLog = new RecordingActivityLogService();
-        var service = new OrderService(db, activityLog, new StubApprovalService());
+        var service = new OrderService(db, activityLog, new StubApprovalService(), new NoOpOrderNotifier());
 
         var result = await service.RecordRefundAsync(order.Id, order.TotalAmount, "REFUND-UTR-9", null);
 
@@ -60,7 +60,7 @@ public sealed class OrderServicePaymentFlowTests
         var order = CreatePaidOrder();
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
-        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService(), new NoOpOrderNotifier());
 
         var result = await service.RecordRefundAsync(order.Id, order.TotalAmount - 1, "REFUND-UTR-9", null);
 
@@ -76,7 +76,7 @@ public sealed class OrderServicePaymentFlowTests
         order.PaymentStatus = PaymentStatus.Refunded;
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
-        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService(), new NoOpOrderNotifier());
 
         var result = await service.SubmitPaymentDetailsAsync(order.Id, "NEW-PAYMENT-UTR", null);
 
@@ -95,7 +95,7 @@ public sealed class OrderServicePaymentFlowTests
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
         var activityLog = new RecordingActivityLogService();
-        var service = new OrderService(db, activityLog, new StubApprovalService());
+        var service = new OrderService(db, activityLog, new StubApprovalService(), new NoOpOrderNotifier());
 
         var submittedDetails = await service.SubmitPaymentDetailsAsync(order.Id, "PAYMENT-UTR-2", null);
         var confirmedPayment = await service.UpdatePaymentStatusAsync(order.Id, PaymentStatus.Paid, "PAYMENT-UTR-2", null);
@@ -118,7 +118,7 @@ public sealed class OrderServicePaymentFlowTests
         var refundedOrder = CreateFinancialOrder("ORD-REPORT-REFUND", today, PaymentStatus.Refunded, 50m, 15m, 50m, "REFUND-1");
         await db.Orders.AddRangeAsync(paidOrder, refundedOrder);
         await db.SaveChangesAsync();
-        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService(), new NoOpOrderNotifier());
         var start = new DateTimeOffset(today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
         var end = new DateTimeOffset(today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
 
@@ -142,7 +142,7 @@ public sealed class OrderServicePaymentFlowTests
         var order = CreateFinancialOrder("ORD-REPORT-LEGACY", today, PaymentStatus.Paid, 100m, null, null, null);
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
-        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService(), new NoOpOrderNotifier());
         var start = new DateTimeOffset(today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
         var end = new DateTimeOffset(today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
 
@@ -162,7 +162,7 @@ public sealed class OrderServicePaymentFlowTests
         order.PaymentReferenceNumber = null;
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();
-        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService());
+        var service = new OrderService(db, new RecordingActivityLogService(), new StubApprovalService(), new NoOpOrderNotifier());
 
         var missingReference = await service.UpdatePaymentStatusAsync(order.Id, PaymentStatus.Paid, null, null);
         missingReference.Succeeded.Should().BeFalse();

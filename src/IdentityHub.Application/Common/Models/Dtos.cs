@@ -280,9 +280,16 @@ public sealed class ItemDto
     public decimal? CostPrice { get; init; }
     public int StockQuantity { get; init; }
     public bool IsActive { get; init; }
+    /// <summary>False when the item's seller is unapproved or inactive; such items are hidden from the storefront.</summary>
+    public bool SellerAvailable { get; init; } = true;
+    public string ApprovalStatus { get; init; } = "Approved";
+    public string? ApprovalNote { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public IReadOnlyList<ItemImageDto> Images { get; init; } = [];
     public IReadOnlyList<ItemDocumentDto> Documents { get; init; } = [];
+    /// <summary>Total photos/documents; list responses carry only the cover photo and no document files.</summary>
+    public int ImageCount { get; init; }
+    public int DocumentCount { get; init; }
     public IReadOnlyList<ItemVariantDto> Variants { get; init; } = [];
 }
 
@@ -344,6 +351,18 @@ public sealed class OrderDto
     public decimal SubtotalAmount { get; init; }
     public decimal ShippingFee { get; init; }
     public bool ShippingFeeConfirmed { get; init; }
+    /// <summary>Latest approval decision for the order (Pending/Approved/Rejected); null when no approval was ever raised.</summary>
+    public string? ApprovalStatus { get; set; }
+    public DateTimeOffset? ChargesAcceptedAt { get; init; }
+    public decimal AdvanceAmount { get; init; }
+    public string AdvanceStatus { get; init; } = "Pending";
+    public string? AdvanceReferenceNumber { get; init; }
+    /// <summary>Money received so far and not refunded (advance and/or full payment).</summary>
+    public decimal AmountPaid { get; init; }
+    /// <summary>Payment currently being collected: "None", "Advance" or "Final".</summary>
+    public string PaymentStage { get; init; } = "None";
+    /// <summary>Amount the buyer should pay for the current payment stage.</summary>
+    public decimal AmountDue { get; init; }
     public string? ShippingFeeNote { get; init; }
     public decimal TaxAmount { get; init; }
     public decimal TotalAmount { get; init; }
@@ -420,7 +439,8 @@ public sealed record ItemListQuery(
     bool? IsActive,
     int Page = 1,
     int PageSize = 20,
-    Guid? SellerId = null);
+    Guid? SellerId = null,
+    bool StorefrontOnly = false);
 
 public sealed class SellerDto
 {
@@ -447,9 +467,26 @@ public sealed class SellerDto
     public string? InviteEmail { get; init; }
     /// <summary>None, Pending, Expired or Accepted.</summary>
     public string InviteStatus { get; init; } = "None";
+    /// <summary>Pending, Approved or Rejected.</summary>
+    public string Status { get; init; } = "Pending";
+    public bool IsActive { get; init; } = true;
+    public string? StatusNote { get; init; }
+    public bool CanSell { get; init; }
 }
 
+public sealed record SellerStatusRequest(string? Note);
+public sealed record SellerActiveRequest(bool IsActive);
+public sealed record ItemApprovalRequest(string? Note);
+
 public sealed record SellerInviteRequest(string Email);
+public sealed record SellerEmployeeInviteRequest(string Email);
+public sealed record EmployeeRegistrationInput(string FirstName, string LastName, string Password, string? PhoneNumber);
+public sealed record SellerEmployeeDto(Guid Id, Guid? UserId, string Name, string Email, string? PhoneNumber, bool IsActive, bool IsPending, DateTimeOffset CreatedAt);
+public sealed class EmployeeInviteInfoDto
+{
+    public string Email { get; init; } = string.Empty;
+    public string CompanyName { get; init; } = string.Empty;
+}
 
 public sealed class SellerInviteResultDto
 {

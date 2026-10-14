@@ -8,8 +8,8 @@ namespace IdentityHub.Application.Common.Interfaces;
 /// </summary>
 public interface IIdentityService
 {
-    Task<Result<UserDto>> RegisterAsync(string email, string password, string firstName, string lastName, string? phoneNumber, CancellationToken ct);
-    Task<Result<UserDto>> ValidateCredentialsAsync(string email, string password, CancellationToken ct);
+    Task<Result<UserDto>> RegisterAsync(string? email, string password, string firstName, string lastName, string? phoneNumber, CancellationToken ct);
+    Task<Result<UserDto>> ValidateCredentialsAsync(string identifier, string password, CancellationToken ct);
     Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken ct);
     Task<Result> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken ct);
     Task<Result<UserDto>> AuthenticateExternalAsync(
@@ -20,11 +20,19 @@ public interface IIdentityService
         string lastName,
         bool emailVerified,
         CancellationToken ct);
+    Task<bool> AccountExistsAsync(OtpTarget target, CancellationToken ct);
+
+    /// <summary>
+    /// Signs in the account owning an already-verified email/phone, creating it first when
+    /// <paramref name="allowCreate"/> is set and none exists.
+    /// </summary>
+    Task<Result<UserDto>> AuthenticateOtpAsync(OtpTarget target, string firstName, string lastName, bool allowCreate, CancellationToken ct);
     Task<UserDto?> FindByIdAsync(Guid userId, CancellationToken ct);
     Task<UserDto?> FindByEmailAsync(string email, CancellationToken ct);
     Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken ct);
     Task<PagedResult<UserDto>> GetUsersPagedAsync(UserListQuery query, CancellationToken ct);
     Task<Result> UpdateUserAsync(Guid userId, string firstName, string lastName, bool isActive, CancellationToken ct);
+    Task<Result<UserDto>> UpdateOwnProfileAsync(Guid userId, string firstName, string lastName, string? email, string? phoneNumber, CancellationToken ct);
     Task<Result> DeleteUserAsync(Guid userId, CancellationToken ct);
     Task<Result> AssignRolesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken ct);
     Task SetLastLoginAsync(Guid userId, CancellationToken ct);

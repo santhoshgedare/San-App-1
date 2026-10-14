@@ -17,6 +17,7 @@ import { SectionAccessStore } from '../../auth/section-access.store';
 import { CartService } from '../../cart/cart.service';
 import { CanRenderDirective } from '../../directives/can-render.directive';
 import { SettingsSheet } from '../settings-sheet/settings-sheet';
+import { OrderChatWidget } from '../../../shared/order-chat/order-chat-widget';
 
 /**
  * Layout used for Admins/Managers: a full side navigation with every management
@@ -39,6 +40,7 @@ import { SettingsSheet } from '../settings-sheet/settings-sheet';
     MatTooltipModule,
     MatBadgeModule,
     CanRenderDirective,
+    OrderChatWidget,
   ],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.scss',

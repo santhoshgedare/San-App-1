@@ -68,4 +68,16 @@ export class ItemService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  setActive(id: string, isActive: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/active`, { isActive });
+  }
+
+  approve(id: string, note?: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/approve`, { note: note ?? null });
+  }
+
+  reject(id: string, note?: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/reject`, { note: note ?? null });
+  }
 }

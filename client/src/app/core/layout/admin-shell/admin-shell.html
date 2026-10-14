@@ -96,6 +96,7 @@
       <section class="nav-group">
         <p class="group-label">Manage</p>
         <mat-nav-list>
+          @if (auth.isAdmin()) {
           <ng-container *canRender="'section-users-view'">
             <a class="sidenav-link" mat-list-item routerLink="/users" routerLinkActive="link-active"
               (click)="isScreenSmall() && sidenav.close()">
@@ -103,6 +104,7 @@
               <span matListItemTitle>Users</span>
             </a>
           </ng-container>
+          }
           @if (auth.isAdmin()) {
           <a class="sidenav-link" *canRender="'section-roles-view'" mat-list-item routerLink="/roles"
             routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
@@ -136,11 +138,6 @@
             <mat-icon matListItemIcon>inventory_2</mat-icon>
             <span matListItemTitle>Items</span>
           </a>
-          <a class="sidenav-link" *canRender="'section-payment-settings-view'" mat-list-item
-            routerLink="/payment-settings" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-            <mat-icon matListItemIcon>qr_code_2</mat-icon>
-            <span matListItemTitle>Payment Settings</span>
-          </a>
           <a class="sidenav-link" *canRender="'section-approval-workflows-view'" mat-list-item
             routerLink="/approval-workflows" routerLinkActive="link-active"
             (click)="isScreenSmall() && sidenav.close()">
@@ -169,3 +166,7 @@
     </main>
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+@if (sectionAccess.can('section-orders-view')) {
+<app-order-chat-widget />
+}

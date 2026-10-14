@@ -21,6 +21,7 @@ public interface IOrderService
         DateTimeOffset endExclusive,
         DateOnly startDate,
         DateOnly endDate,
+        Guid? sellerId = null,
         CancellationToken ct = default);
     Task<Result<OrderDto>> CreateAsync(
         Guid? customerId,
@@ -40,8 +41,10 @@ public interface IOrderService
         OrderStatus status,
         string? trackingNumber,
         string? shippingCarrier,
+        decimal? advanceAmount = null,
         CancellationToken ct = default);
     Task<Result> CancelOwnOrderAsync(Guid id, Guid customerId, CancellationToken ct = default);
+    Task<Result> AcceptChargesAsync(Guid id, Guid customerId, CancellationToken ct = default);
     Task<Result> SetShippingFeeAsync(Guid id, decimal shippingFee, string? note, CancellationToken ct = default);
     Task<Result> UpdatePaymentStatusAsync(
         Guid id,

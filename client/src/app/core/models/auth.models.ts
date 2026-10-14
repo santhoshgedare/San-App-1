@@ -1,4 +1,3 @@
-import type { AddressInput } from '../auth/address.service';
 export interface UserDto {
   id: string;
   email: string;
@@ -125,7 +124,12 @@ export interface ItemDto {
   costPrice: number | null;
   stockQuantity: number;
   isActive: boolean;
+  approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
+  approvalNote?: string | null;
+  sellerAvailable?: boolean;
   createdAt?: string;
+  imageCount?: number;
+  documentCount?: number;
   images: ItemImageDto[];
   documents: ItemDocumentDto[];
   variants: ItemVariantDto[];
@@ -173,7 +177,7 @@ export interface AuthResult {
 }
 
 export interface LoginRequest {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -184,12 +188,24 @@ export interface ExternalAuthProvider {
 }
 
 export interface RegisterRequest {
-  email: string;
+  email?: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  address: AddressInput;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+}
+
+export type OtpPurpose = 'login' | 'register';
+
+export interface OtpRequest {
+  identifier: string;
+  purpose: OtpPurpose;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface OtpVerifyRequest extends OtpRequest {
+  code: string;
 }
 
 export interface ApiError {
@@ -260,6 +276,14 @@ export interface OrderDto {
   subtotalAmount: number;
   shippingFee: number;
   shippingFeeConfirmed: boolean;
+  approvalStatus?: 'Pending' | 'Approved' | 'Rejected' | null;
+  chargesAcceptedAt?: string | null;
+  advanceAmount: number;
+  advanceStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+  advanceReferenceNumber?: string | null;
+  amountPaid: number;
+  paymentStage: 'None' | 'Advance' | 'Final';
+  amountDue: number;
   shippingFeeNote?: string | null;
   taxAmount: number;
   totalAmount: number;
@@ -323,9 +347,8 @@ export interface UpdateOrderStatusRequest {
   status: string;
   trackingNumber?: string | null;
   shippingCarrier?: string | null;
-}
-
-export interface UpdateOrderPaymentStatusRequest {
+  advanceAmount?: number | null;
+}export interface UpdateOrderPaymentStatusRequest {
   paymentStatus: string;
   paymentReferenceNumber?: string | null;
   offlinePaymentNotes?: string | null;

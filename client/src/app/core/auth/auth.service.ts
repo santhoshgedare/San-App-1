@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ROLES, APP_CONSTANTS } from '../models/constants';
-import type { AuthResult, ExternalAuthProvider, LoginRequest, RegisterRequest, UserDto } from '../models/auth.models';
+import type { AuthResult, ExternalAuthProvider, LoginRequest, OtpRequest, OtpVerifyRequest, RegisterRequest, UserDto } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -34,8 +34,39 @@ export class AuthService {
     return this.http.post<AuthResult>(`${this.baseUrl}/register`, request).pipe(tap((result) => this.persistSession(result)));
   }
 
+  /** True when the signed-in user still lacks a name, email or phone number. */
+  profileIncomplete(): boolean {
+    const user = this.currentUser();
+    return !!user && (!user.firstName?.trim() || !user.email?.trim() || !user.phoneNumber?.trim());
+  }
+
+  /** Where to send a user right after signing in or registering. */
+  postAuthUrl(returnUrl: string | null): string {
+    if (this.profileIncomplete() && !this.isAdmin()) {
+      return returnUrl ? `/profile?complete=1&returnUrl=${encodeURIComponent(returnUrl)}` : '/profile?complete=1';
+    }
+    return returnUrl || '/catalog';
+  }
+
+  updateProfile(request: { firstName: string; lastName: string; email: string; phoneNumber: string }): Observable<UserDto> {
+    return this.http.put<UserDto>(`${environment.apiUrl}/me`, request).pipe(
+      tap((user) => {
+        localStorage.setItem(APP_CONSTANTS.userKey, JSON.stringify(user));
+        this.currentUser.set(user);
+      }),
+    );
+  }
+
   getExternalProviders(): Observable<ExternalAuthProvider[]> {
     return this.http.get<ExternalAuthProvider[]>(`${this.baseUrl}/external/providers`);
+  }
+
+  requestOtp(request: OtpRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/otp/request`, request);
+  }
+
+  verifyOtp(request: OtpVerifyRequest): Observable<AuthResult> {
+    return this.http.post<AuthResult>(`${this.baseUrl}/otp/verify`, request).pipe(tap((result) => this.persistSession(result)));
   }
 
   requestPasswordReset(email: string): Observable<{ message: string }> {

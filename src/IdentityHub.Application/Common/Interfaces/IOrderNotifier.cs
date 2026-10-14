@@ -9,8 +9,9 @@ public enum OrderNotice
     PaymentUpdated,
     Refunded,
     ChatMessage,
-    ProgressUpdated
-}
+    ProgressUpdated,
+    ChargesAccepted,
+    ApprovalDecided}
 
 /// <summary>Emails the people affected by an order event (buyer, fulfilling seller or admin). Never throws.</summary>
 public interface IOrderNotifier

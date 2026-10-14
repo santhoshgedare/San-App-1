@@ -21,6 +21,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
   },
   {
+    path: 'employee-register',
+    loadComponent: () => import('./features/sellers/employee-register/employee-register').then((m) => m.EmployeeRegister),
+  },
+  {
     path: 'seller-register',
     loadComponent: () => import('./features/sellers/seller-register/seller-register').then((m) => m.SellerRegister),
   },
@@ -42,17 +46,17 @@ export const routes: Routes = [
       {
         path: 'users',
         loadComponent: () => import('./features/users/users').then((m) => m.Users),
-        canActivate: [authGuard, sectionGuard('section-users-view')],
+        canActivate: [authGuard, roleGuard(['Admin'])],
       },
       {
         path: 'users/new',
         loadComponent: () => import('./features/users/user-form/user-form').then((m) => m.UserForm),
-        canActivate: [authGuard, sectionGuard('section-users-manage'), sectionGuard('section-users-roles')],
+        canActivate: [authGuard, roleGuard(['Admin'])],
       },
       {
         path: 'users/:id',
         loadComponent: () => import('./features/users/user-form/user-form').then((m) => m.UserForm),
-        canActivate: [authGuard, sectionGuard('section-users-manage')],
+        canActivate: [authGuard, roleGuard(['Admin'])],
       },
       {
         path: 'sellers',
@@ -92,7 +96,7 @@ export const routes: Routes = [
       {
         path: 'categories/:id',
         loadComponent: () => import('./features/categories/category-form/category-form').then((m) => m.CategoryForm),
-        canActivate: [authGuard, sectionGuard('section-categories-manage')],
+        canActivate: [authGuard, roleGuard(['Admin'])],
       },
       {
         path: 'items',
@@ -100,9 +104,19 @@ export const routes: Routes = [
         canActivate: [authGuard, sectionGuard('section-items-view')],
       },
       {
-        path: 'items/:id',
+        path: 'items/new',
         loadComponent: () => import('./features/items/item-form/item-form').then((m) => m.ItemForm),
         canActivate: [authGuard, sectionGuard('section-items-manage')],
+      },
+      {
+        path: 'items/:id/edit',
+        loadComponent: () => import('./features/items/item-form/item-form').then((m) => m.ItemForm),
+        canActivate: [authGuard, sectionGuard('section-items-manage')],
+      },
+      {
+        path: 'items/:id',
+        loadComponent: () => import('./features/items/item-detail/item-detail').then((m) => m.ItemDetail),
+        canActivate: [authGuard, sectionGuard('section-items-view')],
       },
       {
         path: 'catalog',
@@ -160,11 +174,6 @@ export const routes: Routes = [
         path: 'approval-workflows',
         loadComponent: () => import('./features/approval-workflows/approval-workflows').then((m) => m.ApprovalWorkflows),
         canActivate: [authGuard, roleGuard(['Admin'])],
-      },
-      {
-        path: 'payment-settings',
-        loadComponent: () => import('./features/payment-settings/payment-settings').then((m) => m.PaymentSettingsComponent),
-        canActivate: [authGuard, sectionGuard('section-payment-settings-view')],
       },
       {
         path: 'forbidden',

@@ -10,7 +10,8 @@ public sealed record UpdateOrderStatusCommand(
     Guid Id,
     string Status,
     string? TrackingNumber,
-    string? ShippingCarrier) : IRequest<Result>;
+    string? ShippingCarrier,
+    decimal? AdvanceAmount = null) : IRequest<Result>;
 
 public sealed class UpdateOrderStatusCommandValidator : AbstractValidator<UpdateOrderStatusCommand>
 {
@@ -27,6 +28,6 @@ public sealed class UpdateOrderStatusCommandHandler(IOrderService orderService)
     public async Task<Result> Handle(UpdateOrderStatusCommand request, CancellationToken ct)
     {
         var status = Enum.Parse<OrderStatus>(request.Status, true);
-        return await orderService.UpdateStatusAsync(request.Id, status, request.TrackingNumber, request.ShippingCarrier, ct);
+        return await orderService.UpdateStatusAsync(request.Id, status, request.TrackingNumber, request.ShippingCarrier, request.AdvanceAmount, ct);
     }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../core/auth/auth.service';
@@ -21,6 +21,14 @@ export class Profile implements OnInit {
   private readonly addressService = inject(AddressService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly confirmService = inject(ConfirmService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  readonly editingDetails = signal(false);
+  readonly savingDetails = signal(false);
+  readonly completing = signal(false);
+  detailsError = '';
+  details = { firstName: '', lastName: '', email: '', phoneNumber: '' };
 
   readonly addresses = signal<AddressDto[]>([]);
   readonly editing = signal<AddressInput | null>(null);
@@ -29,6 +37,57 @@ export class Profile implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    if (this.route.snapshot.queryParamMap.get('complete') === '1' || this.auth.profileIncomplete()) {
+      this.completing.set(this.route.snapshot.queryParamMap.get('complete') === '1');
+      this.startEditDetails();
+    }
+  }
+
+  startEditDetails(): void {
+    const user = this.auth.currentUser();
+    this.details = {
+      firstName: user?.firstName ?? '',
+      lastName: user?.lastName ?? '',
+      email: user?.email ?? '',
+      phoneNumber: user?.phoneNumber ?? '',
+    };
+    this.detailsError = '';
+    this.editingDetails.set(true);
+  }
+
+  cancelDetails(): void {
+    this.editingDetails.set(false);
+    this.completing.set(false);
+  }
+
+  saveDetails(): void {
+    const d = this.details;
+    if (!d.firstName.trim()) {
+      this.detailsError = 'First name is required.';
+      return;
+    }
+    if (!d.email.trim() && !d.phoneNumber.trim()) {
+      this.detailsError = 'Provide an email address or a phone number.';
+      return;
+    }
+    this.detailsError = '';
+    this.savingDetails.set(true);
+    this.auth.updateProfile(d).subscribe({
+      next: () => {
+        this.savingDetails.set(false);
+        this.editingDetails.set(false);
+        this.snackBar.open('Profile updated.', 'Close');
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        if (this.completing()) {
+          this.completing.set(false);
+          this.router.navigateByUrl(returnUrl || '/catalog');
+        }
+      },
+      error: (err) => {
+        this.savingDetails.set(false);
+        this.detailsError = err?.error?.errors?.join(' ') ?? 'Could not update your profile.';
+      },
+    });
   }
 
   private load(): void {

@@ -13,6 +13,7 @@ public sealed class OrderNotifier(
     IEmailSender emailSender,
     ICurrentUserService currentUser,
     IConfiguration configuration,
+    IOrderLiveNotifier liveNotifier,
     ILogger<OrderNotifier> logger) : IOrderNotifier
 {
     public async Task NotifyAsync(Guid orderId, OrderNotice notice, string? detail = null, CancellationToken ct = default)
@@ -41,9 +42,11 @@ public sealed class OrderNotifier(
                 case OrderNotice.PaymentUpdated:
                 case OrderNotice.Refunded:
                 case OrderNotice.ProgressUpdated:
+                case OrderNotice.ApprovalDecided:
                     toBuyer.Add(order.CustomerEmail);
                     break;
                 case OrderNotice.PaymentSubmitted:
+                case OrderNotice.ChargesAccepted:
                     toSeller.AddRange(await SellerSideAsync(order, ct));
                     break;
                 case OrderNotice.ChatMessage:
@@ -56,6 +59,8 @@ public sealed class OrderNotifier(
             var (subject, headline) = Describe(notice, order.OrderNumber, detail);
 
             var excludeCurrentUser = notice != OrderNotice.Placed;
+            if (notice != OrderNotice.ChatMessage)
+                await PushLiveAsync(order, notice, toSeller, toBuyer, headline, ct);
             await SendAsync(toBuyer, $"{subject} – {sellerName}", headline, detail, order.OrderNumber, link, order.Id, excludeCurrentUser, ct);
             await SendAsync(toSeller, subject, headline, detail, order.OrderNumber, link, order.Id, excludeCurrentUser, ct);
         }
@@ -65,15 +70,45 @@ public sealed class OrderNotifier(
         }
     }
 
+    private async Task PushLiveAsync(Domain.Entities.Order order, OrderNotice notice, List<string> sellerEmails, List<string> buyerEmails, string headline, CancellationToken ct)
+    {
+        try
+        {
+            var ids = new HashSet<Guid>();
+            if (buyerEmails.Count > 0 && order.CustomerId.HasValue) ids.Add(order.CustomerId.Value);
+            var emails = sellerEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.ToUpperInvariant()).Distinct().ToList();
+            if (emails.Count > 0)
+            {
+                var sellerIds = await db.Users.Where(u => u.NormalizedEmail != null && emails.Contains(u.NormalizedEmail))
+                    .Select(u => u.Id).ToListAsync(ct);
+                foreach (var id in sellerIds) ids.Add(id);
+            }
+            if (currentUser.UserId.HasValue) ids.Remove(currentUser.UserId.Value);
+
+            await liveNotifier.NotifyAsync(ids, order.Id, order.OrderNumber, notice.ToString(), headline, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Live order update for {OrderId} failed.", order.Id);
+        }
+    }
+
     private async Task<List<string>> SellerSideAsync(Domain.Entities.Order order, CancellationToken ct)
     {
         if (order.Seller is not null)
         {
+            var staff = new List<string>();
             if (order.Seller.UserId.HasValue)
             {
                 var email = await db.Users.Where(u => u.Id == order.Seller.UserId.Value).Select(u => u.Email).FirstOrDefaultAsync(ct);
-                if (!string.IsNullOrWhiteSpace(email)) return [email];
+                if (!string.IsNullOrWhiteSpace(email)) staff.Add(email);
             }
+            var employeeEmails = await (from e in db.SellerEmployees
+                                        join u in db.Users on e.UserId equals u.Id
+                                        where e.SellerId == order.Seller.Id && u.IsActive && u.Email != null
+                                        select u.Email!).ToListAsync(ct);
+            staff.AddRange(employeeEmails);
+            if (staff.Count > 0) return staff;
             if (!string.IsNullOrWhiteSpace(order.Seller.ContactEmail)) return [order.Seller.ContactEmail];
         }
 
@@ -133,12 +168,14 @@ public sealed class OrderNotifier(
     {
         OrderNotice.Placed => ($"Order {number} placed", "A new order has been placed"),
         OrderNotice.StatusChanged => ($"Order {number} status updated", "Your order status was updated"),
-        OrderNotice.DeliveryCharge => ($"Order {number}: delivery charge confirmed", "Delivery charge confirmed – you can now pay"),
+        OrderNotice.DeliveryCharge => ($"Order {number}: delivery charge confirmed", "Delivery charge set – please review and accept it"),
+        OrderNotice.ChargesAccepted => ($"Order {number}: delivery charge accepted", "The buyer accepted the delivery charge – you can confirm the order"),
         OrderNotice.PaymentSubmitted => ($"Order {number}: payment submitted", "Payment reference submitted – please verify"),
         OrderNotice.PaymentUpdated => ($"Order {number}: payment update", "Your payment status was updated"),
         OrderNotice.Refunded => ($"Order {number}: refund recorded", "A refund has been recorded"),
         OrderNotice.ChatMessage => ($"Order {number}: new message", "You have a new message on this order"),
         OrderNotice.ProgressUpdated => ($"Order {number}: progress update", "Your custom piece has a new progress update"),
+        OrderNotice.ApprovalDecided => ($"Order {number}: approval update", detail ?? "Your order approval was updated"),
         _ => ($"Order {number} update", "Order update")
     };
 }

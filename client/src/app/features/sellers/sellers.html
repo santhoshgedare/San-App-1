@@ -1,10 +1,17 @@
 <section class="sp-hero">
   <div>
     <h2>Sellers &amp; Companies</h2>
-    <p>Create a seller company, then invite its manager by email to register.</p>
+    <p>Enter a seller's email to send them a registration invite. They fill in their own company details.</p>
   </div>
-  <a class="btn btn-sm" routerLink="/sellers/new"><mat-icon class="align-middle" style="font-size:1.1rem;width:1.1rem;height:1.1rem">add</mat-icon> Add seller company</a>
+  <button type="button" class="btn btn-sm" (click)="showInvite.set(!showInvite())"><mat-icon class="align-middle" style="font-size:1.1rem;width:1.1rem;height:1.1rem">forward_to_inbox</mat-icon> Invite seller</button>
 </section>
+
+@if (showInvite()) {
+<form class="sp-toolbar" (ngSubmit)="sendInvite()">
+  <input type="email" class="form-control" name="inviteEmail" placeholder="seller@company.com" [(ngModel)]="inviteEmail" autocomplete="off" />
+  <button type="submit" class="btn btn-primary" [disabled]="isInviting() || !inviteEmail.trim()">{{ isInviting() ? 'Sending...' : 'Send invite' }}</button>
+</form>
+}
 
 <div class="sp-stats">
   <div class="sp-stat"><b>{{ stats().total }}</b><span>Companies</span></div>
@@ -32,7 +39,12 @@
           <div class="sp-name">{{ s.companyName }}</div>
           <div class="sp-tag">{{ s.tagline || 'No tagline yet' }}</div>
         </div>
-        @if (s.userEmail) { <span class="badge text-bg-success">Registered</span> }
+        @if (s.userEmail) {
+          @if (s.status === 'Pending') { <span class="badge text-bg-warning">Pending approval</span> }
+          @else if (s.status === 'Rejected') { <span class="badge text-bg-danger">Rejected</span> }
+          @else if (!s.isActive) { <span class="badge text-bg-secondary">Inactive</span> }
+          @else { <span class="badge text-bg-success">Approved</span> }
+        }
         @else if (s.inviteStatus === 'Pending') { <span class="badge text-bg-info">Invited</span> }
         @else if (s.inviteStatus === 'Expired') { <span class="badge text-bg-danger">Expired</span> }
         @else { <span class="badge text-bg-warning">Not invited</span> }
@@ -45,6 +57,17 @@
       </div>
       <div class="sp-foot">
         <a [routerLink]="['/sellers', s.id]" class="btn btn-sm btn-outline-primary">Edit / Invite</a>
+        @if (s.userEmail) {
+          @if (s.status !== 'Approved') {
+            <button type="button" class="btn btn-sm btn-success" (click)="approve(s)">Approve</button>
+          }
+          @if (s.status === 'Pending') {
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="reject(s)">Reject</button>
+          }
+          @if (s.status === 'Approved') {
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleActive(s)">{{ s.isActive ? 'Deactivate' : 'Activate' }}</button>
+          }
+        }
         <button type="button" class="btn btn-sm btn-outline-danger" (click)="remove(s)">Delete</button>
       </div>
     </article>

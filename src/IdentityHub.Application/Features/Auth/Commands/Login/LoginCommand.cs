@@ -5,13 +5,13 @@ using MediatR;
 
 namespace IdentityHub.Application.Features.Auth.Commands.Login;
 
-public sealed record LoginCommand(string Email, string Password) : IRequest<Result<AuthResultDto>>;
+public sealed record LoginCommand(string Identifier, string Password) : IRequest<Result<AuthResultDto>>;
 
 public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
     public LoginCommandValidator()
     {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.Identifier).NotEmpty();
         RuleFor(x => x.Password).NotEmpty();
     }
 }
@@ -23,7 +23,7 @@ public sealed class LoginCommandHandler(
 {
     public async Task<Result<AuthResultDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var result = await identityService.ValidateCredentialsAsync(request.Email, request.Password, cancellationToken);
+        var result = await identityService.ValidateCredentialsAsync(request.Identifier, request.Password, cancellationToken);
         if (!result.Succeeded)
         {
             return Result<AuthResultDto>.Failure(result.Errors);

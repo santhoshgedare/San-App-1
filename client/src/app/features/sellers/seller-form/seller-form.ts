@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { InviteEmailDialog, InviteEmailDialogData } from '../invite-email-dialog/invite-email-dialog';
+import { SellerEmployees } from '../seller-employees/seller-employees';
 import { SellerDto, SellerInput, SellerInviteResult, SellerService } from '../../../core/auth/seller.service';
 import { readImageAsDataUrl } from '../../../shared/image-utils';
 import { UserService } from '../../../core/auth/user.service';
@@ -16,7 +17,7 @@ import type { UserDto } from '../../../core/models/auth.models';
 @Component({
   selector: 'app-seller-form',
   standalone: true,
-  imports: [FormsModule, MatIconModule],
+  imports: [FormsModule, MatIconModule, SellerEmployees],
   templateUrl: './seller-form.html',
   styleUrl: '../seller-pages.scss',
 })
@@ -30,6 +31,8 @@ export class SellerForm implements OnInit {
 
   readonly mine = this.route.snapshot.routeConfig?.path === 'seller-profile';
   readonly isNew = signal(false);
+  /** The owner's own company opens as read-only details; editing is opt-in. */
+  readonly editing = signal(false);
   readonly isSaving = signal(false);
   readonly isProcessingImages = signal(false);
   readonly isLoading = signal(true);
@@ -37,6 +40,30 @@ export class SellerForm implements OnInit {
   readonly managers = signal<UserDto[]>([]);
   private id: string | null = null;
   readonly status = signal<string>('None');
+  readonly approval = signal<SellerDto | null>(null);
+
+  approve(): void {
+    this.runApproval(this.service.approve(this.id!), 'Seller approved.');
+  }
+
+  reject(): void {
+    this.runApproval(this.service.reject(this.id!), 'Seller rejected.');
+  }
+
+  toggleActive(): void {
+    const a = this.approval();
+    if (a) this.runApproval(this.service.setActive(this.id!, !a.isActive), a.isActive ? 'Seller deactivated.' : 'Seller activated.');
+  }
+
+  private runApproval(call: Observable<void>, okMsg: string): void {
+    call.subscribe({
+      next: () => {
+        this.snackBar.open(okMsg, 'Close');
+        this.service.getById(this.id!).subscribe((s) => this.approval.set(s));
+      },
+      error: (err) => this.errorMessage.set(err?.error?.errors?.join(' ') ?? 'Action failed.'),
+    });
+  }
   readonly inviteLink = signal<string | null>(null);
   readonly inviteNote = signal<string | null>(null);
   readonly isInviting = signal(false);
@@ -145,8 +172,12 @@ export class SellerForm implements OnInit {
   }
 
   private apply(s: SellerDto): void {
-    const { id: _id, userEmail: _email, itemCount: _count, inviteEmail: _ie, inviteStatus: _is, ...input } = s;
+    const {
+      id: _id, userEmail: _email, itemCount: _count, inviteEmail: _ie, inviteStatus: _is,
+      status: _st, isActive: _ac, statusNote: _sn, canSell: _cs, ...input
+    } = s;
     this.model = input;
+    this.approval.set(s);
     this.status.set(s.inviteStatus);
     this.inviteEmail = s.inviteEmail ?? '';
     this.isLoading.set(false);
@@ -180,6 +211,16 @@ export class SellerForm implements OnInit {
     }
   }
 
+  cityLine(): string {
+    return [this.model.city, this.model.state, this.model.postalCode].filter((v) => !!v).join(', ');
+  }
+
+  cancelEdit(): void {
+    this.errorMessage.set(null);
+    this.editing.set(false);
+    this.service.getMine().subscribe((s) => this.apply(s));
+  }
+
   save(): void {
     if (this.isProcessingImages()) return;
     this.errorMessage.set(null);
@@ -198,8 +239,14 @@ export class SellerForm implements OnInit {
     request.subscribe({
       next: () => {
         this.isSaving.set(false);
-        this.snackBar.open('Company profile saved.', 'Close');
-        if (!this.mine) this.router.navigate(['/sellers']);
+        if (this.mine) {
+          this.snackBar.open('Saved. Your company changes need admin approval before products show again.', 'Close');
+          this.service.getMine().subscribe((s) => this.apply(s));
+          this.editing.set(false);
+        } else {
+          this.snackBar.open('Company profile saved.', 'Close');
+          this.router.navigate(['/sellers']);
+        }
       },
       error: (err) => {
         this.isSaving.set(false);

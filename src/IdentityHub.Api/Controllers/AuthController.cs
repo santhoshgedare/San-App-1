@@ -6,6 +6,7 @@ using IdentityHub.Application.Features.Auth.Commands.ForgotPassword;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Application.Features.Auth.Commands.Login;
 using IdentityHub.Application.Features.Auth.Commands.Logout;
+using IdentityHub.Application.Features.Auth.Commands.Otp;
 using IdentityHub.Application.Features.Auth.Commands.RefreshToken;
 using IdentityHub.Application.Features.Auth.Commands.Register;
 using IdentityHub.Application.Features.Auth.Commands.ResetPassword;
@@ -117,7 +118,37 @@ public sealed class AuthController(ISender sender, IConfiguration configuration)
     [AllowAnonymous]
     public async Task<ActionResult<AuthResultDto>> Register(RegisterRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new RegisterCommand(request.Email, request.Password, request.FirstName, request.LastName, request.PhoneNumber, AddressesController.ToInput(request.Address)), ct);
+        var result = await sender.Send(new RegisterCommand(request.Email, request.Password, request.FirstName, request.LastName, request.PhoneNumber), ct);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Sends a one-time code to an email address or phone number for sign-in or registration.</summary>
+    [HttpPost("otp/request")]
+    [AllowAnonymous]
+    [EnableRateLimiting("otp")]
+    public async Task<IActionResult> RequestOtp(OtpRequest request, CancellationToken ct)
+    {
+        if (!Enum.TryParse<OtpPurpose>(request.Purpose, ignoreCase: true, out var purpose))
+        {
+            return BadRequest(new { errors = new[] { "Unknown request type." } });
+        }
+
+        var result = await sender.Send(new RequestOtpCommand(request.Identifier, purpose, request.FirstName, request.LastName), ct);
+        return result.Succeeded ? NoContent() : BadRequest(new { errors = result.Errors });
+    }
+
+    /// <summary>Verifies a one-time code and returns a token pair, creating the account when registering.</summary>
+    [HttpPost("otp/verify")]
+    [AllowAnonymous]
+    [EnableRateLimiting("otp")]
+    public async Task<ActionResult<AuthResultDto>> VerifyOtp(OtpVerifyRequest request, CancellationToken ct)
+    {
+        if (!Enum.TryParse<OtpPurpose>(request.Purpose, ignoreCase: true, out var purpose))
+        {
+            return BadRequest(new { errors = new[] { "Unknown request type." } });
+        }
+
+        var result = await sender.Send(new VerifyOtpCommand(request.Identifier, request.Code, purpose, request.FirstName, request.LastName), ct);
         return result.Succeeded ? Ok(result.Data) : BadRequest(new { errors = result.Errors });
     }
 
@@ -126,7 +157,7 @@ public sealed class AuthController(ISender sender, IConfiguration configuration)
     [AllowAnonymous]
     public async Task<ActionResult<AuthResultDto>> Login(LoginRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new LoginCommand(request.Email, request.Password), ct);
+        var result = await sender.Send(new LoginCommand(request.Identifier, request.Password), ct);
         return result.Succeeded ? Ok(result.Data) : Unauthorized(new { errors = result.Errors });
     }
 

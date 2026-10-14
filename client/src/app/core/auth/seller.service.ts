@@ -28,9 +28,16 @@ export interface SellerDto {
   bankDetails: string | null;
   inviteEmail: string | null;
   inviteStatus: 'None' | 'Pending' | 'Expired' | 'Accepted';
+  status: 'Pending' | 'Approved' | 'Rejected';
+  isActive: boolean;
+  statusNote: string | null;
+  canSell: boolean;
 }
 
-export type SellerInput = Omit<SellerDto, 'id' | 'userEmail' | 'itemCount' | 'inviteEmail' | 'inviteStatus'>;
+export type SellerInput = Omit<
+  SellerDto,
+  'id' | 'userEmail' | 'itemCount' | 'inviteEmail' | 'inviteStatus' | 'status' | 'isActive' | 'statusNote' | 'canSell'
+>;
 
 export interface SellerInviteResult {
   inviteUrl: string;
@@ -45,6 +52,17 @@ export interface SellerInviteInfo {
   companyName: string;
   tagline: string | null;
   logoUrl: string | null;
+}
+
+export interface SellerEmployee {
+  id: string;
+  userId: string | null;
+  name: string;
+  email: string;
+  phoneNumber: string | null;
+  isActive: boolean;
+  isPending: boolean;
+  createdAt: string;
 }
 
 export interface SellerRegistration {
@@ -79,6 +97,18 @@ export class SellerService {
     return this.http.get<SellerDto>(`${this.baseUrl}/mine`);
   }
 
+  approve(id: string, note?: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/approve`, { note: note ?? null });
+  }
+
+  reject(id: string, note?: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/reject`, { note: note ?? null });
+  }
+
+  setActive(id: string, isActive: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/active`, { isActive });
+  }
+
   updateMine(input: SellerInput): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/mine`, input);
   }
@@ -89,6 +119,10 @@ export class SellerService {
 
   update(id: string, input: SellerInput): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/${id}`, input);
+  }
+
+  inviteNew(email: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/invite`, { email });
   }
 
   invite(id: string, email: string): Observable<SellerInviteResult> {
@@ -109,5 +143,32 @@ export class SellerService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  getEmployees(): Observable<SellerEmployee[]> {
+    return this.http.get<SellerEmployee[]>(`${this.baseUrl}/mine/employees`);
+  }
+
+  inviteEmployee(email: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/mine/employees/invite`, { email });
+  }
+
+  setEmployeeActive(id: string, isActive: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/mine/employees/${id}/active`, { isActive });
+  }
+
+  removeEmployee(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/mine/employees/${id}`);
+  }
+
+  getEmployeeInvite(token: string): Observable<{ email: string; companyName: string }> {
+    return this.http.get<{ email: string; companyName: string }>(`${this.baseUrl}/employee-invite/${encodeURIComponent(token)}`);
+  }
+
+  acceptEmployeeInvite(
+    token: string,
+    body: { firstName: string; lastName: string; password: string; phoneNumber: string | null },
+  ): Observable<AuthResult> {
+    return this.http.post<AuthResult>(`${this.baseUrl}/employee-invite/${encodeURIComponent(token)}/accept`, body);
   }
 }

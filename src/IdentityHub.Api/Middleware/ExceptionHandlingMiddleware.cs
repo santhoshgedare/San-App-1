@@ -23,6 +23,11 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             var errors = ex.Errors.Select(e => e.ErrorMessage).ToArray();
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { errors }));
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // The client disconnected or navigated away; nothing to report or write.
+            context.Response.StatusCode = 499;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception processing {Path}", context.Request.Path);

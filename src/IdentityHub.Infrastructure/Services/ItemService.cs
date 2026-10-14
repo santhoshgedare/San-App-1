@@ -14,16 +14,15 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
 {
     public async Task<IReadOnlyList<ItemDto>> GetAllAsync(CancellationToken ct)
     {
-        var items = await db.Items
+        var items = await db.Items.AsNoTracking()
             .Include(i => i.Category)
             .Include(i => i.Seller)
-            .Include(i => i.Images)
-            .Include(i => i.Documents)
             .Include(i => i.Variants)
+            .AsSplitQuery()
             .OrderBy(i => i.Name)
             .ToListAsync(ct);
 
-        return items.Select(ToDto).ToList();
+        return await ToListDtosAsync(items, ct);
     }
 
     public Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct)
@@ -31,12 +30,13 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
 
     public async Task<ItemDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
-        var item = await db.Items
+        var item = await db.Items.AsNoTracking()
             .Include(i => i.Category)
             .Include(i => i.Seller)
             .Include(i => i.Images)
             .Include(i => i.Documents)
             .Include(i => i.Variants)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(i => i.Id == id, ct);
 
         return item is null ? null : ToDto(item);
@@ -51,13 +51,13 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             return [];
         }
 
-        var candidates = await db.Items
+        var candidates = await db.Items.AsNoTracking()
             .Include(i => i.Category)
             .Include(i => i.Seller)
-            .Include(i => i.Images)
-            .Include(i => i.Documents)
             .Include(i => i.Variants)
-            .Where(i => i.IsActive && i.Id != id && i.CategoryId == categoryId.Value)
+            .AsSplitQuery()
+            .Where(i => i.IsActive && i.ApprovalStatus == ItemApprovalStatus.Approved && i.Id != id && i.CategoryId == categoryId.Value
+                && (i.SellerId == null || (i.Seller!.IsActive && i.Seller.Status == SellerStatus.Approved)))
             .ToListAsync(ct);
 
         var ids = candidates.Select(c => c.Id).ToList();
@@ -68,12 +68,12 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             .ToListAsync(ct);
         var qtyByItem = purchased.ToDictionary(p => p.ItemId, p => p.Qty);
 
-        return candidates
+        var top = candidates
             .OrderByDescending(c => qtyByItem.GetValueOrDefault(c.Id))
             .ThenBy(c => c.Name)
             .Take(take)
-            .Select(ToDto)
             .ToList();
+        return await ToListDtosAsync(top, ct);
     }
     public async Task<PagedResult<ItemDto>> GetPagedAsync(ItemListQuery query, CancellationToken ct)
     {
@@ -83,9 +83,8 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         var itemsQuery = db.Items
             .Include(i => i.Category)
             .Include(i => i.Seller)
-            .Include(i => i.Images)
-            .Include(i => i.Documents)
             .Include(i => i.Variants)
+            .AsSplitQuery()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -109,6 +108,12 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             itemsQuery = itemsQuery.Where(i => i.SellerId == query.SellerId.Value);
         }
 
+        if (query.StorefrontOnly)
+        {
+            itemsQuery = itemsQuery.Where(i => i.IsActive && i.ApprovalStatus == ItemApprovalStatus.Approved
+                && (i.SellerId == null || (i.Seller!.IsActive && i.Seller.Status == SellerStatus.Approved)));
+        }
+
         if (query.IsActive.HasValue)
         {
             itemsQuery = itemsQuery.Where(i => i.IsActive == query.IsActive.Value);
@@ -123,7 +128,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
 
         return new PagedResult<ItemDto>
         {
-            Items = pageOfItems.Select(ToDto).ToList(),
+            Items = await ToListDtosAsync(pageOfItems, ct),
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
@@ -194,6 +199,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             CostPrice = costPrice,
             StockQuantity = stockQuantity,
             IsActive = isActive,
+            ApprovalStatus = ItemApprovalStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             Images = images.Select((img, index) => new ItemImage
             {
@@ -437,6 +443,31 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         return Result.Success();
     }
 
+    public async Task<Result> SetApprovalAsync(Guid id, ItemApprovalStatus status, string? note, CancellationToken ct)
+    {
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (item is null) return Result.Failure("Item not found.");
+
+        item.ApprovalStatus = status;
+        item.ApprovalNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        item.ApprovalChangedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.Item, item.Id.ToString(), status.ToString(), $"Item {item.Code} ({item.Name}) marked {status}.", ct);
+        return Result.Success();
+    }
+
+    public async Task<Result> SetActiveAsync(Guid id, bool isActive, CancellationToken ct)
+    {
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (item is null) return Result.Failure("Item not found.");
+
+        item.IsActive = isActive;
+        item.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.Item, item.Id.ToString(), isActive ? "Activated" : "Deactivated", $"Item {item.Code} ({item.Name}) {(isActive ? "activated" : "deactivated")}.", ct);
+        return Result.Success();
+    }
+
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct);
@@ -461,13 +492,55 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         return Result.Success();
     }
 
-    private static ItemDto ToDto(Item item)
+    // Photos and documents are stored inline as data URIs, so lists load only each item's cover photo plus counts.
+    private async Task<IReadOnlyList<ItemDto>> ToListDtosAsync(IReadOnlyList<Item> items, CancellationToken ct)
+    {
+        if (items.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = items.Select(i => i.Id).ToList();
+        var imageMeta = await db.ItemImages.AsNoTracking()
+            .Where(img => ids.Contains(img.ItemId))
+            .Select(img => new { img.Id, img.ItemId, img.IsPrimary, img.SortOrder })
+            .ToListAsync(ct);
+        var documentCounts = await db.ItemDocuments.AsNoTracking()
+            .Where(d => ids.Contains(d.ItemId))
+            .GroupBy(d => d.ItemId)
+            .Select(g => new { ItemId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ItemId, x => x.Count, ct);
+
+        var coverIds = imageMeta
+            .GroupBy(m => m.ItemId)
+            .Select(g => g.OrderByDescending(m => m.IsPrimary).ThenBy(m => m.SortOrder).First().Id)
+            .ToList();
+        var covers = await db.ItemImages.AsNoTracking()
+            .Where(img => coverIds.Contains(img.Id))
+            .ToDictionaryAsync(img => img.ItemId, ct);
+        var imageCounts = imageMeta.GroupBy(m => m.ItemId).ToDictionary(g => g.Key, g => g.Count());
+
+        return items.Select(i => ToDto(
+            i,
+            covers.TryGetValue(i.Id, out var c)
+                ? [new ItemImageDto { Id = c.Id, ItemId = c.ItemId, Url = c.Url, FileName = c.FileName, Caption = c.Caption, IsPrimary = c.IsPrimary, SortOrder = c.SortOrder, UploadedAt = c.UploadedAt }]
+                : [],
+            imageCounts.GetValueOrDefault(i.Id),
+            documentCounts.GetValueOrDefault(i.Id))).ToList();
+    }
+
+    private static ItemDto ToDto(Item item, IReadOnlyList<ItemImageDto>? listImages = null, int? imageCount = null, int? documentCount = null)
     {
         return new ItemDto
         {
+            ImageCount = imageCount ?? item.Images.Count,
+            DocumentCount = documentCount ?? item.Documents.Count,
             Id = item.Id,
             SellerId = item.SellerId,
             SellerName = item.Seller?.CompanyName ?? "SRIVIDIKA",
+            SellerAvailable = (item.Seller is null || item.Seller.CanSell) && item.ApprovalStatus == ItemApprovalStatus.Approved,
+            ApprovalStatus = item.ApprovalStatus.ToString(),
+            ApprovalNote = item.ApprovalNote,
             Code = item.Code,
             Name = item.Name,
             Description = item.Description,
@@ -480,7 +553,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             StockQuantity = item.StockQuantity,
             IsActive = item.IsActive,
             CreatedAt = item.CreatedAt,
-            Images = item.Images.OrderBy(img => img.SortOrder).Select(img => new ItemImageDto
+            Images = listImages ?? item.Images.OrderBy(img => img.SortOrder).Select(img => new ItemImageDto
             {
                 Id = img.Id,
                 ItemId = img.ItemId,

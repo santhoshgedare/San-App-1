@@ -29,7 +29,8 @@ public static class DependencyInjection
             {
                 options.Password.RequiredLength = 8;
                 options.Password.RequireNonAlphanumeric = false;
-                options.User.RequireUniqueEmail = true;
+                // Phone-only accounts have no email, so uniqueness is enforced via UserName and in IdentityService.
+                options.User.RequireUniqueEmail = false;
                 options.SignIn.RequireConfirmedEmail = false;
             })
             .AddEntityFrameworkStores<AppDbContext>()
@@ -61,6 +62,19 @@ public static class DependencyInjection
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30)
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken)
+                            && context.HttpContext.Request.Path.StartsWithSegments("/hubs/order-chat"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             })
             .AddCookie(ExternalAuthSchemes.Cookie, options =>
@@ -115,6 +129,10 @@ public static class DependencyInjection
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<SmtpEmailSender>();
         services.AddScoped<IEmailSender, LoggingEmailSender>();
+        services.AddMemoryCache();
+        services.Configure<Otp.SmsOptions>(configuration.GetSection("Sms"));
+        services.AddHttpClient<Otp.ISmsSender, Otp.Msg91SmsSender>();
+        services.AddScoped<IOtpService, Otp.OtpService>();
         services.AddScoped<IEmailLogService, EmailLogService>();
         services.AddScoped<IOrderChatService, OrderChatService>();
         services.AddScoped<ICustomRequestService, CustomRequestService>();

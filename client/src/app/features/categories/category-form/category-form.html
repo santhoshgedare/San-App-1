@@ -126,7 +126,7 @@
 
           <div class="d-flex justify-content-between mt-4">
             <div>
-              @if (!isNew()) {
+              @if (!isNew() && isAdmin()) {
                 <button type="button" mat-stroked-button color="warn" (click)="remove()">
                   <mat-icon>delete</mat-icon> Delete Category
                 </button>

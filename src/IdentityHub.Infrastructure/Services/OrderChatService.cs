@@ -7,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IdentityHub.Infrastructure.Services;
 
-public sealed class OrderChatService(AppDbContext db, ICurrentUserService currentUser, IOrderNotifier notifier) : IOrderChatService
+public sealed class OrderChatService(
+    AppDbContext db,
+    ICurrentUserService currentUser,
+    IOrderNotifier notifier,
+    IOrderChatLiveNotifier liveNotifier) : IOrderChatService
 {
     private const int MaxLength = 1000;
 
@@ -31,9 +35,22 @@ public sealed class OrderChatService(AppDbContext db, ICurrentUserService curren
         var me = currentUser.UserId;
         var messages = await db.OrderMessages
             .Where(m => m.OrderId == orderId)
-            .OrderBy(m => m.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt)
             .Take(500)
+            .OrderBy(m => m.CreatedAt)
             .ToListAsync(ct);
+
+        var unseen = access.Role is "Buyer" or "Seller"
+            ? messages.Where(m => m.ReadAt is null && m.SenderRole != "Auto" && m.SenderRole != access.Role).ToList()
+            : [];
+        if (unseen.Count > 0)
+        {
+            var now = DateTimeOffset.UtcNow;
+            foreach (var m in unseen) m.ReadAt = now;
+            await db.SaveChangesAsync(ct);
+            var senderIds = access.Role == "Buyer" ? await StaffIdsAsync(access.Order.SellerId, ct) : access.Order.CustomerId is { } c ? [c] : [];
+            foreach (var senderId in senderIds) await liveNotifier.NotifyAsync(senderId, orderId, ct);
+        }
 
         return new OrderChatDto
         {
@@ -41,9 +58,35 @@ public sealed class OrderChatService(AppDbContext db, ICurrentUserService curren
             CanPost = access.CanPost,
             IsClosed = access.Closed,
             SellerName = access.SellerName,
-            Messages = messages.Select(m => new OrderChatMessageDto(m.Id, m.SenderRole, m.SenderName, m.Body, m.CreatedAt, m.SenderUserId != null && m.SenderUserId == me && m.SenderRole == access.Role)).ToList(),
+            Messages = messages.Select(m => new OrderChatMessageDto(m.Id, m.SenderRole, m.SenderName, m.Body, m.CreatedAt, m.SenderUserId != null && m.SenderUserId == me && m.SenderRole == access.Role, m.ReadAt)).ToList(),
             Faqs = access.Role == "Buyer" && access.CanPost ? Faqs : [],
         };
+    }
+
+    public async Task<IReadOnlyList<OrderChatNotificationDto>> GetNotificationsAsync(CancellationToken ct)
+    {
+        var me = currentUser.UserId;
+        if (me is null) return [];
+
+        return await db.OrderMessages
+            .AsNoTracking()
+            .Where(m => m.SenderRole != "Auto"
+                && (m.Order!.CustomerId == me || m.Order.Seller!.UserId == me
+                    || db.SellerEmployees.Any(e => e.UserId == me && e.SellerId == m.Order.SellerId)))
+            .GroupBy(m => m.OrderId)
+            .Select(group => group
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new OrderChatNotificationDto(
+                    m.OrderId,
+                    m.Order!.OrderNumber,
+                    m.Id,
+                    m.SenderRole,
+                    m.SenderName,
+                    m.Body,
+                    m.CreatedAt,
+                    m.SenderUserId == me))
+                .First())
+            .ToListAsync(ct);
     }
 
     public async Task<string?> SendAsync(Guid orderId, string? body, string? faqId, CancellationToken ct)
@@ -76,8 +119,22 @@ public sealed class OrderChatService(AppDbContext db, ICurrentUserService curren
         }
 
         await db.SaveChangesAsync(ct);
+        var recipients = access.Role == "Buyer" ? await StaffIdsAsync(access.Order.SellerId, ct) : access.Order.CustomerId is { } customer ? [customer] : [];
+        foreach (var recipientId in recipients)
+        {
+            await liveNotifier.NotifyAsync(recipientId, orderId, ct);
+        }
         await notifier.NotifyAsync(orderId, OrderNotice.ChatMessage, text.Length > 300 ? text[..300] + "…" : text, ct);
         return null;
+    }
+
+    private async Task<List<Guid>> StaffIdsAsync(Guid? sellerId, CancellationToken ct)
+    {
+        if (sellerId is null) return [];
+        var ids = await db.SellerEmployees.Where(e => e.SellerId == sellerId && e.UserId != null).Select(e => e.UserId!.Value).ToListAsync(ct);
+        var owner = await db.SellerProfiles.Where(s => s.Id == sellerId).Select(s => s.UserId).FirstOrDefaultAsync(ct);
+        if (owner.HasValue) ids.Add(owner.Value);
+        return ids;
     }
 
     private sealed record Access(Order Order, string Role, bool CanPost, string SellerName, bool Closed = false);
@@ -97,7 +154,8 @@ public sealed class OrderChatService(AppDbContext db, ICurrentUserService curren
 
         var isAdmin = currentUser.IsInRole(Roles.Admin);
         if (order.SellerId is null) return isAdmin ? new Access(order, "Seller", !closed, sellerName, closed) : null;
-        if (order.Seller?.UserId == me) return new Access(order, "Seller", !closed, sellerName, closed);
+        if (order.Seller?.UserId == me || (order.SellerId is { } sid && await db.SellerEmployees.AnyAsync(e => e.SellerId == sid && e.UserId == me, ct)))
+            return new Access(order, "Seller", !closed, sellerName, closed);
         return isAdmin ? new Access(order, "Observer", false, sellerName) : null;
     }
 

@@ -42,5 +42,7 @@ public interface IItemService
         IReadOnlyList<ItemDocumentInput> documents,
         IReadOnlyList<ItemVariantInput> variants,
         CancellationToken ct);
+    Task<Result> SetApprovalAsync(Guid id, IdentityHub.Domain.Enums.ItemApprovalStatus status, string? note, CancellationToken ct);
+    Task<Result> SetActiveAsync(Guid id, bool isActive, CancellationToken ct);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct);
 }

@@ -25,7 +25,20 @@ public sealed class OrderService(
             .Include(o => o.ProgressUpdates)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
-        return order is null ? null : MapToDto(order);
+        if (order is null) return null;
+
+        var dto = MapToDto(order);
+        dto.ApprovalStatus = (await GetApprovalStatusAsync(order.Id, ct))?.ToString();
+        return dto;
+    }
+
+    private async Task<ApprovalStatus?> GetApprovalStatusAsync(Guid orderId, CancellationToken ct)
+    {
+        var entityId = orderId.ToString();
+        return await db.Approvals
+            .Where(a => a.EntityType == EntityTypes.Order && a.EntityId == entityId && a.IsCurrent)
+            .Select(a => (ApprovalStatus?)a.Status)
+            .FirstOrDefaultAsync(ct);
     }
 
     public Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct = default)
@@ -101,11 +114,13 @@ public sealed class OrderService(
         DateTimeOffset endExclusive,
         DateOnly startDate,
         DateOnly endDate,
+        Guid? sellerId = null,
         CancellationToken ct = default)
     {
         var settledOrders = db.Orders.AsNoTracking()
             .Where(order => order.CreatedAt >= startInclusive &&
                 order.CreatedAt < endExclusive &&
+                (sellerId == null || order.SellerId == sellerId) &&
                 (order.PaymentStatus == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.Refunded));
         var refundedOrders = settledOrders.Where(order => order.PaymentStatus == PaymentStatus.Refunded);
 
@@ -114,13 +129,16 @@ public sealed class OrderService(
         var legacyRefundCount = await refundedOrders.CountAsync(
             order => order.RefundAmount == null || order.RefundReferenceNumber == null,
             ct);
-        var grossSales = await settledOrders.SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+        var grossSales = await settledOrders.SumAsync(
+            order => (decimal?)(order.PaymentStatus == PaymentStatus.Refunded ? (order.RefundAmount ?? order.TotalAmount) : order.TotalAmount),
+            ct) ?? 0m;
         var refunds = await refundedOrders.SumAsync(order => (decimal?)(order.RefundAmount ?? order.TotalAmount), ct) ?? 0m;
 
         var settledItems = db.OrderItems.AsNoTracking()
             .Where(item => item.Order != null &&
                 item.Order.CreatedAt >= startInclusive &&
                 item.Order.CreatedAt < endExclusive &&
+                (sellerId == null || item.Order.SellerId == sellerId) &&
                 (item.Order.PaymentStatus == PaymentStatus.Paid || item.Order.PaymentStatus == PaymentStatus.Refunded));
         var missingCostLineCount = await settledItems.CountAsync(item => item.UnitCostPrice == null, ct);
         var costOfGoodsSold = await settledItems.SumAsync(
@@ -172,7 +190,7 @@ public sealed class OrderService(
             .Include(i => i.Seller)
             .Include(i => i.Variants)
             .Include(i => i.Images)
-            .Where(i => itemIds.Contains(i.Id) && i.IsActive)
+            .Where(i => itemIds.Contains(i.Id) && i.IsActive && i.ApprovalStatus == ItemApprovalStatus.Approved)
             .OrderBy(i => i.Id)
             .ToListAsync(ct);
         var productsById = products.ToDictionary(i => i.Id);
@@ -182,7 +200,12 @@ public sealed class OrderService(
             return Result<OrderDto>.Failure("Items from different sellers must be ordered separately.");
         }
         var orderSeller = products.Select(p => p.Seller).FirstOrDefault(s => s is not null);
-        if (orderSeller?.UserId is { } sellerUserId && sellerUserId == customerId)
+        if (orderSeller is { CanSell: false })
+        {
+            return Result<OrderDto>.Failure($"{orderSeller.CompanyName} is not currently accepting orders. Please remove their items from your cart.");
+        }
+        if (orderSeller is not null && (orderSeller.UserId == customerId
+            || await db.SellerEmployees.AnyAsync(e => e.SellerId == orderSeller.Id && e.UserId == customerId, ct)))
         {
             return Result<OrderDto>.Failure("You cannot order products from your own company.");
         }
@@ -343,6 +366,7 @@ public sealed class OrderService(
         OrderStatus status,
         string? trackingNumber,
         string? shippingCarrier,
+        decimal? advanceAmount = null,
         CancellationToken ct = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
@@ -371,19 +395,64 @@ public sealed class OrderService(
             return Result.Failure($"An order cannot move from {oldStatus} to {status}.");
         }
 
+        if (oldStatus == OrderStatus.Pending && status != oldStatus && status != OrderStatus.Cancelled)
+        {
+            // Orders with no approval record (placed before approvals were enforced) are not blocked.
+            var approvalStatus = await GetApprovalStatusAsync(order.Id, ct);
+            if (approvalStatus == ApprovalStatus.Rejected)
+            {
+                return Result.Failure("This order's approval was rejected. It can only be cancelled.");
+            }
+            if (approvalStatus is not null && approvalStatus != ApprovalStatus.Approved)
+            {
+                return Result.Failure("This order must be approved before it can be processed.");
+            }
+        }
+
         if (status != oldStatus && status is OrderStatus.Processing or OrderStatus.Shipped or OrderStatus.Delivered && !order.ShippingFeeConfirmed)
         {
             return Result.Failure("Confirm the delivery charge before processing the order.");
         }
 
-        if (status != oldStatus && status is OrderStatus.Shipped or OrderStatus.Delivered && order.PaymentStatus != PaymentStatus.Paid)
+        if (oldStatus == OrderStatus.Pending && status == OrderStatus.Confirmed)
         {
-            return Result.Failure("Verify the buyer's payment before shipping the order.");
+            if (!order.ShippingFeeConfirmed)
+            {
+                return Result.Failure("Set the delivery charge before confirming the order.");
+            }
+            if (order.ChargesAcceptedAt is null)
+            {
+                return Result.Failure("The buyer must accept the delivery charge before the order can be confirmed.");
+            }
+
+            // Only custom orders may take an advance; in-stock orders are paid in full up front.
+            var advance = order.CustomRequestId is null ? 0m : Math.Round(advanceAmount ?? 0m, 2);
+            if (advance < 0 || advance > order.TotalAmount)
+            {
+                return Result.Failure("The advance amount must be between 0 and the order total.");
+            }
+            order.AdvanceAmount = advance;
+            order.AdvanceStatus = PaymentStatus.Pending;
         }
 
-        if (status == OrderStatus.Cancelled && oldStatus != OrderStatus.Cancelled && order.PaymentStatus == PaymentStatus.Paid)
+        if (oldStatus == OrderStatus.Confirmed && status == OrderStatus.Processing && !IsAdvanceSettled(order))
         {
-            return Result.Failure("This order is paid. Record a refund before cancelling it.");
+            return Result.Failure("Collect and verify the advance payment before starting fulfilment.");
+                }
+
+                if (oldStatus == OrderStatus.Confirmed && status == OrderStatus.Processing && order.AdvanceAmount <= 0 && order.PaymentStatus != PaymentStatus.Paid)
+                {
+                    return Result.Failure("Collect and verify the full payment before starting fulfilment.");
+        }
+
+        if (status != oldStatus && status is OrderStatus.Shipped or OrderStatus.Delivered && order.PaymentStatus != PaymentStatus.Paid)
+        {
+            return Result.Failure("Collect and verify the final payment before shipping the order.");
+        }
+
+        if (status == OrderStatus.Cancelled && oldStatus != OrderStatus.Cancelled && AmountHeld(order) > 0)
+        {
+            return Result.Failure("Payment has been received for this order. Record a refund before cancelling it.");
         }
 
         if (oldStatus != OrderStatus.Cancelled && status == OrderStatus.Cancelled)
@@ -451,8 +520,70 @@ public sealed class OrderService(
             return Result.Failure("Only orders that are not yet confirmed can be cancelled. Please contact us for help.");
         }
 
-        return await UpdateStatusAsync(id, OrderStatus.Cancelled, null, null, ct);
+        return await UpdateStatusAsync(id, OrderStatus.Cancelled, null, null, ct: ct);
     }
+
+    public async Task<Result> AcceptChargesAsync(Guid id, Guid customerId, CancellationToken ct = default)
+    {
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id && o.CustomerId == customerId, ct);
+        if (order is null)
+        {
+            return Result.Failure("Order not found.");
+        }
+        if (order.Status != OrderStatus.Pending)
+        {
+            return Result.Failure("The delivery charge can only be accepted before the order is confirmed.");
+        }
+        if (!order.ShippingFeeConfirmed)
+        {
+            return Result.Failure("The delivery charge has not been set yet. Please wait for the seller to confirm it.");
+        }
+        if (order.ChargesAcceptedAt is not null)
+        {
+            return Result.Failure("You have already accepted the delivery charge.");
+        }
+
+        order.ChargesAcceptedAt = DateTimeOffset.UtcNow;
+        order.UpdatedAt = order.ChargesAcceptedAt;
+        await db.SaveChangesAsync(ct);
+        await activityLogs.LogAsync(
+            EntityTypes.Order,
+            order.Id.ToString(),
+            "ChargesAccepted",
+            $"Buyer accepted delivery charge {order.ShippingFee.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} and order total {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}.",
+            ct);
+        await notifier.NotifyAsync(order.Id, OrderNotice.ChargesAccepted, $"Delivery charge and total {order.TotalAmount.ToString("C", CultureInfo.GetCultureInfo("en-IN"))} accepted.", ct);
+
+        return Result.Success();
+    }
+
+    private static bool IsAdvanceSettled(Order o) => o.AdvanceAmount <= 0 || o.AdvanceStatus == PaymentStatus.Paid;
+
+    /// <summary>Money received and not refunded: the full total, or just the advance.</summary>
+    private static decimal AmountHeld(Order o) =>
+        o.PaymentStatus == PaymentStatus.Refunded ? 0m
+        : o.PaymentStatus == PaymentStatus.Paid ? o.TotalAmount
+        : o.AdvanceStatus == PaymentStatus.Paid ? o.AdvanceAmount
+        : 0m;
+
+    /// <summary>Which payment is being collected right now: the advance after confirmation, the balance during fulfilment.</summary>
+    private static string PaymentStageOf(Order o)
+    {
+        if (o.PaymentStatus is PaymentStatus.Paid or PaymentStatus.Refunded) return "None";
+        return o.Status switch
+        {
+            OrderStatus.Confirmed => o.AdvanceAmount <= 0 ? "Final" : o.AdvanceStatus != PaymentStatus.Paid ? "Advance" : "None",
+            OrderStatus.Processing => IsAdvanceSettled(o) ? "Final" : "Advance",
+            _ => "None",
+        };
+    }
+
+    private static decimal AmountDueOf(Order o) => PaymentStageOf(o) switch
+    {
+        "Advance" => o.AdvanceAmount,
+        "Final" => o.TotalAmount - (o.AdvanceStatus == PaymentStatus.Paid ? o.AdvanceAmount : 0m),
+        _ => 0m,
+    };
 
     public async Task<Result> SetShippingFeeAsync(Guid id, decimal shippingFee, string? note, CancellationToken ct = default)
     {
@@ -471,15 +602,28 @@ public sealed class OrderService(
         {
             return Result.Failure("The delivery charge can no longer be changed for this order.");
         }
-        if (order.PaymentStatus is PaymentStatus.Paid or PaymentStatus.Refunded)
+        if (order.Status != OrderStatus.Pending && order.ShippingFeeConfirmed)
+        {
+            return Result.Failure("The delivery charge cannot be changed after the buyer has accepted it and the order is confirmed.");
+        }
+        if (order.PaymentStatus is PaymentStatus.Paid or PaymentStatus.Refunded || order.AdvanceStatus == PaymentStatus.Paid)
         {
             return Result.Failure("The delivery charge cannot change after payment is received.");
+        }
+        if (order.Status == OrderStatus.Pending)
+        {
+            var approvalStatus = await GetApprovalStatusAsync(order.Id, ct);
+            if (approvalStatus is not null && approvalStatus != ApprovalStatus.Approved)
+            {
+                return Result.Failure("The order must be approved before the delivery charge is set.");
+            }
         }
 
         var oldFee = order.ShippingFee;
         order.ShippingFee = Math.Round(shippingFee, 2);
         order.ShippingFeeNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         order.ShippingFeeConfirmed = true;
+        order.ChargesAcceptedAt = null;
         order.TotalAmount = order.SubtotalAmount + order.ShippingFee + order.TaxAmount;
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -531,20 +675,37 @@ public sealed class OrderService(
             return Result.Failure("A paid payment cannot be changed; use the refund workflow if necessary.");
         }
 
+        var stage = PaymentStageOf(order);
+        if (stage == "None")
+        {
+            return Result.Failure("No payment is due at this stage of the order.");
+        }
+
         if (paymentStatus == PaymentStatus.Paid && !order.ShippingFeeConfirmed)
         {
             return Result.Failure("Confirm the delivery charge before marking payment as paid.");
         }
 
+        var isAdvance = stage == "Advance";
+        var storedReference = isAdvance ? order.AdvanceReferenceNumber : order.PaymentReferenceNumber;
         if (paymentStatus == PaymentStatus.Paid &&
             string.IsNullOrWhiteSpace(paymentReferenceNumber) &&
-            string.IsNullOrWhiteSpace(order.PaymentReferenceNumber))
+            string.IsNullOrWhiteSpace(storedReference))
         {
             return Result.Failure("A payment reference is required before confirming payment.");
         }
 
-        order.PaymentStatus = paymentStatus;
-        if (!string.IsNullOrWhiteSpace(paymentReferenceNumber)) order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
+        var oldStageStatus = isAdvance ? order.AdvanceStatus : oldPaymentStatus;
+        if (isAdvance)
+        {
+            order.AdvanceStatus = paymentStatus;
+            if (!string.IsNullOrWhiteSpace(paymentReferenceNumber)) order.AdvanceReferenceNumber = paymentReferenceNumber.Trim();
+        }
+        else
+        {
+            order.PaymentStatus = paymentStatus;
+            if (!string.IsNullOrWhiteSpace(paymentReferenceNumber)) order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
+        }
         if (!string.IsNullOrWhiteSpace(offlinePaymentNotes)) order.OfflinePaymentNotes = offlinePaymentNotes.Trim();
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -554,11 +715,11 @@ public sealed class OrderService(
             EntityTypes.Order,
             order.Id.ToString(),
             "PaymentUpdated",
-            $"Payment status changed from {oldPaymentStatus} to {paymentStatus}. Ref: {order.PaymentReferenceNumber ?? "N/A"}",
+            $"{stage} payment status changed from {oldStageStatus} to {paymentStatus}. Ref: {(isAdvance ? order.AdvanceReferenceNumber : order.PaymentReferenceNumber) ?? "N/A"}",
             ct);
         await transaction.CommitAsync(ct);
 
-        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentUpdated, $"Payment status: {paymentStatus}.", ct);
+        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentUpdated, $"{stage} payment status: {paymentStatus}.", ct);
 
         return Result.Success();
     }
@@ -593,7 +754,20 @@ public sealed class OrderService(
             return Result.Failure("The delivery charge has not been confirmed yet. Please wait for it before paying.");
         }
 
-        order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
+        var stage = PaymentStageOf(order);
+        if (stage == "None")
+        {
+            return Result.Failure("No payment is due at this stage of the order.");
+        }
+
+        if (stage == "Advance")
+        {
+            order.AdvanceReferenceNumber = paymentReferenceNumber.Trim();
+        }
+        else
+        {
+            order.PaymentReferenceNumber = paymentReferenceNumber.Trim();
+        }
         order.OfflinePaymentNotes = offlinePaymentNotes?.Trim();
         order.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -602,11 +776,11 @@ public sealed class OrderService(
             EntityTypes.Order,
             order.Id.ToString(),
             "PaymentDetailsSubmitted",
-            "Payment details submitted for verification.",
+            $"{stage} payment details submitted for verification.",
             ct);
         await transaction.CommitAsync(ct);
 
-        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentSubmitted, $"Reference: {order.PaymentReferenceNumber}", ct);
+        await notifier.NotifyAsync(order.Id, OrderNotice.PaymentSubmitted, $"{stage} payment reference: {paymentReferenceNumber.Trim()}", ct);
 
         return Result.Success();
     }
@@ -629,13 +803,14 @@ public sealed class OrderService(
         {
             return Result.Failure("Order not found.");
         }
-        if (order.PaymentStatus != PaymentStatus.Paid)
+        var held = AmountHeld(order);
+        if (held <= 0)
         {
-            return Result.Failure("Only a paid order can be refunded.");
+            return Result.Failure("Only an order with a received payment can be refunded.");
         }
-        if (refundAmount != order.TotalAmount)
+        if (refundAmount != held)
         {
-            return Result.Failure("Only a full refund for the order total is supported.");
+            return Result.Failure($"Only a full refund of the amount received ({held.ToString("C", CultureInfo.GetCultureInfo("en-IN"))}) is supported.");
         }
 
         order.PaymentStatus = PaymentStatus.Refunded;
@@ -687,7 +862,13 @@ public sealed class OrderService(
         ShippingFee = o.ShippingFee,
         ShippingFeeConfirmed = o.ShippingFeeConfirmed,
         ShippingFeeNote = o.ShippingFeeNote,
-        TaxAmount = o.TaxAmount,
+        ChargesAcceptedAt = o.ChargesAcceptedAt,
+        AdvanceAmount = o.AdvanceAmount,
+        AdvanceStatus = o.AdvanceStatus.ToString(),
+        AdvanceReferenceNumber = o.AdvanceReferenceNumber,
+        AmountPaid = AmountHeld(o),
+        PaymentStage = PaymentStageOf(o),
+        AmountDue = AmountDueOf(o),
         TotalAmount = o.TotalAmount,
         CreatedAt = o.CreatedAt,
         UpdatedAt = o.UpdatedAt,

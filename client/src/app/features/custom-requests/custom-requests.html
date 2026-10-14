@@ -19,7 +19,7 @@
   </div>
 
   @if (isLoading()) {
-  <p class="cr-empty">Loading requests…</p>
+  <p class="cr-empty">Loading requestsâ€¦</p>
   } @else if (requests().length === 0) {
   <div class="cr-empty">
     <mat-icon>palette</mat-icon>
@@ -42,12 +42,12 @@
         <h3>{{ r.title }}</h3>
         <p class="cr-meta">
           Qty {{ r.quantity }}
-          @if (r.budget) { · Budget {{ r.budget | currency: 'INR' }} }
-          @if (r.neededBy) { · Needed by {{ r.neededBy | date: 'mediumDate' }} }
+          @if (r.budget) { Â· Budget {{ r.budget | currency: 'INR' }} }
+          @if (r.neededBy) { Â· Needed by {{ r.neededBy | date: 'mediumDate' }} }
         </p>
         <p class="cr-meta">
-          {{ r.interestedCount }} interested · {{ r.quoteCount }} quote{{ r.quoteCount === 1 ? '' : 's' }}
-          @if (scope() !== 'mine') { · by {{ r.customerName }} }
+          {{ r.interestedCount }} interested Â· {{ r.quoteCount }} quote{{ r.quoteCount === 1 ? '' : 's' }}
+          @if (scope() !== 'mine') { Â· by {{ r.customerName }} }
         </p>
         @if (r.orderId) {
         <span class="cr-order"><mat-icon>receipt_long</mat-icon> Order created</span>

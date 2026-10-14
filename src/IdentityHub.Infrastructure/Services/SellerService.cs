@@ -6,6 +6,7 @@ using IdentityHub.Application.Common.Interfaces;
 using IdentityHub.Application.Common.Models;
 using IdentityHub.Domain.Constants;
 using IdentityHub.Domain.Entities;
+using IdentityHub.Domain.Enums;
 using IdentityHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -59,6 +60,32 @@ public sealed class SellerService(
             Subject = "You're invited to sell on SRIVIDIKA",
             Body = body
         });
+    }
+
+    private const string PlaceholderPrefix = "Pending seller - ";
+
+    public async Task<Result<SellerInviteResultDto>> InviteNewAsync(string email, string clientBaseUrl, CancellationToken ct)
+    {
+        email = email?.Trim() ?? string.Empty;
+        if (!MailAddress.TryCreate(email, out _)) return Result<SellerInviteResultDto>.Failure("Enter a valid email address.");
+
+        var seller = await db.SellerProfiles.FirstOrDefaultAsync(s => s.UserId == null && s.InviteEmail == email, ct);
+        if (seller is null)
+        {
+            if (await identityService.FindByEmailAsync(email, ct) is not null)
+                return Result<SellerInviteResultDto>.Failure("An account with this email already exists.");
+
+            seller = new SellerProfile { CompanyName = PlaceholderPrefix + email, ContactEmail = email, InviteEmail = email };
+            db.SellerProfiles.Add(seller);
+            await db.SaveChangesAsync(ct);
+        }
+
+        var created = await CreateInviteAsync(seller.Id, email, clientBaseUrl, ct);
+        if (!created.Succeeded) return created;
+
+        var draft = created.Data!;
+        var sent = await SendInviteEmailAsync(seller.Id, [email], [], draft.Subject, draft.Body, [], ct);
+        return sent.Succeeded ? created : Result<SellerInviteResultDto>.Failure(sent.Errors);
     }
 
     public async Task<Result> SendInviteEmailAsync(
@@ -123,7 +150,7 @@ public sealed class SellerService(
         var seller = await FindByInviteAsync(token, ct);
         return seller is null
             ? null
-            : new SellerInviteInfoDto { Email = seller.InviteEmail!, CompanyName = seller.CompanyName, Tagline = seller.Tagline, LogoUrl = seller.LogoUrl };
+            : new SellerInviteInfoDto { Email = seller.InviteEmail!, CompanyName = seller.CompanyName.StartsWith(PlaceholderPrefix, StringComparison.Ordinal) ? string.Empty : seller.CompanyName, Tagline = seller.Tagline, LogoUrl = seller.LogoUrl };
     }
 
     public async Task<Result<AuthResultDto>> AcceptInviteAsync(string token, SellerRegistrationInput input, CancellationToken ct)
@@ -139,7 +166,21 @@ public sealed class SellerService(
             string.IsNullOrWhiteSpace(input.Address.Country))
             return Result<AuthResultDto>.Failure("A complete address is required.");
 
-        var company = input.Company with { UserId = null };
+        // The company inherits the registrant's address and contact details unless they were filled in separately.
+        var address = input.Address;
+        var company = input.Company with
+        {
+            UserId = null,
+            AddressLine1 = string.IsNullOrWhiteSpace(input.Company.AddressLine1)
+                ? string.Join(", ", new[] { address.Line1, address.Line2 }.Where(v => !string.IsNullOrWhiteSpace(v)))
+                : input.Company.AddressLine1,
+            City = string.IsNullOrWhiteSpace(input.Company.City) ? address.City : input.Company.City,
+            State = string.IsNullOrWhiteSpace(input.Company.State) ? address.State : input.Company.State,
+            PostalCode = string.IsNullOrWhiteSpace(input.Company.PostalCode) ? address.PostalCode : input.Company.PostalCode,
+            Country = string.IsNullOrWhiteSpace(input.Company.Country) ? address.Country : input.Company.Country,
+            ContactEmail = string.IsNullOrWhiteSpace(input.Company.ContactEmail) ? seller.InviteEmail : input.Company.ContactEmail,
+            ContactPhone = string.IsNullOrWhiteSpace(input.Company.ContactPhone) ? input.PhoneNumber : input.Company.ContactPhone
+        };
         var validation = await ValidateAsync(company, seller.Id, false, ct);
         if (validation is not null) return Result<AuthResultDto>.Failure(validation);
 
@@ -156,6 +197,8 @@ public sealed class SellerService(
         seller.UserId = userId;
         seller.InviteTokenHash = null;
         seller.InviteExpiresAt = null;
+        seller.Status = SellerStatus.Pending;
+        seller.StatusChangedAt = DateTimeOffset.UtcNow;
         seller.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
 
@@ -193,19 +236,171 @@ public sealed class SellerService(
 
     public async Task<SellerDto?> GetForUserAsync(Guid userId, CancellationToken ct)
     {
-        var seller = await db.SellerProfiles.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        var sellerId = await GetSellerIdForUserAsync(userId, ct);
+        if (sellerId is null) return null;
+        var seller = await db.SellerProfiles.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sellerId, ct);
         return seller is null ? null : (await MapAsync([seller], ct))[0];
     }
 
-    public Task<Guid?> GetSellerIdForUserAsync(Guid userId, CancellationToken ct)
-        => db.SellerProfiles.Where(s => s.UserId == userId).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct);
+    public async Task<Guid?> GetSellerIdForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var owned = await db.SellerProfiles.Where(s => s.UserId == userId).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct);
+        if (owned.HasValue) return owned;
+        return await db.SellerEmployees.Where(e => e.UserId == userId).Select(e => (Guid?)e.SellerId).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetStaffUserIdsAsync(Guid sellerId, CancellationToken ct)
+    {
+        var ids = await db.SellerEmployees.Where(e => e.SellerId == sellerId && e.UserId != null).Select(e => e.UserId!.Value).ToListAsync(ct);
+        var owner = await db.SellerProfiles.Where(s => s.Id == sellerId).Select(s => s.UserId).FirstOrDefaultAsync(ct);
+        if (owner.HasValue) ids.Add(owner.Value);
+        return ids;
+    }
+
+    public async Task<IReadOnlyList<SellerEmployeeDto>> GetEmployeesAsync(Guid sellerId, CancellationToken ct)
+    {
+        var rows = await (from e in db.SellerEmployees.AsNoTracking()
+                          join u in db.Users.AsNoTracking() on e.UserId equals u.Id into users
+                          from u in users.DefaultIfEmpty()
+                          where e.SellerId == sellerId
+                          orderby e.CreatedAt
+                          select new
+                          {
+                              e.Id,
+                              e.UserId,
+                              e.InviteEmail,
+                              e.CreatedAt,
+                              Name = u == null ? null : u.FirstName + " " + u.LastName,
+                              Email = u == null ? null : u.Email,
+                              Phone = u == null ? null : u.PhoneNumber,
+                              Active = u != null && u.IsActive
+                          }).ToListAsync(ct);
+        return rows.Select(r => new SellerEmployeeDto(r.Id, r.UserId, r.Name ?? r.InviteEmail, r.Email ?? r.InviteEmail, r.Phone, r.Active, r.UserId is null, r.CreatedAt)).ToList();
+    }
+
+    public async Task<Result> InviteEmployeeAsync(Guid sellerId, string email, string clientBaseUrl, CancellationToken ct)
+    {
+        email = email?.Trim() ?? string.Empty;
+        if (!MailAddress.TryCreate(email, out _)) return Result.Failure("Enter a valid email address.");
+        var seller = await db.SellerProfiles.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sellerId, ct);
+        if (seller is null) return Result.Failure("Seller not found.");
+        if (await identityService.FindByEmailAsync(email, ct) is not null) return Result.Failure("An account with this email already exists.");
+
+        var employee = await db.SellerEmployees.FirstOrDefaultAsync(e => e.SellerId == sellerId && e.UserId == null && e.InviteEmail == email, ct);
+        if (employee is null)
+        {
+            employee = new SellerEmployee { SellerId = sellerId, InviteEmail = email };
+            db.SellerEmployees.Add(employee);
+        }
+
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        employee.InviteTokenHash = HashToken(token);
+        employee.InviteExpiresAt = DateTimeOffset.UtcNow.Add(InviteLifetime);
+        await db.SaveChangesAsync(ct);
+
+        var url = $"{clientBaseUrl.TrimEnd('/')}/employee-register?token={Uri.EscapeDataString(token)}";
+        var body = $"Hello,\n\nYou have been invited to join {seller.CompanyName} on SRIVIDIKA as a team member.\n\nComplete your registration here:\n{url}\n\nThis link expires in 7 days.\n\nWarm regards,\nSRIVIDIKA";
+        try
+        {
+            await emailSender.SendAsync(new EmailMessage
+            {
+                To = [email],
+                Cc = [],
+                Subject = $"You're invited to join {seller.CompanyName} on SRIVIDIKA",
+                TextBody = body,
+                HtmlBody = ToHtml(body),
+                Attachments = [],
+                Category = "EmployeeInvite",
+                RelatedEntityType = EntityTypes.User,
+                RelatedEntityId = sellerId.ToString()
+            }, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Could not send employee invite for {SellerId}.", sellerId);
+            return Result.Failure($"Email could not be sent ({(emailSender.IsConfigured ? ex.Message : "SMTP is not configured")}).");
+        }
+
+        employee.InviteSentAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.User, sellerId.ToString(), "SellerEmployeeInvited", $"Employee invitation sent to {email}.", ct);
+        return Result.Success();
+    }
+
+    private async Task<(SellerEmployee Employee, string CompanyName)?> FindEmployeeInviteAsync(string token, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return null;
+        var hash = HashToken(token.Trim());
+        var employee = await db.SellerEmployees.FirstOrDefaultAsync(e => e.InviteTokenHash == hash, ct);
+        if (employee is null || employee.UserId.HasValue || employee.InviteExpiresAt <= DateTimeOffset.UtcNow) return null;
+        var company = await db.SellerProfiles.Where(s => s.Id == employee.SellerId).Select(s => s.CompanyName).FirstOrDefaultAsync(ct);
+        return company is null ? null : (employee, company);
+    }
+
+    public async Task<EmployeeInviteInfoDto?> GetEmployeeInviteAsync(string token, CancellationToken ct)
+    {
+        var found = await FindEmployeeInviteAsync(token, ct);
+        return found is null ? null : new EmployeeInviteInfoDto { Email = found.Value.Employee.InviteEmail, CompanyName = found.Value.CompanyName };
+    }
+
+    public async Task<Result<AuthResultDto>> AcceptEmployeeInviteAsync(string token, EmployeeRegistrationInput input, CancellationToken ct)
+    {
+        var found = await FindEmployeeInviteAsync(token, ct);
+        if (found is null) return Result<AuthResultDto>.Failure("This invitation is invalid or has expired.");
+        if (string.IsNullOrWhiteSpace(input.FirstName) || string.IsNullOrWhiteSpace(input.LastName))
+            return Result<AuthResultDto>.Failure("First and last name are required.");
+
+        var employee = found.Value.Employee;
+        var registered = await identityService.RegisterAsync(employee.InviteEmail, input.Password, input.FirstName.Trim(), input.LastName.Trim(), string.IsNullOrWhiteSpace(input.PhoneNumber) ? null : input.PhoneNumber.Trim(), ct);
+        if (!registered.Succeeded) return Result<AuthResultDto>.Failure(registered.Errors);
+
+        var userId = registered.Data!.Id;
+        var roles = await identityService.AssignRolesAsync(userId, [Roles.Manager], ct);
+        if (!roles.Succeeded) return Result<AuthResultDto>.Failure(roles.Errors);
+
+        employee.UserId = userId;
+        employee.InviteTokenHash = null;
+        employee.InviteExpiresAt = null;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.User, employee.SellerId.ToString(), "SellerEmployeeRegistered", $"{employee.InviteEmail} joined {found.Value.CompanyName}.", ct);
+
+        var user = (await identityService.FindByIdAsync(userId, ct))!;
+        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
+        var refreshToken = tokenService.GenerateRefreshToken();
+        await refreshTokenService.StoreAsync(userId, refreshToken, DateTimeOffset.UtcNow.AddDays(7), ct);
+        return Result<AuthResultDto>.Success(new AuthResultDto { AccessToken = accessToken, RefreshToken = refreshToken, ExpiresAt = expiresAt, User = user });
+    }
+
+    public async Task<Result> SetEmployeeActiveAsync(Guid sellerId, Guid employeeId, bool isActive, CancellationToken ct)
+    {
+        var employee = await db.SellerEmployees.AsNoTracking().FirstOrDefaultAsync(e => e.SellerId == sellerId && e.Id == employeeId, ct);
+        if (employee?.UserId is not { } userId) return Result.Failure("Employee not found.");
+        var user = await identityService.FindByIdAsync(userId, ct);
+        if (user is null) return Result.Failure("Employee not found.");
+        return await identityService.UpdateUserAsync(userId, user.FirstName, user.LastName, isActive, ct);
+    }
+
+    public async Task<Result> RemoveEmployeeAsync(Guid sellerId, Guid employeeId, CancellationToken ct)
+    {
+        var employee = await db.SellerEmployees.FirstOrDefaultAsync(e => e.SellerId == sellerId && e.Id == employeeId, ct);
+        if (employee is null) return Result.Failure("Employee not found.");
+        db.SellerEmployees.Remove(employee);
+        await db.SaveChangesAsync(ct);
+        // Deactivate rather than delete so past chat messages keep their author.
+        if (employee.UserId is { } userId && await identityService.FindByIdAsync(userId, ct) is { } user)
+        {
+            await identityService.UpdateUserAsync(userId, user.FirstName, user.LastName, false, ct);
+        }
+        await activityLog.LogAsync(EntityTypes.User, sellerId.ToString(), "SellerEmployeeRemoved", $"Employee {employee.InviteEmail} removed.", ct);
+        return Result.Success();
+    }
 
     public async Task<Result<SellerDto>> CreateAsync(SellerInput input, CancellationToken ct)
     {
         var validation = await ValidateAsync(input, null, true, ct);
         if (validation is not null) return Result<SellerDto>.Failure(validation);
 
-        var seller = new SellerProfile();
+        var seller = new SellerProfile { Status = SellerStatus.Approved, StatusChangedAt = DateTimeOffset.UtcNow };
         Apply(seller, input, true);
         db.SellerProfiles.Add(seller);
         await db.SaveChangesAsync(ct);
@@ -223,10 +418,47 @@ public sealed class SellerService(
         if (validation is not null) return Result.Failure(validation);
 
         Apply(seller, input, allowLinkChange);
+        if (!allowLinkChange && seller.Status == SellerStatus.Approved)
+        {
+            // Company edits by the seller itself require admin re-approval.
+            seller.Status = SellerStatus.Pending;
+            seller.StatusNote = "Company details changed; awaiting admin approval.";
+            seller.StatusChangedAt = DateTimeOffset.UtcNow;
+        }
         seller.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
 
         await activityLog.LogAsync(EntityTypes.User, seller.Id.ToString(), "SellerUpdated", $"Seller company '{seller.CompanyName}' updated.", ct);
+        return Result.Success();
+    }
+
+    public async Task<Result> SetStatusAsync(Guid id, SellerStatus status, string? note, CancellationToken ct)
+    {
+        var seller = await db.SellerProfiles.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (seller is null) return Result.Failure("Seller not found.");
+        if (status == SellerStatus.Approved && !seller.UserId.HasValue)
+            return Result.Failure("The seller has not completed registration yet.");
+
+        seller.Status = status;
+        seller.StatusNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        seller.StatusChangedAt = DateTimeOffset.UtcNow;
+        seller.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.User, id.ToString(), $"Seller{status}", $"Seller '{seller.CompanyName}' {status.ToString().ToLowerInvariant()}.", ct);
+        return Result.Success();
+    }
+
+    public async Task<Result> SetActiveAsync(Guid id, bool isActive, CancellationToken ct)
+    {
+        var seller = await db.SellerProfiles.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (seller is null) return Result.Failure("Seller not found.");
+
+        seller.IsActive = isActive;
+        seller.StatusChangedAt = DateTimeOffset.UtcNow;
+        seller.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await activityLog.LogAsync(EntityTypes.User, id.ToString(), isActive ? "SellerActivated" : "SellerDeactivated",
+            $"Seller '{seller.CompanyName}' {(isActive ? "activated" : "deactivated; products hidden from the storefront")}.", ct);
         return Result.Success();
     }
 
@@ -337,7 +569,11 @@ public sealed class SellerService(
             InviteEmail = s.InviteEmail,
             InviteStatus = s.UserId.HasValue
                 ? "Accepted"
-                : s.InviteTokenHash is null ? "None" : s.InviteExpiresAt > DateTimeOffset.UtcNow ? "Pending" : "Expired"
+                : s.InviteTokenHash is null ? "None" : s.InviteExpiresAt > DateTimeOffset.UtcNow ? "Pending" : "Expired",
+            Status = s.Status.ToString(),
+            IsActive = s.IsActive,
+            StatusNote = s.StatusNote,
+            CanSell = s.CanSell
         }).ToList();
     }
 }

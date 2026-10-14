@@ -1,5 +1,6 @@
 @if (chat(); as c) {
-<section class="oc">
+<section class="oc" [class.oc-compact]="compact()">
+  @if (!compact()) {
   <header class="oc-head">
     <mat-icon>forum</mat-icon>
     <div>
@@ -7,14 +8,22 @@
       <small>{{ c.isClosed ? 'Closed' : c.myRole === 'Observer' ? 'Read-only view' : 'Ask a question or send a note about this order' }}</small>
     </div>
   </header>
+  }
 
   <div class="oc-thread" #thread>
+    @if (loadError()) {
+    <div class="oc-load-error">Could not load this conversation. It will retry automatically.</div>
+    }
     @for (m of c.messages; track m.id) {
       <div class="oc-msg" [class.mine]="m.isMine" [class.auto]="m.senderRole === 'Auto'">
         <div class="oc-bubble">
           <div class="oc-name">{{ m.senderName }}</div>
           <div class="oc-body">{{ m.body }}</div>
-          <div class="oc-time">{{ m.createdAt | date: 'MMM d, h:mm a' }}</div>
+          <div class="oc-time">{{ m.createdAt | date: 'MMM d, h:mm a' }}
+            @if (m.isMine) {
+            <mat-icon class="oc-tick" [class.read]="!!m.readAt" [attr.aria-label]="m.readAt ? 'Read' : 'Sent'">{{ m.readAt ? 'done_all' : 'done' }}</mat-icon>
+            }
+          </div>
         </div>
       </div>
     } @empty {

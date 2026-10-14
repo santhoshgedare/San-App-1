@@ -1,0 +1,96 @@
+<div class="order-chat-widget" [class.is-open]="state.isOpen()"
+  [style.--chat-bottom-offset.px]="bottomOffset()">
+  @if (state.isOpen()) {
+  <section class="chat-window" aria-label="Order chat">
+    <header class="chat-window-header">
+      <div class="chat-window-title">
+        <mat-icon>forum</mat-icon>
+        <div>
+          <strong>Order chat</strong>
+          <small>
+            @if (unreadNotifications().length) {
+            {{ unreadNotifications().length }} conversation{{ unreadNotifications().length === 1 ? '' : 's' }} with new messages
+            } @else {
+            @if (realtime.isConnected()) { Live · choose an order } @else { Choose an order to continue }
+            }
+          </small>
+        </div>
+      </div>
+      <button type="button" class="icon-action" (click)="state.close()" aria-label="Close chat">
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <div class="chat-window-content">
+      @if (notificationError()) {
+      <p class="notification-error" role="status">Chat notifications are temporarily unavailable.</p>
+      }
+      @if (realtime.hasConnectionError()) {
+      <p class="notification-error" role="status">Live chat is reconnecting. New messages will still be checked periodically.</p>
+      }
+
+      @if (unreadNotifications().length) {
+      <section class="unread-list" aria-label="Unread chat messages">
+        @for (notice of unreadNotifications(); track notice.orderId) {
+        <button type="button" class="unread-item" (click)="openNotification(notice.orderId)">
+          <span class="unread-item-heading">
+            <strong>{{ notice.orderNumber }}</strong>
+            <small>{{ notice.createdAt | date: 'short' }}</small>
+          </span>
+          <span class="unread-sender">{{ notice.senderName }} · {{ notice.senderRole }}</span>
+          <span class="unread-preview">{{ notice.preview }}</span>
+        </button>
+        }
+      </section>
+      }
+
+      @if (orders().length || hasLoadedOrders()) {
+      <label class="order-picker">
+        <select #orderSelect aria-label="Conversation for order" [value]="state.orderId() ?? ''" (change)="selectedOrderChanged(orderSelect.value)">
+          <option value="">Select an order</option>
+          @for (order of orders(); track order.id) {
+          <option [value]="order.id" [selected]="order.id === state.orderId()">{{ orderLabel(order) }}</option>
+          }
+        </select>
+      </label>
+      } @else if (isLoadingOrders()) {
+      <p class="chat-status">Loading your orders…</p>
+      }
+
+      @if (orderLoadError()) {
+      <div class="chat-status chat-status-error">
+        <span>Orders could not be loaded.</span>
+        <button type="button" (click)="loadOrders()">Try again</button>
+      </div>
+      }
+
+      @if (state.orderId() && selectedOrderLoaded()) {
+      <app-order-chat [orderId]="state.orderId()!" [compact]="true" [refreshKey]="chatRefreshKey()"
+        (chatLoaded)="markConversationRead($event)" />
+      } @else if (hasLoadedOrders() && orders().length === 0) {
+      <p class="chat-status">No orders are available for chat yet.</p>
+      } @else if (hasLoadedOrders() && orders().length > 0) {
+      <p class="chat-hint">Select an order above to open its conversation.</p>
+      }
+
+      @if (orders().length < totalOrders()) {
+      <button type="button" class="load-more" [disabled]="isLoadingOrders()" (click)="loadOrders()">
+        {{ isLoadingOrders() ? 'Loading…' : 'Load more orders' }}
+      </button>
+      }
+    </div>
+  </section>
+  }
+
+  <button type="button" class="chat-launcher" [class.launcher-open]="state.isOpen()"
+    [attr.aria-expanded]="state.isOpen()" (click)="toggle()"
+    [attr.aria-label]="unreadNotifications().length ? 'Open order chat, ' + unreadNotifications().length + ' unread conversations' : 'Open order chat'">
+    <mat-icon>{{ state.isOpen() ? 'close' : 'chat' }}</mat-icon>
+    @if (unreadNotifications().length) {
+    <span class="unread-badge">{{ unreadNotifications().length > 9 ? '9+' : unreadNotifications().length }}</span>
+    }
+    @if (!state.isOpen()) {
+    <span>Chat</span>
+    }
+  </button>
+</div>

@@ -23,6 +23,29 @@ export class Sellers implements OnInit {
   readonly sellers = signal<SellerDto[]>([]);
   readonly search = signal('');
   readonly page = signal(1);
+  readonly showInvite = signal(false);
+  readonly isInviting = signal(false);
+  inviteEmail = '';
+
+  sendInvite(): void {
+    const email = this.inviteEmail.trim();
+    if (!email) return;
+    this.isInviting.set(true);
+    this.service.inviteNew(email).subscribe({
+      next: () => {
+        this.isInviting.set(false);
+        this.inviteEmail = '';
+        this.showInvite.set(false);
+        this.snackBar.open(`Invitation emailed to ${email}.`, 'Close');
+        this.load();
+      },
+      error: (err) => {
+        this.isInviting.set(false);
+        this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Could not send invitation.', 'Close', { panelClass: ['snack-error'] });
+        this.load();
+      },
+    });
+  }
 
   readonly filtered = computed(() => {
     const term = this.search().trim().toLowerCase();
@@ -63,6 +86,41 @@ export class Sellers implements OnInit {
 
   private load(): void {
     this.service.getAll().subscribe((list) => this.sellers.set(list));
+  }
+
+  private act(call: import('rxjs').Observable<void>, okMsg: string): void {
+    call.subscribe({
+      next: () => {
+        this.snackBar.open(okMsg, 'Close');
+        this.load();
+      },
+      error: (err) => this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Action failed.', 'Close', { panelClass: ['snack-error'] }),
+    });
+  }
+
+  approve(s: SellerDto): void {
+    this.act(this.service.approve(s.id), `${s.companyName} approved.`);
+  }
+
+  reject(s: SellerDto): void {
+    this.confirmService
+      .confirm({ title: 'Reject seller', message: `Reject ${s.companyName}? They will not be able to sell.`, confirmText: 'Reject', destructive: true })
+      .subscribe((ok) => ok && this.act(this.service.reject(s.id), `${s.companyName} rejected.`));
+  }
+
+  toggleActive(s: SellerDto): void {
+    if (s.isActive) {
+      this.confirmService
+        .confirm({
+          title: 'Deactivate seller',
+          message: `Deactivate ${s.companyName}? All their products will be hidden from customers (existing orders are unaffected).`,
+          confirmText: 'Deactivate',
+          destructive: true,
+        })
+        .subscribe((ok) => ok && this.act(this.service.setActive(s.id, false), `${s.companyName} deactivated.`));
+    } else {
+      this.act(this.service.setActive(s.id, true), `${s.companyName} activated.`);
+    }
   }
 
   remove(seller: SellerDto): void {

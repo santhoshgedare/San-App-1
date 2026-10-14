@@ -1,4 +1,6 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { OrderChatRealtimeService } from '../../core/auth/order-chat-realtime.service';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -32,6 +34,8 @@ export class Orders implements OnInit, OnDestroy {
   private readonly orderService = inject(OrderService);
   protected readonly sectionAccess = inject(SectionAccessStore);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(OrderChatRealtimeService);
   private readonly search$ = new Subject<string>();
 
   readonly orders = signal<OrderDto[]>([]);
@@ -64,6 +68,7 @@ export class Orders implements OnInit, OnDestroy {
       this.loadOrders();
     });
     this.loadOrders();
+    this.realtime.orderUpdates$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadOrders());
   }
 
   ngOnDestroy(): void {

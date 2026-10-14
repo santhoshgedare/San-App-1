@@ -3,6 +3,8 @@ using IdentityHub.Api.Middleware;
 using IdentityHub.Application;
 using IdentityHub.Infrastructure;
 using IdentityHub.Infrastructure.Persistence;
+using IdentityHub.Api.Hubs;
+using IdentityHub.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +19,9 @@ if (builder.Environment.IsDevelopment())
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IOrderChatLiveNotifier, SignalROrderChatNotifier>();
+builder.Services.AddScoped<IOrderLiveNotifier, SignalROrderLiveNotifier>();
 var recoveryPermitLimit = Math.Clamp(builder.Configuration.GetValue("PasswordRecovery:RateLimit:PermitLimit", 5), 1, 100);
 var recoveryWindowMinutes = Math.Clamp(builder.Configuration.GetValue("PasswordRecovery:RateLimit:WindowMinutes", 60), 1, 1440);
 builder.Services.AddRateLimiter(options =>
@@ -32,6 +37,16 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+    options.AddPolicy("otp", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 builder.Services.AddApplication();
@@ -43,7 +58,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(corsPolicy, policy =>
     {
         var origins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? ["http://localhost:4200"];
-        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
 
@@ -90,6 +105,7 @@ app.UseCors(corsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHub<OrderChatHub>("/hubs/order-chat");
 app.MapControllers();
 app.MapFallback(async context =>
 {

@@ -1,6 +1,16 @@
 namespace IdentityHub.Application.Common.Interfaces;
 
-public sealed record OrderChatMessageDto(Guid Id, string SenderRole, string SenderName, string Body, DateTimeOffset CreatedAt, bool IsMine);
+public sealed record OrderChatMessageDto(Guid Id, string SenderRole, string SenderName, string Body, DateTimeOffset CreatedAt, bool IsMine, DateTimeOffset? ReadAt);
+
+public sealed record OrderChatNotificationDto(
+    Guid OrderId,
+    string OrderNumber,
+    Guid MessageId,
+    string SenderRole,
+    string SenderName,
+    string Preview,
+    DateTimeOffset CreatedAt,
+    bool IsMine);
 
 public sealed record OrderChatFaqDto(string Id, string Question);
 
@@ -21,6 +31,9 @@ public interface IOrderChatService
 {
     /// <summary>Null when the order doesn't exist or the current user is not a participant.</summary>
     Task<OrderChatDto?> GetAsync(Guid orderId, CancellationToken ct);
+
+    /// <summary>Returns the latest human-authored message for each order the current user participates in.</summary>
+    Task<IReadOnlyList<OrderChatNotificationDto>> GetNotificationsAsync(CancellationToken ct);
 
     /// <summary>Posts a message, or when faqId is given the FAQ question plus its automatic answer. Returns an error when not allowed.</summary>
     Task<string?> SendAsync(Guid orderId, string? body, string? faqId, CancellationToken ct);
