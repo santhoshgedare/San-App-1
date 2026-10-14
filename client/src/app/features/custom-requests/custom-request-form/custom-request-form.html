@@ -1,0 +1,78 @@
+<div class="crf-page">
+  <a routerLink="/custom-requests" class="crf-back"><mat-icon>arrow_back</mat-icon> Custom requests</a>
+  <h1>Describe your design</h1>
+  <p class="crf-lead">Add photos and details. Sellers will show interest and send you quotes, and you choose who makes it.</p>
+
+  <form class="crf-card" (ngSubmit)="submit()" #form="ngForm">
+    <label class="crf-field">
+      <span>What do you want made?</span>
+      <input name="title" [(ngModel)]="title" maxlength="200" required placeholder="e.g. Peacock motif bridal bangles" />
+    </label>
+
+    <label class="crf-field">
+      <span>Description</span>
+      <textarea name="description" [(ngModel)]="description" rows="6" maxlength="4000" required
+        placeholder="Colours, sizes, materials, occasion, anything the seller should know"></textarea>
+    </label>
+
+    <div class="crf-row">
+      <label class="crf-field">
+        <span>Quantity</span>
+        <input type="number" name="quantity" [(ngModel)]="quantity" min="1" max="1000" required />
+      </label>
+      <label class="crf-field">
+        <span>Budget (optional, ?)</span>
+        <input type="number" name="budget" [(ngModel)]="budget" min="0" />
+      </label>
+      <label class="crf-field">
+        <span>Needed by (optional)</span>
+        <input type="date" name="neededBy" [(ngModel)]="neededBy" />
+      </label>
+    </div>
+
+    <div class="crf-field">
+      <span>Reference photos ({{ photos().length }}/{{ maxPhotos }})</span>
+      <div class="crf-photos">
+        @for (photo of photos(); track $index) {
+        <div class="crf-photo">
+          <img [src]="photo.url" [alt]="photo.fileName" />
+          <button type="button" aria-label="Remove photo" (click)="removePhoto($index)"><mat-icon>close</mat-icon></button>
+        </div>
+        }
+        @if (photos().length < maxPhotos) {
+        <label class="crf-add" [class.disabled]="isProcessingImages()">
+          <mat-icon>add_photo_alternate</mat-icon>
+          <span>{{ isProcessingImages() ? 'Preparing photos...' : 'Add photos' }}</span>
+          <input type="file" accept="image/*" multiple hidden (change)="onFilesSelected($event)" [disabled]="isProcessingImages()" />
+        </label>
+        }
+      </div>
+    </div>
+
+    <h2>Your contact details</h2>
+    <div class="crf-row">
+      <label class="crf-field">
+        <span>Name</span>
+        <input name="customerName" [(ngModel)]="customerName" required />
+      </label>
+      <label class="crf-field">
+        <span>Email</span>
+        <input type="email" name="customerEmail" [(ngModel)]="customerEmail" required />
+      </label>
+      <label class="crf-field">
+        <span>Phone</span>
+        <input name="customerPhone" [(ngModel)]="customerPhone" required />
+      </label>
+    </div>
+
+    @if (error()) {
+    <p class="crf-error">{{ error() }}</p>
+    }
+    <div class="crf-actions">
+      <a mat-button routerLink="/custom-requests">Cancel</a>
+      <button mat-flat-button color="primary" type="submit" [disabled]="isSaving() || isProcessingImages()">
+        {{ isProcessingImages() ? 'Preparing photos...' : isSaving() ? 'Posting...' : 'Post request' }}
+      </button>
+    </div>
+  </form>
+</div>

@@ -29,14 +29,6 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
     public Task<Guid?> GetSellerIdAsync(Guid id, CancellationToken ct)
         => db.Items.Where(i => i.Id == id).Select(i => i.SellerId).FirstOrDefaultAsync(ct);
 
-    public async Task AssignSellerAsync(Guid id, Guid? sellerId, CancellationToken ct)
-    {
-        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct);
-        if (item is null) return;
-        item.SellerId = sellerId;
-        await db.SaveChangesAsync(ct);
-    }
-
     public async Task<ItemDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var item = await db.Items
@@ -144,6 +136,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         string? description,
         string? barcode,
         Guid categoryId,
+        Guid sellerId,
         string? unitOfMeasurement,
         decimal price,
         decimal costPrice,
@@ -173,6 +166,12 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             return Result<ItemDto>.Failure("Selected category does not exist.");
         }
 
+        var seller = await db.SellerProfiles.FirstOrDefaultAsync(s => s.Id == sellerId, ct);
+        if (seller is null)
+        {
+            return Result<ItemDto>.Failure("Selected seller does not exist.");
+        }
+
         var codeExists = await db.Items.AnyAsync(i => i.Code == trimmedCode, ct);
         if (codeExists)
         {
@@ -188,6 +187,8 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             Barcode = string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim(),
             CategoryId = categoryId,
+            SellerId = sellerId,
+            Seller = seller,
             UnitOfMeasurement = uom,
             Price = price,
             CostPrice = costPrice,
@@ -252,6 +253,7 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         string? description,
         string? barcode,
         Guid categoryId,
+        Guid sellerId,
         string? unitOfMeasurement,
         decimal price,
         decimal costPrice,
@@ -273,6 +275,12 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         if (item is null)
         {
             return Result.Failure("Item not found.");
+        }
+
+        var seller = await db.SellerProfiles.FirstOrDefaultAsync(s => s.Id == sellerId, ct);
+        if (seller is null)
+        {
+            return Result.Failure("Selected seller does not exist.");
         }
 
         var trimmedCode = code.Trim();
@@ -305,6 +313,8 @@ public sealed class ItemService(AppDbContext db, IActivityLogService activityLog
         item.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         item.Barcode = string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim();
         item.CategoryId = categoryId;
+        item.SellerId = sellerId;
+        item.Seller = seller;
         item.UnitOfMeasurement = ParseUnitOfMeasurement(unitOfMeasurement, category.UnitOfMeasurement);
         item.Price = price;
         item.CostPrice = costPrice;

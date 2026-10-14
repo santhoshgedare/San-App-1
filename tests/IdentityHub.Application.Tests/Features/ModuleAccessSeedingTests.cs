@@ -4,6 +4,7 @@ using IdentityHub.Domain.Entities;
 using IdentityHub.Infrastructure.Identity;
 using IdentityHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,12 +21,28 @@ public sealed class ModuleAccessSeedingTests
         services.AddIdentity<ApplicationUser, ApplicationRole>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SystemAdmin:Email"] = "info@srividika.com"
+            })
+            .Build());
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
 
         await DbInitializer.SeedAsync(scope.ServiceProvider);
 
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var admin = await userManager.FindByEmailAsync("info@srividika.com");
+        admin.Should().NotBeNull();
+        var defaultAdmin = admin ?? throw new InvalidOperationException("The default administrator was not seeded.");
+        (await userManager.IsInRoleAsync(defaultAdmin, Roles.Admin)).Should().BeTrue();
+        (await userManager.IsInRoleAsync(defaultAdmin, Roles.Manager)).Should().BeFalse();
+        (await db.SellerProfiles.CountAsync()).Should().Be(0);
+        (await db.Categories.CountAsync()).Should().Be(0);
+        (await db.Items.CountAsync()).Should().Be(0);
+
         var expectedRoutes = new[]
         {
             "/catalog", "/cart", "/checkout", "/orders", "/categories", "/items",
@@ -43,10 +60,18 @@ public sealed class ModuleAccessSeedingTests
         var managerGrant = await db.RoleSectionAccesses.SingleAsync(access =>
             access.RoleId == managerRole.Id && access.SectionId == itemManagementSection.Id);
         db.RoleSectionAccesses.Remove(managerGrant);
+        var unseededItem = new Item
+        {
+            Code = "CUSTOM-UNASSIGNED",
+            Name = "Manually added item"
+        };
+        db.Items.Add(unseededItem);
         await db.SaveChangesAsync();
 
         await DbInitializer.SeedAsync(scope.ServiceProvider);
 
+        (await db.SellerProfiles.CountAsync()).Should().Be(0);
+        (await db.Items.SingleAsync(item => item.Id == unseededItem.Id)).SellerId.Should().BeNull();
         (await db.Pages.CountAsync()).Should().Be(expectedRoutes.Length);
         (await db.RoleSectionAccesses.AnyAsync(access =>
             access.RoleId == managerRole.Id && access.SectionId == itemManagementSection.Id)).Should().BeFalse();

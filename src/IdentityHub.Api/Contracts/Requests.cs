@@ -78,6 +78,7 @@ public sealed record CreateItemRequest(
     string? Description,
     string? Barcode,
     Guid CategoryId,
+    Guid? SellerId,
     string? UnitOfMeasurement,
     decimal Price,
     decimal CostPrice,
@@ -93,6 +94,7 @@ public sealed record UpdateItemRequest(
     string? Description,
     string? Barcode,
     Guid CategoryId,
+    Guid? SellerId,
     string? UnitOfMeasurement,
     decimal Price,
     decimal CostPrice,
@@ -167,4 +169,3 @@ public sealed record AddressRequest(
     double? Latitude,
     double? Longitude,
     bool IsDefault);
-

@@ -62,6 +62,9 @@ export class UserShell {
     if (this.auth.isAuthenticated() && this.sectionAccess.can('section-orders-view')) {
       links.push({ path: '/orders', label: 'My Orders', icon: 'receipt_long', exact: false });
     }
+    if (this.auth.isAuthenticated() && this.sectionAccess.can('section-custom-requests-view')) {
+      links.push({ path: '/custom-requests', label: 'Custom Orders', icon: 'design_services', exact: false });
+    }
     return links;
   });
 

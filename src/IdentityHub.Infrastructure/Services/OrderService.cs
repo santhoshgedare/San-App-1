@@ -22,6 +22,7 @@ public sealed class OrderService(
         var order = await db.Orders
             .Include(o => o.Items)
             .Include(o => o.Seller)
+            .Include(o => o.ProgressUpdates)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
         return order is null ? null : MapToDto(order);
@@ -690,6 +691,15 @@ public sealed class OrderService(
         TotalAmount = o.TotalAmount,
         CreatedAt = o.CreatedAt,
         UpdatedAt = o.UpdatedAt,
+        CustomRequestId = o.CustomRequestId,
+        ProgressUpdates = o.ProgressUpdates.OrderBy(u => u.CreatedAt).Select(u => new OrderProgressUpdateDto
+        {
+            Id = u.Id,
+            Stage = u.Stage.ToString(),
+            Note = u.Note,
+            ImageUrl = u.ImageUrl,
+            CreatedAt = u.CreatedAt
+        }).ToList(),
         Items = o.Items.Select(i => new OrderItemDto
         {
             Id = i.Id,

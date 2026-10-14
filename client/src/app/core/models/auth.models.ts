@@ -137,6 +137,7 @@ export interface CreateItemRequest {
   description?: string | null;
   barcode?: string | null;
   categoryId: string;
+  sellerId?: string | null;
   unitOfMeasurement?: string;
   price: number;
   costPrice: number;
@@ -153,6 +154,7 @@ export interface UpdateItemRequest {
   description?: string | null;
   barcode?: string | null;
   categoryId: string;
+  sellerId?: string | null;
   unitOfMeasurement?: string;
   price: number;
   costPrice: number;
@@ -264,6 +266,16 @@ export interface OrderDto {
   createdAt: string;
   updatedAt?: string | null;
   items: OrderItemDto[];
+  customRequestId?: string | null;
+  progressUpdates?: OrderProgressUpdateDto[];
+}
+
+export interface OrderProgressUpdateDto {
+  id: string;
+  stage: string;
+  note?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
 }
 
 export interface ProfitLossReportDto {

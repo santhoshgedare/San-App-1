@@ -40,6 +40,7 @@ public sealed class OrderNotifier(
                 case OrderNotice.DeliveryCharge:
                 case OrderNotice.PaymentUpdated:
                 case OrderNotice.Refunded:
+                case OrderNotice.ProgressUpdated:
                     toBuyer.Add(order.CustomerEmail);
                     break;
                 case OrderNotice.PaymentSubmitted:
@@ -54,8 +55,9 @@ public sealed class OrderNotifier(
             var link = $"{(configuration["Client:BaseUrl"] ?? "http://localhost:4200").TrimEnd('/')}/orders/{order.Id}";
             var (subject, headline) = Describe(notice, order.OrderNumber, detail);
 
-            await SendAsync(toBuyer, $"{subject} – {sellerName}", headline, detail, order.OrderNumber, link, order.Id, ct);
-            await SendAsync(toSeller, subject, headline, detail, order.OrderNumber, link, order.Id, ct);
+            var excludeCurrentUser = notice != OrderNotice.Placed;
+            await SendAsync(toBuyer, $"{subject} – {sellerName}", headline, detail, order.OrderNumber, link, order.Id, excludeCurrentUser, ct);
+            await SendAsync(toSeller, subject, headline, detail, order.OrderNumber, link, order.Id, excludeCurrentUser, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -72,7 +74,7 @@ public sealed class OrderNotifier(
                 var email = await db.Users.Where(u => u.Id == order.Seller.UserId.Value).Select(u => u.Email).FirstOrDefaultAsync(ct);
                 if (!string.IsNullOrWhiteSpace(email)) return [email];
             }
-            return string.IsNullOrWhiteSpace(order.Seller.ContactEmail) ? [] : [order.Seller.ContactEmail];
+            if (!string.IsNullOrWhiteSpace(order.Seller.ContactEmail)) return [order.Seller.ContactEmail];
         }
 
         return await (from ur in db.UserRoles
@@ -82,11 +84,21 @@ public sealed class OrderNotifier(
                       select u.Email!).ToListAsync(ct);
     }
 
-    private async Task SendAsync(List<string> recipients, string subject, string headline, string? detail, string orderNumber, string link, Guid orderId, CancellationToken ct)
+    private async Task SendAsync(
+        List<string> recipients,
+        string subject,
+        string headline,
+        string? detail,
+        string orderNumber,
+        string link,
+        Guid orderId,
+        bool excludeCurrentUser,
+        CancellationToken ct)
     {
         var me = currentUser.Email;
         var to = recipients
-            .Where(e => !string.IsNullOrWhiteSpace(e) && !string.Equals(e, me, StringComparison.OrdinalIgnoreCase))
+            .Where(e => !string.IsNullOrWhiteSpace(e) &&
+                (!excludeCurrentUser || !string.Equals(e, me, StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (to.Count == 0) return;
 
@@ -126,6 +138,7 @@ public sealed class OrderNotifier(
         OrderNotice.PaymentUpdated => ($"Order {number}: payment update", "Your payment status was updated"),
         OrderNotice.Refunded => ($"Order {number}: refund recorded", "A refund has been recorded"),
         OrderNotice.ChatMessage => ($"Order {number}: new message", "You have a new message on this order"),
+        OrderNotice.ProgressUpdated => ($"Order {number}: progress update", "Your custom piece has a new progress update"),
         _ => ($"Order {number} update", "Order update")
     };
 }

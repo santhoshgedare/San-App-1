@@ -21,6 +21,7 @@ public sealed class ItemUpdateTests
         await using var db = new AppDbContext(options);
 
         var category = new Category { Name = "Category" };
+        var seller = new SellerProfile { CompanyName = "Seller" };
         var image = new ItemImage { Url = "old-image", IsPrimary = true };
         var document = new ItemDocument { Url = "old-document", FileName = "spec.pdf" };
         var variant = new ItemVariant { Sku = "ITEM-A", Name = "Option A", AttributesJson = "{}", Price = 25m, StockQuantity = 2 };
@@ -30,6 +31,8 @@ public sealed class ItemUpdateTests
             Name = "Sample",
             Category = category,
             CategoryId = category.Id,
+            Seller = seller,
+            SellerId = seller.Id,
             Price = 25m,
             StockQuantity = 5,
             Images = [image],
@@ -60,6 +63,7 @@ public sealed class ItemUpdateTests
             ]
         };
         db.Categories.Add(category);
+        db.SellerProfiles.Add(seller);
         db.Items.Add(item);
         db.Orders.Add(order);
         await db.SaveChangesAsync();
@@ -71,6 +75,7 @@ public sealed class ItemUpdateTests
             null,
             null,
             category.Id,
+            seller.Id,
             "Piece",
             30m,
             10m,
@@ -92,6 +97,7 @@ public sealed class ItemUpdateTests
         retainedVariant.Id.Should().Be(variant.Id);
         retainedVariant.IsActive.Should().BeFalse();
         (await db.OrderItems.SingleAsync()).ItemVariantId.Should().Be(variant.Id);
+        (await db.Items.SingleAsync()).SellerId.Should().Be(seller.Id);
     }
 
     private sealed class NoOpActivityLogService : IActivityLogService

@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { InviteEmailDialog, InviteEmailDialogData } from '../invite-email-dialog/invite-email-dialog';
 import { SellerDto, SellerInput, SellerInviteResult, SellerService } from '../../../core/auth/seller.service';
+import { readImageAsDataUrl } from '../../../shared/image-utils';
 import { UserService } from '../../../core/auth/user.service';
 import { ROLES } from '../../../core/models/constants';
 import type { UserDto } from '../../../core/models/auth.models';
@@ -30,6 +31,7 @@ export class SellerForm implements OnInit {
   readonly mine = this.route.snapshot.routeConfig?.path === 'seller-profile';
   readonly isNew = signal(false);
   readonly isSaving = signal(false);
+  readonly isProcessingImages = signal(false);
   readonly isLoading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly managers = signal<UserDto[]>([]);
@@ -108,8 +110,15 @@ export class SellerForm implements OnInit {
     if (this.mine) {
       this.service.getMine().subscribe({
         next: (s) => this.apply(s),
-        error: () => {
-          this.errorMessage.set('No company profile is linked to your account yet. Please contact an administrator.');
+        error: (err) => {
+          const errors = err?.error?.errors;
+          const message = Array.isArray(errors) ? errors.join(' ') : null;
+          this.errorMessage.set(
+            message ??
+              (err?.status === 404
+                ? 'Your company profile could not be found. Please contact an administrator.'
+                : 'Could not load your registered company details. Check your connection and try again.'),
+          );
           this.isLoading.set(false);
         },
       });
@@ -143,40 +152,36 @@ export class SellerForm implements OnInit {
     this.isLoading.set(false);
   }
 
-  onQrSelected(event: Event): void {
+  async onQrSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      this.errorMessage.set('QR image must be under 2 MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => (this.model.qrCodeImageUrl = reader.result as string);
-    reader.readAsDataURL(file);
+    await this.processImage(file, (url) => (this.model.qrCodeImageUrl = url), 1600, 0.95);
   }
-  onLogoSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
+  async onLogoSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const size = 256;
-        const scale = Math.min(1, size / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        this.model.logoUrl = canvas.toDataURL('image/jpeg', 0.85);
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    await this.processImage(file, (url) => (this.model.logoUrl = url), 512, 0.85);
+  }
+
+  private async processImage(file: File, setImage: (url: string) => void, maxSize: number, quality: number): Promise<void> {
+    if (this.isProcessingImages()) return;
+    this.isProcessingImages.set(true);
+    this.errorMessage.set(null);
+    try {
+      setImage(await readImageAsDataUrl(file, maxSize, quality));
+    } catch (error) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Could not process the selected image.');
+    } finally {
+      this.isProcessingImages.set(false);
+    }
   }
 
   save(): void {
+    if (this.isProcessingImages()) return;
     this.errorMessage.set(null);
     if (!this.model.companyName.trim()) {
       this.errorMessage.set('Company name is required.');

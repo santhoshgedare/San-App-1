@@ -1,0 +1,151 @@
+@if (isLoading()) {
+<p class="crd-state">Loading…</p>
+} @else if (request(); as r) {
+<div class="crd-page">
+  <a routerLink="/custom-requests" class="crd-back"><mat-icon>arrow_back</mat-icon> Custom requests</a>
+
+  <div class="crd-top">
+    <section class="crd-card crd-info">
+      <div class="crd-gallery">
+        @if (activeImage()) {
+        <img class="crd-main" [src]="activeImage()" [alt]="r.title" />
+        } @else {
+        <div class="crd-main crd-noimg"><mat-icon>image</mat-icon></div>
+        }
+        @if (r.images.length > 1) {
+        <div class="crd-thumbs">
+          @for (img of r.images; track $index) {
+          <button type="button" [class.active]="img === activeImage()" (click)="activeImage.set(img)">
+            <img [src]="img" alt="" />
+          </button>
+          }
+        </div>
+        }
+      </div>
+      <div class="crd-details">
+        <span class="crd-number">{{ r.requestNumber }} · <span class="crd-status" [attr.data-status]="r.status">{{ r.status }}</span></span>
+        <h1>{{ r.title }}</h1>
+        <p class="crd-desc">{{ r.description }}</p>
+        <dl>
+          <div><dt>Quantity</dt><dd>{{ r.quantity }}</dd></div>
+          @if (r.budget) { <div><dt>Budget</dt><dd>{{ r.budget | currency: 'INR' }}</dd></div> }
+          @if (r.neededBy) { <div><dt>Needed by</dt><dd>{{ r.neededBy | date: 'mediumDate' }}</dd></div> }
+          <div><dt>Requested by</dt><dd>{{ r.customerName }}</dd></div>
+          <div><dt>Posted</dt><dd>{{ r.createdAt | date: 'medium' }}</dd></div>
+        </dl>
+        @if (r.orderId) {
+        <a mat-flat-button color="primary" [routerLink]="['/orders', r.orderId]"><mat-icon>receipt_long</mat-icon> View order</a>
+        }
+        @if (isCustomer() && (r.status === 'Open' || r.status === 'Quoted')) {
+        <button mat-stroked-button type="button" (click)="cancelRequest()" [disabled]="busy()">Cancel request</button>
+        }
+      </div>
+    </section>
+  </div>
+
+  @if (isSeller() && r.canExpressInterest) {
+  <section class="crd-card">
+    <h2>Interested in making this?</h2>
+    <p class="crd-muted">Start a private chat with the customer and send a quote.</p>
+    <textarea [(ngModel)]="interestMessage" name="interest" rows="3" placeholder="Say hello (optional)"></textarea>
+    <button mat-flat-button color="primary" type="button" (click)="expressInterest()" [disabled]="busy()">I'm interested</button>
+  </section>
+  }
+
+  @if (r.threads.length === 0) {
+  <section class="crd-card crd-muted">
+    @if (isCustomer()) { No sellers have shown interest yet. We will list their quotes here. }
+    @else if (!r.canExpressInterest) { No sellers have joined this request yet. }
+  </section>
+  } @else {
+  <div class="crd-threads">
+    <aside class="crd-card crd-list">
+      <h2>{{ isCustomer() || r.myRole === 'Observer' ? 'Sellers' : 'Your conversation' }}</h2>
+      @for (t of r.threads; track t.id) {
+      <button type="button" class="crd-thread" [class.active]="selectedThread()?.id === t.id" (click)="selectedThreadId.set(t.id)">
+        <strong>{{ t.sellerName }}</strong>
+        <span class="crd-tstatus" [attr.data-status]="t.status">{{ t.status }}</span>
+        @if (t.quoteTotal) { <span class="crd-price">{{ t.quoteTotal | currency: 'INR' }}</span> }
+        @else { <span class="crd-muted">No quote yet</span> }
+      </button>
+      }
+    </aside>
+
+    @if (selectedThread(); as t) {
+    <section class="crd-card crd-chat">
+      <header>
+        <h2>{{ t.sellerName }}</h2>
+        @if (t.quoteTotal) {
+        <div class="crd-quote">
+          <div>
+            <strong>{{ t.quoteUnitPrice | currency: 'INR' }}</strong> × {{ r.quantity }}
+            @if (t.quoteShippingFee) { + {{ t.quoteShippingFee | currency: 'INR' }} shipping }
+            = <strong>{{ t.quoteTotal | currency: 'INR' }}</strong>
+          </div>
+          <div class="crd-muted">
+            @if (t.quoteLeadTimeDays) { Ready in {{ t.quoteLeadTimeDays }} days · }
+            Quote v{{ t.quoteRevision }}
+          </div>
+          @if (t.quoteNote) { <div class="crd-muted">{{ t.quoteNote }}</div> }
+          @if (canAward() && t.status === 'Active') {
+          <button mat-flat-button color="primary" type="button" (click)="startAward(t)" [disabled]="busy()">Accept this quote</button>
+          }
+        </div>
+        }
+      </header>
+
+      <div class="crd-messages">
+        @for (m of t.messages; track m.id) {
+        <div class="crd-msg" [class.mine]="m.isMine" [class.system]="m.senderRole === 'System'">
+          @if (m.senderRole !== 'System') { <span class="crd-who">{{ m.senderName }}</span> }
+          <p>{{ m.body }}</p>
+          <span class="crd-time">{{ m.createdAt | date: 'short' }}</span>
+        </div>
+        }
+      </div>
+
+      @if (t.status === 'Active' && (r.status === 'Open' || r.status === 'Quoted') && r.myRole !== 'Observer') {
+      <form class="crd-send" (ngSubmit)="sendMessage()">
+        <input [(ngModel)]="messageText" name="msg" placeholder="Write a message" autocomplete="off" />
+        <button mat-flat-button color="primary" type="submit" [disabled]="busy() || !messageText.trim()">Send</button>
+      </form>
+      }
+
+      @if (t.isMine && t.status === 'Active' && (r.status === 'Open' || r.status === 'Quoted')) {
+      <div class="crd-quote-form">
+        <h3>{{ t.quoteTotal ? 'Update your quote' : 'Send a quote' }}</h3>
+        <div class="crd-row">
+          <label>Unit price (?)<input type="number" min="0" [(ngModel)]="quoteUnitPrice" name="qp" /></label>
+          <label>Shipping (?)<input type="number" min="0" [(ngModel)]="quoteShippingFee" name="qs" /></label>
+          <label>Lead time (days)<input type="number" min="0" [(ngModel)]="quoteLeadDays" name="ql" /></label>
+        </div>
+        <label>Note<input [(ngModel)]="quoteNote" name="qn" placeholder="Materials, finish, what's included" /></label>
+        <div class="crd-actions">
+          <button mat-stroked-button type="button" (click)="withdraw()" [disabled]="busy()">Withdraw</button>
+          <button mat-flat-button color="primary" type="button" (click)="submitQuote()" [disabled]="busy()">Send quote</button>
+        </div>
+      </div>
+      }
+    </section>
+    }
+  </div>
+  }
+
+  @if (awardingThread; as a) {
+  <div class="crd-modal" role="dialog" aria-modal="true">
+    <div class="crd-dialog">
+      <h2>Accept quote from {{ a.sellerName }}</h2>
+      <p class="crd-muted">An order for {{ a.quoteTotal | currency: 'INR' }} will be created. Other sellers will be notified that the request is closed.</p>
+      <label>Shipping address<textarea [(ngModel)]="shippingAddress" name="addr" rows="3"></textarea></label>
+      <label>Order notes (optional)<input [(ngModel)]="orderNotes" name="notes" /></label>
+      <div class="crd-actions">
+        <button mat-button type="button" (click)="awardingThread = null">Back</button>
+        <button mat-flat-button color="primary" type="button" (click)="confirmAward()" [disabled]="busy()">Confirm order</button>
+      </div>
+    </div>
+  </div>
+  }
+</div>
+} @else {
+<p class="crd-state">Request not found.</p>
+}

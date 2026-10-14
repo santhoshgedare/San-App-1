@@ -49,5 +49,9 @@ public sealed class Order
     public bool IsDeleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 
+    /// <summary>Set when the order was created from an awarded custom request.</summary>
+    public Guid? CustomRequestId { get; set; }
+
     public List<OrderItem> Items { get; set; } = [];
+    public List<OrderProgressUpdate> ProgressUpdates { get; set; } = [];
 }

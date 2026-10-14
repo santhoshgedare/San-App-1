@@ -11,6 +11,7 @@ public sealed record CreateItemCommand(
     string? Description,
     string? Barcode,
     Guid CategoryId,
+    Guid SellerId,
     string? UnitOfMeasurement,
     decimal Price,
     decimal CostPrice,
@@ -27,6 +28,7 @@ public sealed class CreateItemCommandValidator : AbstractValidator<CreateItemCom
         RuleFor(x => x.Code).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.CategoryId).NotEmpty();
+        RuleFor(x => x.SellerId).NotEmpty();
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.StockQuantity).GreaterThanOrEqualTo(0);
@@ -43,6 +45,7 @@ public sealed class CreateItemCommandHandler(IItemService itemService)
             request.Description,
             request.Barcode,
             request.CategoryId,
+            request.SellerId,
             request.UnitOfMeasurement,
             request.Price,
             request.CostPrice,

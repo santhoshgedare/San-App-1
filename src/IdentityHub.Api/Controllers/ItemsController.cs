@@ -103,10 +103,16 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
     /// <summary>Creates a new item master with 1:N images, documents, and variant-based pricing.</summary>
     [HttpPost]
     [RequireSection("section-items-manage")]
-    public async Task<ActionResult<ItemDto>> Create(CreateItemRequest request, [FromQuery] Guid? sellerId, CancellationToken ct)
+    public async Task<ActionResult<ItemDto>> Create(CreateItemRequest request, CancellationToken ct)
     {
         var scope = await ResolveScopeAsync(ct);
         if (scope.Scoped && scope.SellerId is null) return Forbid();
+        if (!scope.Scoped && !User.IsInRole(Roles.Admin)) return Forbid();
+
+        var sellerId = scope.Scoped ? scope.SellerId : request.SellerId;
+        if (!sellerId.HasValue) return BadRequest(new { errors = new[] { "Seller is required." } });
+        if (await sellers.GetByIdAsync(sellerId.Value, ct) is null)
+            return BadRequest(new { errors = new[] { "Selected seller does not exist." } });
 
         var imageInputs = (request.Images ?? [])
             .Select(img => new ItemImageInput(img.Id, img.Url, img.FileName, img.Caption, img.IsPrimary, img.SortOrder))
@@ -126,6 +132,7 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
             request.Description,
             request.Barcode,
             request.CategoryId,
+            sellerId.Value,
             request.UnitOfMeasurement,
             request.Price,
             request.CostPrice,
@@ -134,15 +141,6 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
             imageInputs,
             documentInputs,
             variantInputs), ct);
-
-        if (result.Succeeded)
-        {
-            var owner = scope.Scoped ? scope.SellerId : sellerId;
-            if (owner.HasValue)
-            {
-                await itemService.AssignSellerAsync(result.Data!.Id, owner, ct);
-            }
-        }
 
         return result.Succeeded
             ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result.Data)
@@ -154,7 +152,15 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
     [RequireSection("section-items-manage")]
     public async Task<IActionResult> Update(Guid id, UpdateItemRequest request, CancellationToken ct)
     {
-        if (!await CanManageAsync(id, ct)) return NotFound();
+        var scope = await ResolveScopeAsync(ct);
+        if (scope.Scoped && scope.SellerId is null) return Forbid();
+        if (!scope.Scoped && !User.IsInRole(Roles.Admin)) return Forbid();
+        if (!scope.Scoped && request.SellerId is null) return BadRequest(new { errors = new[] { "Seller is required." } });
+        if (scope.Scoped && await itemService.GetSellerIdAsync(id, ct) != scope.SellerId) return NotFound();
+
+        var sellerId = scope.Scoped ? scope.SellerId!.Value : request.SellerId!.Value;
+        if (await sellers.GetByIdAsync(sellerId, ct) is null)
+            return BadRequest(new { errors = new[] { "Selected seller does not exist." } });
 
         var imageInputs = (request.Images ?? [])
             .Select(img => new ItemImageInput(img.Id, img.Url, img.FileName, img.Caption, img.IsPrimary, img.SortOrder))
@@ -175,6 +181,7 @@ public sealed class ItemsController(ISender sender, IItemService itemService, IS
             request.Description,
             request.Barcode,
             request.CategoryId,
+            sellerId,
             request.UnitOfMeasurement,
             request.Price,
             request.CostPrice,

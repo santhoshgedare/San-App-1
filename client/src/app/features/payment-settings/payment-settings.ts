@@ -7,6 +7,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { PaymentSettingsService } from '../../core/auth/payment-settings.service';
 import { SectionAccessStore } from '../../core/auth/section-access.store';
 import { CanRenderDirective } from '../../core/directives/can-render.directive';
+import { readImageAsDataUrl } from '../../shared/image-utils';
 
 @Component({
   selector: 'app-payment-settings',
@@ -22,6 +23,7 @@ export class PaymentSettingsComponent implements OnInit {
 
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
+  readonly isProcessingImage = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
   upiId = '';
@@ -42,25 +44,28 @@ export class PaymentSettingsComponent implements OnInit {
         this.qrCodeImageUrl = settings.qrCodeImageUrl ?? null;
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
+        this.errorMessage.set(err?.error?.errors?.join(' ') ?? 'Could not load payment settings.');
         this.isLoading.set(false);
       },
     });
   }
 
-  onQrFileSelected(event: Event): void {
+  async onQrFileSelected(event: Event): Promise<void> {
     const target = event.target as HTMLInputElement;
-    if (!target.files || target.files.length === 0) {
-      return;
-    }
-
-    const file = target.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.qrCodeImageUrl = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    const file = target.files?.[0];
     target.value = '';
+    if (!file || this.isProcessingImage()) return;
+
+    this.isProcessingImage.set(true);
+    this.errorMessage.set(null);
+    try {
+      this.qrCodeImageUrl = await readImageAsDataUrl(file, 1600, 0.95);
+    } catch (error) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Could not process the QR image.');
+    } finally {
+      this.isProcessingImage.set(false);
+    }
   }
 
   removeQrImage(): void {
@@ -68,6 +73,7 @@ export class PaymentSettingsComponent implements OnInit {
   }
 
   save(): void {
+    if (this.isProcessingImage()) return;
     if (!this.upiId.trim()) {
       this.errorMessage.set('UPI ID is required.');
       return;

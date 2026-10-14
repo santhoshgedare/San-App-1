@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { SELECT_DEFAULTS } from '../../../shared/select-defaults';
@@ -10,10 +11,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ItemService } from '../../../core/auth/item.service';
 import { CategoryService } from '../../../core/auth/category.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { SellerService, type SellerDto } from '../../../core/auth/seller.service';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ENTITY_TYPES } from '../../../core/models/constants';
 import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
+import { readImageAsDataUrl } from '../../../shared/image-utils';
 import {
   UnitOfMeasurement,
   type CategoryDto,
@@ -51,16 +55,21 @@ export class ItemForm implements OnInit {
   private readonly router = inject(Router);
   private readonly itemService = inject(ItemService);
   private readonly categoryService = inject(CategoryService);
+  private readonly authService = inject(AuthService);
+  private readonly sellerService = inject(SellerService);
 
+  readonly isAdmin = this.authService.isAdmin;
   readonly entityType = ENTITY_TYPES.item;
   readonly isNew = signal(true);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
+  readonly isProcessingImages = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly tabIndex = signal(0);
   readonly lastTabIndex = 3;
   readonly item = signal<ItemDto | null>(null);
   readonly categories = signal<CategoryDto[]>([]);
+  readonly sellers = signal<SellerDto[]>([]);
   readonly unitOptions = Object.values(UnitOfMeasurement);
 
   // Form Fields - Basic
@@ -69,6 +78,7 @@ export class ItemForm implements OnInit {
   description = '';
   barcode = '';
   categoryId = '';
+  sellerId = '';
   unitOfMeasurement = UnitOfMeasurement.Piece;
   price = 0;
   costPrice = 0;
@@ -84,9 +94,19 @@ export class ItemForm implements OnInit {
   readonly selectedCategory = signal<CategoryDto | null>(null);
 
   ngOnInit(): void {
-    this.categoryService.getAll().subscribe((categories) => {
-      this.categories.set(categories);
-      this.initForm();
+    forkJoin({
+      categories: this.categoryService.getAll(),
+      sellers: this.isAdmin() ? this.sellerService.getAll() : of([] as SellerDto[]),
+    }).subscribe({
+      next: ({ categories, sellers }) => {
+        this.categories.set(categories);
+        this.sellers.set(sellers);
+        this.initForm();
+      },
+      error: () => {
+        this.errorMessage.set('Could not load item form data.');
+        this.isLoading.set(false);
+      },
     });
   }
 
@@ -110,6 +130,7 @@ export class ItemForm implements OnInit {
         this.description = item.description ?? '';
         this.barcode = item.barcode ?? '';
         this.categoryId = item.categoryId;
+        this.sellerId = item.sellerId ?? '';
         this.unitOfMeasurement = item.unitOfMeasurement ?? UnitOfMeasurement.Piece;
         this.price = item.price;
         this.costPrice = item.costPrice ?? 0;
@@ -152,6 +173,53 @@ export class ItemForm implements OnInit {
     }
   }
 
+  variantAttributeMap(variant: ItemVariantDto): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const entry of this.parseVariantAttributes(variant.attributesJson)) {
+      map[entry.name] = entry.value;
+    }
+    return map;
+  }
+
+  /** Attributes on a variant that are not kinds defined by the selected category. */
+  customAttributes(variant: ItemVariantDto): VariantAttributeEntry[] {
+    const defined = new Set((this.selectedCategory()?.variantDefinitions ?? []).map((d) => d.name));
+    return this.parseVariantAttributes(variant.attributesJson).filter((a) => !defined.has(a.name));
+  }
+
+  setVariantAttribute(index: number, name: string, value: string): void {
+    const variant = this.variants()[index];
+    if (!variant) return;
+    const map = this.variantAttributeMap(variant);
+    if (value) {
+      map[name] = value;
+    } else {
+      delete map[name];
+    }
+    this.updateVariant(index, { attributesJson: JSON.stringify(map) });
+  }
+
+  renameVariantAttribute(index: number, oldName: string, newName: string): void {
+    const variant = this.variants()[index];
+    const trimmed = newName.trim();
+    if (!variant || !trimmed || trimmed === oldName) return;
+    const renamed: Record<string, string> = {};
+    for (const [key, value] of Object.entries(this.variantAttributeMap(variant))) {
+      renamed[key === oldName ? trimmed : key] = value;
+    }
+    this.updateVariant(index, { attributesJson: JSON.stringify(renamed) });
+  }
+
+  addCustomAttribute(index: number): void {
+    const variant = this.variants()[index];
+    if (!variant) return;
+    const map = this.variantAttributeMap(variant);
+    let n = 1;
+    while (map[`New kind ${n}`] !== undefined) n++;
+    map[`New kind ${n}`] = 'Value';
+    this.updateVariant(index, { attributesJson: JSON.stringify(map) });
+  }
+
   addManualVariant(): void {
     const defaultSku = `${this.code || 'ITEM'}-VAR-${this.variants().length + 1}`;
     this.variants.update((list) => [
@@ -159,7 +227,7 @@ export class ItemForm implements OnInit {
       {
         sku: defaultSku,
         name: `Variant ${list.length + 1}`,
-        attributesJson: JSON.stringify({ Option: `Var ${list.length + 1}` }),
+        attributesJson: '{}',
         price: this.price,
         costPrice: this.costPrice,
         stockQuantity: this.stockQuantity,
@@ -223,32 +291,35 @@ export class ItemForm implements OnInit {
   }
 
   // --- Image Management ---
-  onImageFileSelected(event: Event): void {
+  async onImageFileSelected(event: Event): Promise<void> {
     const target = event.target as HTMLInputElement;
-    if (!target.files || target.files.length === 0) {
-      return;
-    }
-
-    Array.from(target.files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
-        const isFirst = this.images().length === 0;
-        this.images.update((list) => [
-          ...list,
-          {
-            url,
-            fileName: file.name,
-            caption: file.name.split('.')[0],
-            isPrimary: isFirst,
-            sortOrder: list.length + 1,
-            uploadedAt: new Date().toISOString(),
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
+    const files = Array.from(target.files ?? []);
     target.value = '';
+    if (files.length === 0) return;
+
+    this.isProcessingImages.set(true);
+    this.errorMessage.set(null);
+    try {
+      const encoded = await Promise.all(files.map(async (file) => ({
+        file,
+        url: await readImageAsDataUrl(file),
+      })));
+      this.images.update((list) => [
+        ...list,
+        ...encoded.map(({ file, url }, index) => ({
+          url,
+          fileName: file.name,
+          caption: file.name.split('.')[0],
+          isPrimary: list.length === 0 && index === 0,
+          sortOrder: list.length + index + 1,
+          uploadedAt: new Date().toISOString(),
+        })),
+      ]);
+    } catch (error) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Could not process the selected image.');
+    } finally {
+      this.isProcessingImages.set(false);
+    }
   }
 
   addImageByUrl(): void {
@@ -398,7 +469,12 @@ export class ItemForm implements OnInit {
       this.errorMessage.set('Please select a category.');
       return;
     }
+    if (this.isAdmin() && !this.sellerId) {
+      this.errorMessage.set('Please select a seller.');
+      return;
+    }
 
+    if (this.isProcessingImages()) return;
     this.isSaving.set(true);
 
     const payload = {
@@ -407,6 +483,7 @@ export class ItemForm implements OnInit {
       description: this.description.trim() || null,
       barcode: this.barcode.trim() || null,
       categoryId: this.categoryId,
+      sellerId: this.isAdmin() ? this.sellerId : null,
       unitOfMeasurement: this.unitOfMeasurement,
       price: Number(this.price) || 0,
       costPrice: Number(this.costPrice) || 0,

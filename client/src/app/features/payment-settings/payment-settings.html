@@ -45,9 +45,12 @@
 
         <label *canRender="'section-payment-settings-manage'" class="upload-btn">
           <mat-icon>upload</mat-icon>
-          <span>{{ qrCodeImageUrl ? 'Replace QR Code' : 'Upload QR Code' }}</span>
-          <input type="file" accept="image/*" (change)="onQrFileSelected($event)" hidden />
+          <span>{{ isProcessingImage() ? 'Preparing QR Code...' : qrCodeImageUrl ? 'Replace QR Code' : 'Upload QR Code' }}</span>
+          <input type="file" accept="image/*" (change)="onQrFileSelected($event)" [disabled]="isProcessingImage()" hidden />
         </label>
+        @if (isProcessingImage()) {
+          <p class="card-hint mb-0">Preparing image for upload…</p>
+        }
       </div>
     </section>
 
@@ -67,12 +70,12 @@
       </div>
 
       <div class="field-group">
-        <label for="instructions">Payment Instructions (Optional)</label>
+        <label for="instructions">Bank details / payment instructions (Optional)</label>
         <textarea id="instructions" rows="3" [(ngModel)]="instructions" [readonly]="!canManageSettings()"
-          placeholder="e.g. Scan the QR using any UPI app and enter the transaction reference number after payment."></textarea>
+          placeholder="Account holder, account number and IFSC, or instructions for paying by UPI."></textarea>
       </div>
 
-      <button *canRender="'section-payment-settings-manage'" type="button" class="btn-save" [disabled]="isSaving()"
+      <button *canRender="'section-payment-settings-manage'" type="button" class="btn-save" [disabled]="isSaving() || isProcessingImage()"
         (click)="save()">
         @if (isSaving()) {
         <mat-icon class="spin-icon">sync</mat-icon>

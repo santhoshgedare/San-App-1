@@ -12,6 +12,7 @@ import { OrderService } from '../../../core/auth/order.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SectionAccessStore } from '../../../core/auth/section-access.store';
 import { ENTITY_TYPES } from '../../../core/models/constants';
+import { OrderProgress } from '../../../shared/order-progress/order-progress';
 import { OrderChatPanel } from '../../../shared/order-chat/order-chat';
 import { ApprovalPanel } from '../../../shared/approval-panel/approval-panel';
 import { ActivityLogPanel } from '../../../shared/activity-log-panel/activity-log-panel';
@@ -37,6 +38,7 @@ import { ConfirmService } from '../../../shared/confirm-dialog/confirm-dialog';
     MatSelectModule,
     ApprovalPanel,
     OrderChatPanel,
+    OrderProgress,
     ActivityLogPanel,
     ReviewForm,
     StarRating,

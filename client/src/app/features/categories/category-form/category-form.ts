@@ -95,6 +95,12 @@ export class CategoryForm implements OnInit {
     );
   }
 
+  updateVariantValues(index: number, raw: string): void {
+    this.updateVariant(index, {
+      values: raw.split(',').map((value) => value.trim()).filter((value) => value.length > 0),
+    });
+  }
+
   save(): void {
     this.errorMessage.set(null);
     const trimmedName = this.name.trim();

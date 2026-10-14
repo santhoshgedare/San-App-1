@@ -4,10 +4,16 @@
     @else { <div class="sp-logo-lg sp-logo-ph"><mat-icon>storefront</mat-icon></div> }
     <div>
       <h2>{{ model.companyName || (mine ? 'My Company Profile' : 'New Seller Company') }}</h2>
-      <p>{{ model.tagline || (mine ? 'Manage how your company appears to customers.' : isNew() ? 'Set up the company, then invite its manager.' : 'Edit company details, payment and invite.') }}</p>
+      <p>{{ isLoading() ? 'Loading saved company and payment details...' : model.tagline || (mine ? 'Manage how your company appears to customers.' : isNew() ? 'Set up the company, then invite its manager.' : 'Edit company details, payment and invite.') }}</p>
     </div>
   </div>
 </section>
+
+@if (isLoading()) {
+  <div class="alert alert-light border py-3" role="status">
+    <mat-icon class="align-middle me-2">sync</mat-icon>Loading your saved company details...
+  </div>
+}
 
 @if (errorMessage(); as message) {
   <div class="alert alert-danger py-2 small">{{ message }}</div>
@@ -22,7 +28,7 @@
       <div class="row g-3">
         <div class="col-12">
           <label class="form-label mb-1">Logo</label>
-          <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onLogoSelected($event)" />
+          <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onLogoSelected($event)" [disabled]="isProcessingImages()" />
         </div>
         <div class="col-md-6">
           <label class="form-label">Company name <span class="text-danger">*</span></label>
@@ -69,7 +75,7 @@
           <div class="d-flex align-items-center gap-3 flex-wrap">
             @if (model.qrCodeImageUrl) { <img class="sp-qr" [src]="model.qrCodeImageUrl" alt="Payment QR code" /> }
             <div>
-              <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onQrSelected($event)" />
+              <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onQrSelected($event)" [disabled]="isProcessingImages()" />
               @if (model.qrCodeImageUrl) {
                 <button type="button" class="btn btn-link btn-sm text-danger px-0" (click)="model.qrCodeImageUrl = null">Remove QR</button>
               }
@@ -130,7 +136,9 @@
 </div>
 
 <div class="sp-actions">
-  <button class="btn btn-primary" (click)="save()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save' }}</button>
+  <button class="btn btn-primary" (click)="save()" [disabled]="isSaving() || isProcessingImages()">
+    {{ isProcessingImages() ? 'Preparing image...' : isSaving() ? 'Saving...' : 'Save' }}
+  </button>
   @if (!mine) {
     <button class="btn btn-outline-secondary" (click)="router.navigate(['/sellers'])">Cancel</button>
   }

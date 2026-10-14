@@ -66,6 +66,21 @@
                       }
                     </mat-select>
                   </div>
+                  @if (isAdmin()) {
+                    <div class="col-md-4">
+                      <label class="form-label">Seller <span class="text-danger">*</span></label>
+                      <mat-select class="app-select" [(ngModel)]="sellerId" placeholder="Select a seller" aria-label="Seller">
+                        @for (seller of sellers(); track seller.id) {
+                          <mat-option [value]="seller.id">{{ seller.companyName }}</mat-option>
+                        }
+                      </mat-select>
+                    </div>
+                  } @else {
+                    <div class="col-md-4">
+                      <label class="form-label">Seller</label>
+                      <div class="form-control-plaintext">Assigned automatically to your seller profile</div>
+                    </div>
+                  }
                   <div class="col-md-4 d-flex align-items-end">
                     <div class="form-check form-switch mb-2">
                       <input class="form-check-input" type="checkbox" role="switch" id="item-active" [(ngModel)]="isActive" />
@@ -144,7 +159,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        @for (variant of variants(); track variant.sku; let i = $index) {
+                        @for (variant of variants(); track $index; let i = $index) {
                           <tr>
                             <td>
                               <input
@@ -162,13 +177,36 @@
                                 (ngModelChange)="updateVariant(i, { name: $event })"
                                 placeholder="e.g. Red / XL"
                               />
-                              <div class="d-flex flex-wrap gap-1">
-                                @for (attr of parseVariantAttributes(variant.attributesJson); track attr.name) {
-                                  <span class="badge text-bg-light border text-dark small">
-                                    {{ attr.name }}: <strong>{{ attr.value }}</strong>
-                                  </span>
-                                }
-                              </div>
+                              @for (def of selectedCategory()?.variantDefinitions ?? []; track def.id) {
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                  <span class="small text-muted" style="min-width: 70px;">{{ def.name }}</span>
+                                  <select class="form-select form-select-sm"
+                                    [ngModel]="variantAttributeMap(variant)[def.name] ?? ''"
+                                    (ngModelChange)="setVariantAttribute(i, def.name, $event)">
+                                    <option value="">— Select —</option>
+                                    @for (val of def.values; track val) {
+                                      <option [value]="val">{{ val }}</option>
+                                    }
+                                  </select>
+                                </div>
+                              }
+                              @for (attr of customAttributes(variant); track $index) {
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                  <input type="text" class="form-control form-control-sm" style="max-width: 110px;"
+                                    [value]="attr.name" placeholder="Kind"
+                                    (change)="renameVariantAttribute(i, attr.name, $any($event.target).value)" />
+                                  <input type="text" class="form-control form-control-sm"
+                                    [value]="attr.value" placeholder="Value"
+                                    (change)="setVariantAttribute(i, attr.name, $any($event.target).value)" />
+                                  <button type="button" class="btn btn-sm btn-link text-danger p-0"
+                                    (click)="setVariantAttribute(i, attr.name, '')" aria-label="Remove kind">
+                                    <mat-icon style="font-size: 18px;">close</mat-icon>
+                                  </button>
+                                </div>
+                              }
+                              <button type="button" class="btn btn-sm btn-link p-0" (click)="addCustomAttribute(i)">
+                                + Add new kind
+                              </button>
                             </td>
                             <td>
                               <input
@@ -249,15 +287,18 @@
                     <p class="text-muted small mb-0">Upload local image files or link external photo URLs.</p>
                   </div>
                   <div class="d-flex gap-2">
-                    <label class="btn btn-outline-primary btn-sm mb-0">
+                    <label class="btn btn-outline-primary btn-sm mb-0" [class.disabled]="isProcessingImages()">
                       <mat-icon class="align-middle">cloud_upload</mat-icon> Upload Image
-                      <input type="file" accept="image/*" multiple (change)="onImageFileSelected($event)" hidden />
+                      <input type="file" accept="image/*" multiple (change)="onImageFileSelected($event)" [disabled]="isProcessingImages()" hidden />
                     </label>
                     <button type="button" mat-stroked-button (click)="addImageByUrl()">
                       <mat-icon>link</mat-icon> Add URL
                     </button>
                   </div>
                 </div>
+                @if (isProcessingImages()) {
+                  <div class="small text-muted mb-3"><mat-icon class="align-middle">sync</mat-icon> Preparing images…</div>
+                }
 
                 @if (!images().length) {
                   <div class="text-center text-muted p-4 border rounded bg-light-subtle">
@@ -400,7 +441,7 @@
                   Next <mat-icon iconPositionEnd>arrow_forward</mat-icon>
                 </button>
               } @else {
-                <button type="button" mat-flat-button color="primary" [disabled]="isSaving()" (click)="save()">
+                <button type="button" mat-flat-button color="primary" [disabled]="isSaving() || isProcessingImages()" (click)="save()">
                 @if (isSaving()) {
                   Saving…
                 } @else {

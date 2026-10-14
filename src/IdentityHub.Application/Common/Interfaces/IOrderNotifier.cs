@@ -8,7 +8,8 @@ public enum OrderNotice
     PaymentSubmitted,
     PaymentUpdated,
     Refunded,
-    ChatMessage
+    ChatMessage,
+    ProgressUpdated
 }
 
 /// <summary>Emails the people affected by an order event (buyer, fulfilling seller or admin). Never throws.</summary>

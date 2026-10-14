@@ -424,6 +424,199 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.ToTable("CategoryVariantDefinitions");
                 });
 
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AwardedThreadId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("Budget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CustomerEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateOnly?>("NeededBy")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequestNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("RequestNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CustomRequests");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CustomRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomRequestId");
+
+                    b.ToTable("CustomRequestImages");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("SenderUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ThreadId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ThreadId", "CreatedAt");
+
+                    b.ToTable("CustomRequestMessages");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestThread", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CustomRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("QuoteLeadTimeDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QuoteNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("QuoteRevision")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("QuoteShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("QuoteUnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset?>("QuotedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SellerId");
+
+                    b.HasIndex("CustomRequestId", "SellerId")
+                        .IsUnique();
+
+                    b.ToTable("CustomRequestThreads");
+                });
+
             modelBuilder.Entity("IdentityHub.Domain.Entities.EmailLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -790,6 +983,9 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("CustomRequestId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("CustomerEmail")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1021,6 +1217,37 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderId", "CreatedAt");
 
                     b.ToTable("OrderMessages");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.OrderProgressUpdate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "CreatedAt");
+
+                    b.ToTable("OrderProgressUpdates");
                 });
 
             modelBuilder.Entity("IdentityHub.Domain.Entities.Page", b =>
@@ -1546,6 +1773,47 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestImage", b =>
+                {
+                    b.HasOne("IdentityHub.Domain.Entities.CustomRequest", "CustomRequest")
+                        .WithMany("Images")
+                        .HasForeignKey("CustomRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomRequest");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestMessage", b =>
+                {
+                    b.HasOne("IdentityHub.Domain.Entities.CustomRequestThread", "Thread")
+                        .WithMany("Messages")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Thread");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestThread", b =>
+                {
+                    b.HasOne("IdentityHub.Domain.Entities.CustomRequest", "CustomRequest")
+                        .WithMany("Threads")
+                        .HasForeignKey("CustomRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IdentityHub.Domain.Entities.SellerProfile", "Seller")
+                        .WithMany()
+                        .HasForeignKey("SellerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CustomRequest");
+
+                    b.Navigation("Seller");
+                });
+
             modelBuilder.Entity("IdentityHub.Domain.Entities.Item", b =>
                 {
                     b.HasOne("IdentityHub.Domain.Entities.Category", "Category")
@@ -1655,6 +1923,17 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("IdentityHub.Domain.Entities.OrderProgressUpdate", b =>
+                {
+                    b.HasOne("IdentityHub.Domain.Entities.Order", "Order")
+                        .WithMany("ProgressUpdates")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("IdentityHub.Domain.Entities.Page", b =>
                 {
                     b.HasOne("IdentityHub.Domain.Entities.Module", "Module")
@@ -1754,6 +2033,18 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
                     b.Navigation("VariantDefinitions");
                 });
 
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequest", b =>
+                {
+                    b.Navigation("Images");
+
+                    b.Navigation("Threads");
+                });
+
+            modelBuilder.Entity("IdentityHub.Domain.Entities.CustomRequestThread", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("IdentityHub.Domain.Entities.Item", b =>
                 {
                     b.Navigation("Documents");
@@ -1771,6 +2062,8 @@ namespace IdentityHub.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("IdentityHub.Domain.Entities.Order", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("ProgressUpdates");
                 });
 
             modelBuilder.Entity("IdentityHub.Domain.Entities.Page", b =>

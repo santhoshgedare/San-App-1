@@ -4,10 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ReviewService } from '../../core/auth/review.service';
 import type { ItemReviewDto } from '../../core/models/auth.models';
+import { readImageAsDataUrl } from '../image-utils';
 import { StarRating } from '../star-rating/star-rating';
 
 const MAX_PHOTOS = 4;
-const MAX_EDGE = 1000;
 
 @Component({
   selector: 'app-review-form',
@@ -42,13 +42,11 @@ export class ReviewForm {
 
     this.isProcessing.set(true);
     try {
-      const added: string[] = [];
-      for (const file of files.slice(0, room)) {
-        added.push(await this.compress(file));
-      }
+      const added = await Promise.all(files.slice(0, room).map((file) => readImageAsDataUrl(file, 1000, 0.8)));
       this.photos.update((p) => [...p, ...added]);
-    } catch {
-      this.snackBar.open('Could not read that image', 'Close', { duration: 3000, panelClass: ['snack-error'] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not process the selected image.';
+      this.snackBar.open(message, 'Close', { duration: 3000, panelClass: ['snack-error'] });
     } finally {
       this.isProcessing.set(false);
     }
@@ -86,30 +84,4 @@ export class ReviewForm {
       });
   }
 
-  // Resize and re-encode as JPEG so uploads stay small.
-  private compress(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        URL.revokeObjectURL(url);
-        if (!ctx) {
-          reject(new Error('canvas'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('load'));
-      };
-      img.src = url;
-    });
-  }
 }

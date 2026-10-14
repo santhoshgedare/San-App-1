@@ -144,7 +144,7 @@ public sealed class CategoryService(AppDbContext db, IActivityLogService activit
         category.UpdatedAt = DateTimeOffset.UtcNow;
 
         db.CategoryVariantDefinitions.RemoveRange(category.VariantDefinitions);
-        category.VariantDefinitions = variantDefinitions.Select(v => new CategoryVariantDefinition
+        var newDefinitions = variantDefinitions.Select(v => new CategoryVariantDefinition
         {
             CategoryId = category.Id,
             Name = string.IsNullOrWhiteSpace(v.Name) ? v.Type : v.Name.Trim(),
@@ -152,6 +152,9 @@ public sealed class CategoryService(AppDbContext db, IActivityLogService activit
             ValuesJson = JsonSerializer.Serialize(v.Values ?? []),
             IsRequired = v.IsRequired
         }).ToList();
+
+        // Explicit Add: preset Guid keys would otherwise be treated as existing rows (UPDATE -> concurrency error).
+        db.CategoryVariantDefinitions.AddRange(newDefinitions);
 
         await db.SaveChangesAsync(ct);
 

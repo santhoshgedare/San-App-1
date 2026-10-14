@@ -32,6 +32,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<OrderMessage> OrderMessages => Set<OrderMessage>();
+    public DbSet<CustomRequest> CustomRequests => Set<CustomRequest>();
+    public DbSet<CustomRequestImage> CustomRequestImages => Set<CustomRequestImage>();
+    public DbSet<CustomRequestThread> CustomRequestThreads => Set<CustomRequestThread>();
+    public DbSet<CustomRequestMessage> CustomRequestMessages => Set<CustomRequestMessage>();
+    public DbSet<OrderProgressUpdate> OrderProgressUpdates => Set<OrderProgressUpdate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -89,6 +94,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<OrderMessage>(entity =>
         {
+            entity.HasQueryFilter(m => !m.Order!.IsDeleted);
             entity.Property(m => m.SenderRole).HasMaxLength(20).IsRequired();
             entity.Property(m => m.SenderName).HasMaxLength(200).IsRequired();
             entity.Property(m => m.Body).HasMaxLength(1000).IsRequired();
@@ -96,6 +102,57 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasIndex(m => new { m.OrderId, m.CreatedAt });
         });
 
+        builder.Entity<CustomRequest>(entity =>
+        {
+            entity.Property(r => r.RequestNumber).HasMaxLength(50).IsRequired();
+            entity.Property(r => r.CustomerName).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.CustomerEmail).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.CustomerPhone).HasMaxLength(50).IsRequired();
+            entity.Property(r => r.Title).HasMaxLength(200).IsRequired();
+            entity.Property(r => r.Description).HasMaxLength(4000).IsRequired();
+            entity.Property(r => r.Budget).HasPrecision(18, 2);
+            entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(r => r.RequestNumber).IsUnique();
+            entity.HasIndex(r => r.CustomerId);
+            entity.HasIndex(r => r.Status);
+            entity.HasMany(r => r.Images).WithOne(i => i.CustomRequest).HasForeignKey(i => i.CustomRequestId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(r => r.Threads).WithOne(t => t.CustomRequest).HasForeignKey(t => t.CustomRequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CustomRequestImage>(entity =>
+        {
+            entity.Property(i => i.Url).IsRequired();
+            entity.Property(i => i.FileName).HasMaxLength(260);
+        });
+
+        builder.Entity<CustomRequestThread>(entity =>
+        {
+            entity.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(t => t.QuoteUnitPrice).HasPrecision(18, 2);
+            entity.Property(t => t.QuoteShippingFee).HasPrecision(18, 2);
+            entity.Property(t => t.QuoteNote).HasMaxLength(1000);
+            entity.HasOne(t => t.Seller).WithMany().HasForeignKey(t => t.SellerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(t => t.Messages).WithOne(m => m.Thread).HasForeignKey(m => m.ThreadId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(t => new { t.CustomRequestId, t.SellerId }).IsUnique();
+            entity.HasIndex(t => t.SellerId);
+        });
+
+        builder.Entity<CustomRequestMessage>(entity =>
+        {
+            entity.Property(m => m.SenderRole).HasMaxLength(20).IsRequired();
+            entity.Property(m => m.SenderName).HasMaxLength(200).IsRequired();
+            entity.Property(m => m.Body).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(m => new { m.ThreadId, m.CreatedAt });
+        });
+
+        builder.Entity<OrderProgressUpdate>(entity =>
+        {
+            entity.HasQueryFilter(u => !u.Order!.IsDeleted);
+            entity.Property(u => u.Stage).HasConversion<string>().HasMaxLength(30);
+            entity.Property(u => u.Note).HasMaxLength(1000);
+            entity.HasOne(u => u.Order).WithMany(o => o.ProgressUpdates).HasForeignKey(u => u.OrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(u => new { u.OrderId, u.CreatedAt });
+        });
         builder.Entity<EmailLog>(entity =>
         {
             entity.Property(e => e.ToAddresses).HasMaxLength(1000).IsRequired();
@@ -347,5 +404,4 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         });
     }
 }
-
 

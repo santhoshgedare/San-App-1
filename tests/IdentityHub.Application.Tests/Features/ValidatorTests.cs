@@ -163,6 +163,7 @@ public sealed class CreateItemCommandValidatorTests
             "Cotton T-Shirt",
             null,
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "Piece",
             29.99m,
             15.00m,
@@ -184,6 +185,7 @@ public sealed class CreateItemCommandValidatorTests
             "T-Shirt",
             "Cotton T-Shirt",
             "1234567890",
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "Piece",
             29.99m,
@@ -212,6 +214,7 @@ public sealed class UpdateItemCommandValidatorTests
             null,
             null,
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "Piece",
             29.99m,
             15.00m,
@@ -234,6 +237,7 @@ public sealed class UpdateItemCommandValidatorTests
             "T-Shirt",
             "Updated",
             "1234567890",
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "Piece",
             34.99m,
@@ -261,6 +265,7 @@ public sealed class ItemPricingAndVariantValidationTests
             null,
             null,
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "Piece",
             -10.0m,
             5.0m,
@@ -283,6 +288,7 @@ public sealed class ItemPricingAndVariantValidationTests
             longName,
             null,
             null,
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "Piece",
             10.0m,
@@ -416,7 +422,6 @@ public sealed class CreateOrderCommandValidatorTests
         result.IsValid.Should().BeTrue();
     }
 }
-
 
 
 

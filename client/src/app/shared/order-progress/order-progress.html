@@ -1,0 +1,35 @@
+<section class="op">
+  <h3><mat-icon>design_services</mat-icon> Custom order progress</h3>
+  <ol class="op-steps">
+    @for (s of stages; track s.key; let i = $index) {
+    <li [class.done]="i <= currentIndex()" [class.current]="i === currentIndex()">
+      <span class="dot"></span><span>{{ s.label }}</span>
+    </li>
+    }
+  </ol>
+
+  @for (u of sorted(); track u.id) {
+  <div class="op-update">
+    <div class="op-head"><strong>{{ label(u.stage) }}</strong><span>{{ u.createdAt | date: 'medium' }}</span></div>
+    @if (u.note) { <p>{{ u.note }}</p> }
+    @if (u.imageUrl) { <img [src]="u.imageUrl" alt="Progress photo" /> }
+  </div>
+  }
+
+  @if (canPost()) {
+  <div class="op-form">
+    <h4>Post an update</h4>
+    <select [(ngModel)]="stage" name="stage">
+      <option value="">{{ available()[0]?.label }}</option>
+      @for (s of available().slice(1); track s.key) { <option [value]="s.key">{{ s.label }}</option> }
+    </select>
+    <input [(ngModel)]="note" name="note" placeholder="Note for the customer (optional)" />
+    <div class="op-photo">
+      <label class="op-add"><mat-icon>add_photo_alternate</mat-icon> {{ processingImage() ? 'Preparing photo...' : 'Photo' }}
+        <input type="file" accept="image/*" hidden (change)="onFile($event)" [disabled]="processingImage()" /></label>
+      @if (image()) { <img [src]="image()" alt="" /> }
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="post()" [disabled]="saving() || processingImage()">Post update</button>
+  </div>
+  }
+</section>

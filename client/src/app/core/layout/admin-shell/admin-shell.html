@@ -47,84 +47,120 @@
 
 <mat-sidenav-container class="app-sidenav-container">
   <mat-sidenav #sidenav class="app-sidenav" [opened]="!isScreenSmall()" [mode]="isScreenSmall() ? 'over' : 'side'">
-    <mat-nav-list>
-      <a *canRender="'section-catalog-view'" mat-list-item routerLink="/catalog" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>storefront</mat-icon>
-        <span matListItemTitle>Product Catalog</span>
-      </a>
-      <a *canRender="'section-cart-view'" mat-list-item routerLink="/cart" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>shopping_cart</mat-icon>
-        <span matListItemTitle>Shopping Cart</span>
-      </a>
-      @if (sectionAccess.can('section-dashboard-view') || sectionAccess.can('section-reports-view')) {
-      <a mat-list-item routerLink="/dashboard" routerLinkActive="link-active"
-        [routerLinkActiveOptions]="{ exact: true }" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>speed</mat-icon>
-        <span matListItemTitle>Dashboard</span>
-      </a>
-      }
-      <a *canRender="'section-orders-view'" mat-list-item routerLink="/orders" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>receipt_long</mat-icon>
-        <span matListItemTitle>Orders</span>
-      </a>
-      <a *canRender="'section-profile-view'" mat-list-item routerLink="/profile" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>person</mat-icon>
-        <span matListItemTitle>My Profile</span>
-      </a>
-      <ng-container *canRender="'section-users-view'">
-        <a mat-list-item routerLink="/users" routerLinkActive="link-active"
-          (click)="isScreenSmall() && sidenav.close()">
-          <mat-icon matListItemIcon>group</mat-icon>
-          <span matListItemTitle>Users</span>
-        </a>
-      </ng-container>
-      @if (auth.isAdmin()) {
-      <a *canRender="'section-roles-view'" mat-list-item routerLink="/roles" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
-        <span matListItemTitle>Roles</span>
-      </a>
-      }
-      @if (auth.isAdmin()) {
-      <a mat-list-item routerLink="/sellers" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>storefront</mat-icon>
-        <span matListItemTitle>Sellers</span>
-      </a>
-      <a mat-list-item routerLink="/email-logs" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>forward_to_inbox</mat-icon>
-        <span matListItemTitle>Email Log</span>
-      </a>
-      } @else if (auth.isManager()) {
-      <a mat-list-item routerLink="/seller-profile" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>storefront</mat-icon>
-        <span matListItemTitle>My Company</span>
-      </a>
-      }
-      <a *canRender="'section-categories-view'" mat-list-item routerLink="/categories" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>category</mat-icon>
-        <span matListItemTitle>Categories</span>
-      </a>
-      <a *canRender="'section-items-view'" mat-list-item routerLink="/items" routerLinkActive="link-active"
-        (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>inventory_2</mat-icon>
-        <span matListItemTitle>Items</span>
-      </a>
-      <a *canRender="'section-payment-settings-view'" mat-list-item routerLink="/payment-settings"
-        routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>qr_code_2</mat-icon>
-        <span matListItemTitle>Payment Settings</span>
-      </a>
-      <a *canRender="'section-approval-workflows-view'" mat-list-item routerLink="/approval-workflows"
-        routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
-        <mat-icon matListItemIcon>fact_check</mat-icon>
-        <span matListItemTitle>Approval Workflows</span>
-      </a>
-    </mat-nav-list>
+    <div class="sidenav-inner">
+      <header class="sidenav-heading">
+        <span class="sidenav-eyebrow">SRIVIDIKA</span>
+        <h2>Workspace</h2>
+        <p>Everything you need, in one place.</p>
+      </header>
+
+      <section class="nav-group">
+        <p class="group-label">Discover</p>
+        <mat-nav-list>
+          <a class="sidenav-link" *canRender="'section-catalog-view'" mat-list-item routerLink="/catalog"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>storefront</mat-icon>
+            <span matListItemTitle>Product Catalog</span>
+          </a>
+          <a class="sidenav-link" *canRender="'section-cart-view'" mat-list-item routerLink="/cart"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>shopping_cart</mat-icon>
+            <span matListItemTitle>Shopping Cart</span>
+          </a>
+        </mat-nav-list>
+      </section>
+
+      <section class="nav-group">
+        <p class="group-label">Work</p>
+        <mat-nav-list>
+          @if (sectionAccess.can('section-dashboard-view') || sectionAccess.can('section-reports-view')) {
+          <a class="sidenav-link" mat-list-item routerLink="/dashboard" routerLinkActive="link-active"
+            [routerLinkActiveOptions]="{ exact: true }" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>speed</mat-icon>
+            <span matListItemTitle>Dashboard</span>
+          </a>
+          }
+          <a class="sidenav-link" *canRender="'section-custom-requests-view'" mat-list-item routerLink="/custom-requests"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>design_services</mat-icon>
+            <span matListItemTitle>Custom Requests</span>
+          </a>
+          <a class="sidenav-link" *canRender="'section-orders-view'" mat-list-item routerLink="/orders"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>receipt_long</mat-icon>
+            <span matListItemTitle>Orders</span>
+          </a>
+        </mat-nav-list>
+      </section>
+
+      <section class="nav-group">
+        <p class="group-label">Manage</p>
+        <mat-nav-list>
+          <ng-container *canRender="'section-users-view'">
+            <a class="sidenav-link" mat-list-item routerLink="/users" routerLinkActive="link-active"
+              (click)="isScreenSmall() && sidenav.close()">
+              <mat-icon matListItemIcon>group</mat-icon>
+              <span matListItemTitle>Users</span>
+            </a>
+          </ng-container>
+          @if (auth.isAdmin()) {
+          <a class="sidenav-link" *canRender="'section-roles-view'" mat-list-item routerLink="/roles"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+            <span matListItemTitle>Roles</span>
+          </a>
+          <a class="sidenav-link" mat-list-item routerLink="/sellers" routerLinkActive="link-active"
+            (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>storefront</mat-icon>
+            <span matListItemTitle>Sellers</span>
+          </a>
+          <a class="sidenav-link" mat-list-item routerLink="/email-logs" routerLinkActive="link-active"
+            (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>forward_to_inbox</mat-icon>
+            <span matListItemTitle>Email Log</span>
+          </a>
+          } @else if (auth.isManager()) {
+          <a class="sidenav-link" mat-list-item routerLink="/seller-profile" routerLinkActive="link-active"
+            (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>storefront</mat-icon>
+            <span matListItemTitle>My Company</span>
+          </a>
+          }
+          <a class="sidenav-link" *canRender="'section-categories-view'" mat-list-item routerLink="/categories"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>category</mat-icon>
+            <span matListItemTitle>Categories</span>
+          </a>
+          <a class="sidenav-link" *canRender="'section-items-view'" mat-list-item routerLink="/items"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>inventory_2</mat-icon>
+            <span matListItemTitle>Items</span>
+          </a>
+          <a class="sidenav-link" *canRender="'section-payment-settings-view'" mat-list-item
+            routerLink="/payment-settings" routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>qr_code_2</mat-icon>
+            <span matListItemTitle>Payment Settings</span>
+          </a>
+          <a class="sidenav-link" *canRender="'section-approval-workflows-view'" mat-list-item
+            routerLink="/approval-workflows" routerLinkActive="link-active"
+            (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>fact_check</mat-icon>
+            <span matListItemTitle>Approval Workflows</span>
+          </a>
+        </mat-nav-list>
+      </section>
+
+      <section class="nav-group">
+        <p class="group-label">Account</p>
+        <mat-nav-list>
+          <a class="sidenav-link" *canRender="'section-profile-view'" mat-list-item routerLink="/profile"
+            routerLinkActive="link-active" (click)="isScreenSmall() && sidenav.close()">
+            <mat-icon matListItemIcon>person</mat-icon>
+            <span matListItemTitle>My Profile</span>
+          </a>
+        </mat-nav-list>
+      </section>
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content class="app-sidenav-content">

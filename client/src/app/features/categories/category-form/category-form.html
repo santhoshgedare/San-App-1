@@ -98,8 +98,8 @@
                     <input
                       type="text"
                       class="form-control"
-                      [ngModel]="variant.values.join(', ')"
-                      (ngModelChange)="updateVariant(i, { values: $event.split(',').map(value => value.trim()).filter((value) => value.length > 0) })"
+                      [value]="variant.values.join(', ')"
+                      (change)="updateVariantValues(i, $any($event.target).value)"
                       placeholder="Red, Blue, Green"
                     />
                   </div>

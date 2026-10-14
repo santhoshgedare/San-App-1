@@ -350,6 +350,8 @@ public sealed class OrderDto
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = [];
+    public Guid? CustomRequestId { get; init; }
+    public IReadOnlyList<Interfaces.OrderProgressUpdateDto> ProgressUpdates { get; init; } = [];
 }
 
 public sealed class ProfitLossReportDto

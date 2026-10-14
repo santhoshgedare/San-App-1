@@ -1,0 +1,68 @@
+<div class="cr-page">
+  <header class="cr-header">
+    <div>
+      <h1>Custom requests</h1>
+      <p>Share your own design, get quotes from sellers, and turn the one you like into an order.</p>
+    </div>
+    <a mat-flat-button color="primary" routerLink="/custom-requests/new">
+      <mat-icon>add_photo_alternate</mat-icon> New request
+    </a>
+  </header>
+
+  <div class="cr-tabs" role="tablist">
+    @for (tab of tabs(); track tab.scope) {
+    <button type="button" role="tab" class="cr-tab" [class.active]="scope() === tab.scope"
+      [attr.aria-selected]="scope() === tab.scope" (click)="select(tab.scope)">
+      <mat-icon>{{ tab.icon }}</mat-icon> {{ tab.label }}
+    </button>
+    }
+  </div>
+
+  @if (isLoading()) {
+  <p class="cr-empty">Loading requests…</p>
+  } @else if (requests().length === 0) {
+  <div class="cr-empty">
+    <mat-icon>palette</mat-icon>
+    <p>No requests here yet.</p>
+  </div>
+  } @else {
+  <div class="cr-grid">
+    @for (r of requests(); track r.id) {
+    <a class="cr-card" [routerLink]="['/custom-requests', r.id]">
+      <div class="cr-thumb">
+        @if (r.thumbnailUrl) {
+        <img [src]="r.thumbnailUrl" [alt]="r.title" />
+        } @else {
+        <mat-icon>image</mat-icon>
+        }
+        <span class="cr-status" [attr.data-status]="r.status">{{ r.status }}</span>
+      </div>
+      <div class="cr-body">
+        <span class="cr-number">{{ r.requestNumber }}</span>
+        <h3>{{ r.title }}</h3>
+        <p class="cr-meta">
+          Qty {{ r.quantity }}
+          @if (r.budget) { · Budget {{ r.budget | currency: 'INR' }} }
+          @if (r.neededBy) { · Needed by {{ r.neededBy | date: 'mediumDate' }} }
+        </p>
+        <p class="cr-meta">
+          {{ r.interestedCount }} interested · {{ r.quoteCount }} quote{{ r.quoteCount === 1 ? '' : 's' }}
+          @if (scope() !== 'mine') { · by {{ r.customerName }} }
+        </p>
+        @if (r.orderId) {
+        <span class="cr-order"><mat-icon>receipt_long</mat-icon> Order created</span>
+        }
+      </div>
+    </a>
+    }
+  </div>
+
+  @if (totalPages() > 1) {
+  <div class="cr-pager">
+    <button mat-stroked-button [disabled]="page() === 1" (click)="goTo(page() - 1)">Previous</button>
+    <span>Page {{ page() }} of {{ totalPages() }}</span>
+    <button mat-stroked-button [disabled]="page() >= totalPages()" (click)="goTo(page() + 1)">Next</button>
+  </div>
+  }
+  }
+</div>

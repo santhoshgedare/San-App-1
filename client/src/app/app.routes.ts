@@ -130,6 +130,23 @@ export const routes: Routes = [
         canActivate: [authGuard, sectionGuard('section-checkout-create')],
       },
       {
+        path: 'custom-requests',
+        loadComponent: () => import('./features/custom-requests/custom-requests').then((m) => m.CustomRequests),
+        canActivate: [authGuard, sectionGuard('section-custom-requests-view')],
+      },
+      {
+        path: 'custom-requests/new',
+        loadComponent: () =>
+          import('./features/custom-requests/custom-request-form/custom-request-form').then((m) => m.CustomRequestForm),
+        canActivate: [authGuard, sectionGuard('section-custom-requests-view')],
+      },
+      {
+        path: 'custom-requests/:id',
+        loadComponent: () =>
+          import('./features/custom-requests/custom-request-detail/custom-request-detail').then((m) => m.CustomRequestDetailPage),
+        canActivate: [authGuard, sectionGuard('section-custom-requests-view')],
+      },
+      {
         path: 'orders',
         loadComponent: () => import('./features/orders/orders').then((m) => m.Orders),
         canActivate: [authGuard, sectionGuard('section-orders-view')],

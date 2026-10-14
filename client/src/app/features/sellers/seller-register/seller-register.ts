@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { emptyAddress, validateAddress } from '../../../core/auth/address.service';
 import { SellerInput, SellerInviteInfo, SellerService } from '../../../core/auth/seller.service';
 import { AddressFields } from '../../../shared/address-fields/address-fields';
+import { readImageAsDataUrl } from '../../../shared/image-utils';
 import { PasswordField } from '../../../shared/password-field/password-field';
 
 @Component({
@@ -24,6 +25,7 @@ export class SellerRegister implements OnInit {
   readonly invite = signal<SellerInviteInfo | null>(null);
   readonly isLoading = signal(true);
   readonly isSubmitting = signal(false);
+  readonly isProcessingImage = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
   firstName = '';
@@ -70,21 +72,36 @@ export class SellerRegister implements OnInit {
     });
   }
 
-  onQrSelected(event: Event): void {
+  async onQrSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      this.errorMessage.set('QR image must be under 2 MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => (this.company.qrCodeImageUrl = reader.result as string);
-    reader.readAsDataURL(file);
+    if (!file || this.isProcessingImage()) return;
+    await this.processImage(file, (url) => (this.company.qrCodeImageUrl = url), 1600, 0.95);
   }
+  async onLogoSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || this.isProcessingImage()) return;
+    await this.processImage(file, (url) => (this.company.logoUrl = url), 512, 0.85);
+  }
+
+  private async processImage(file: File, setImage: (url: string) => void, maxSize: number, quality: number): Promise<void> {
+    this.isProcessingImage.set(true);
+    this.errorMessage.set(null);
+    try {
+      setImage(await readImageAsDataUrl(file, maxSize, quality));
+    } catch (error) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Could not process the selected image.');
+    } finally {
+      this.isProcessingImage.set(false);
+    }
+  }
+
   submit(): void {
     this.errorMessage.set(null);
+    if (this.isProcessingImage()) return this.fail('Wait for the selected image to finish processing.');
     if (!this.firstName.trim() || !this.lastName.trim()) return this.fail('First and last name are required.');
     if (this.password.length < 8) return this.fail('Password must be at least 8 characters.');
     if (this.password !== this.confirmPassword) return this.fail('Passwords do not match.');
