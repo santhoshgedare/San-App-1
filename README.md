@@ -1,9 +1,41 @@
-# IdentityHub
+# SRIVIDIKA
 
-A modern, minimal reference implementation of **user management, authentication, and role-based
-authorization** — rebuilt from scratch with a current, clean architecture. It is intentionally
-scoped to the identity domain (login/logout, registration, users, roles) rather than replicating
-a full ERP-style application.
+A marketplace for **handmade crafts**, built around silk-thread and beaded bangles. Independent
+makers (sellers) list and sell their own work, and shoppers buy directly from them, or post a
+custom design request and receive quotes from makers.
+
+The solution is named `IdentityHub` internally (the API and its projects keep that name); the
+product is SRIVIDIKA.
+
+## Who uses it
+
+| Role | What they can do |
+| --- | --- |
+| **Shopper / guest** | Browse the catalog, read the Our Story page, favourite items, add to cart, check out, track orders, chat on orders, post custom requests and review sellers' quotes. |
+| **Seller** (maker) | Manage their own company profile and products, add UPI and bank payment details, handle orders and custom requests, quote on requests, and invite employees to work on their behalf. |
+| **Admin** | Review seller requests and send invites, approve, reject or deactivate sellers, manage users, roles, categories, items, approval workflows, access, reports and email logs. |
+
+## Marketplace features
+
+- **Catalog and items:** categories with variant definitions, items with images, documents and
+  variants, reviews, favourites, and an admin approval status on listings.
+- **Cart, checkout and orders:** cart, address book, order placement, order status updates,
+  progress updates, per-order messages with live chat (SignalR), and email notifications to
+  buyers, sellers and admins.
+- **Custom requests:** shoppers post a design request (description, budget, needed-by date,
+  reference images). Sellers express interest and send quotes, the shopper awards one quote as an
+  order, and sellers post progress updates until delivery.
+- **Sellers:** seller companies with a public "Fulfilled by" card, payment settings (UPI, QR, bank),
+  approval workflow (Pending, Approved, Rejected, active or inactive) and employee accounts that
+  work on a seller's behalf.
+- **Our Story page** (`/about`): a scroll-driven brand page in the app's cream, burgundy and gold
+  palette. It opens in the storefront layout for every signed-in role, including admins, who return
+  to the admin layout through the logo or any other nav link.
+- **Become a seller:** seller registration is invite-only. A maker fills in the request form on the
+  Our Story page (name, phone, email, business, city, craft, links, message). Every admin is
+  emailed, and the request appears under **Sellers → Requests**, where an admin can mark it
+  contacted, decline it, delete it, or **send the registration invite** straight from the list.
+  The public endpoint is rate limited (5 requests per IP per hour).
 
 ## What's inside
 
@@ -12,9 +44,9 @@ a full ERP-style application.
   - `IdentityHub.Application` — CQRS use cases (MediatR + FluentValidation), only depends on Domain.
   - `IdentityHub.Infrastructure` — EF Core 10 (SQL Server), ASP.NET Core Identity, JWT issuing.
   - `IdentityHub.Api` — thin controllers, Swagger, JWT bearer auth, global exception handling.
-- **Frontend** — Angular 22 (standalone components, signals, lazy-loaded routes) in `client/`, styled with Angular Material (toolbar + sidenav shell, bottom sheet settings panel) and Bootstrap 5 utility classes/components for forms and tables, following the buyer-spa layout pattern (fixed toolbar, collapsible side navigation, quick-access settings bottom sheet) from the legacy ProcNext SCM app.
+- **Frontend** — Angular 22 (standalone components, signals, lazy-loaded routes) in `client/`, styled with Angular Material and Bootstrap 5. Two layouts: a storefront layout for shoppers and guests, and an admin layout with a sidenav for admins, managers and sellers. Packaged for mobile with Capacitor (Android and iOS).
 
-## Features
+## Identity and access features
 
 - Register / Login / Logout with JWT access tokens + rotating refresh tokens.
 - Role-based authorization (`Admin`, `Manager`, `User`) enforced both in API controllers and
@@ -30,6 +62,7 @@ a full ERP-style application.
   Manage per-role section access from **Roles → Manage Access**.
 - "My Profile" and "Dashboard" pages showing the current session's user.
 - Seeded default roles and a bootstrap admin account (`admin@identityhub.local` / `Admin@12345`).
+  Change this password straight away outside local development.
 
 ## Architecture decisions (what changed vs. the legacy AdminPanel)
 
