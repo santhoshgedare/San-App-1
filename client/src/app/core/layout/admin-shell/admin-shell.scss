@@ -31,6 +31,19 @@
     }
   }
 
+  .story-link {
+    margin-left: 0.75rem;
+    color: inherit;
+
+    mat-icon {
+      margin-right: 0.35rem;
+    }
+
+    &.story-active {
+      background: rgba(255, 255, 255, 0.18);
+    }
+  }
+
   .flex-spacer {
     flex: 1 1 auto;
   }
@@ -162,5 +175,19 @@
 
   .app-sidenav-container {
     top: 56px;
+  }
+
+  .app-toolbar .story-link {
+    min-width: 0;
+    margin-left: 0.25rem;
+    padding-inline: 0.5rem;
+
+    .story-label {
+      display: none;
+    }
+
+    mat-icon {
+      margin-right: 0;
+    }
   }
 }

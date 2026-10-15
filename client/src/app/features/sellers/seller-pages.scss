@@ -34,6 +34,25 @@
     div { display: flex; gap: .5rem; align-items: center; } mat-icon { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; color: #9b713c; flex: none; } }
   .sp-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding-top: .8rem; border-top: 1px dashed #e7d9c3; }
 }
+.sp-tabs { display: flex; gap: .4rem; margin-bottom: 1.1rem; border-bottom: 1px solid #eadfce; }
+.sp-tab { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1rem; border: 0; background: none; color: #8d7775; font-weight: 600;
+  border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer;
+  mat-icon { font-size: 1.15rem; width: 1.15rem; height: 1.15rem; }
+  &.active { color: #76283a; border-bottom-color: #9b713c; } }
+.sp-count { padding: .05rem .5rem; border-radius: 999px; background: #f4ece0; color: #6b5a4a; font-size: .75rem; }
+.sp-count-hot { background: #76283a; color: #fff; }
+.sp-req-list { display: grid; gap: .8rem; }
+.sp-req { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; background: #fffdf9; border: 1px solid #eadfce;
+  border-radius: 1rem; padding: 1rem 1.2rem; box-shadow: 0 4px 14px rgba(70, 40, 30, .05); }
+.sp-req-main { flex: 1 1 380px; min-width: 0; display: grid; gap: .35rem; }
+.sp-req-top { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; .sp-name { font-weight: 700; color: #382a2d; } }
+.sp-req-date { margin-left: auto; font-size: .78rem; color: #8d7775; }
+.sp-tag { font-size: .8rem; color: #8d7775; }
+.sp-req-contact { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font-size: .85rem; color: #5b4a50;
+  a, span { display: inline-flex; align-items: center; gap: .35rem; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+  mat-icon { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; color: #9b713c; } }
+.sp-req-msg { margin: .2rem 0 0; padding: .6rem .8rem; background: #f8f1e6; border-radius: .7rem; color: #4a3a3e; font-size: .88rem; white-space: pre-line; overflow-wrap: anywhere; }
+.sp-req-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .sp-pager { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; font-size: .85rem; }
 .sp-empty { text-align: center; padding: 3rem 1rem; color: #8d7775; background: #fffdf9; border: 1px dashed #e0d4c6; border-radius: 1rem; }
 

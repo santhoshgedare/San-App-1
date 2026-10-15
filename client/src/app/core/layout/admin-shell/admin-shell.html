@@ -7,6 +7,10 @@
       (error)="brandImg.classList.add('d-none'); brandFallback.classList.remove('d-none')" />
     <span class="brand-text d-none" #brandFallback>SRIVIDIKA</span>
   </span>
+  <a mat-button class="story-link" routerLink="/about" routerLinkActive="story-active" aria-label="Our Story">
+    <mat-icon>auto_awesome</mat-icon>
+    <span class="story-label">Our Story</span>
+  </a>
   <span class="flex-spacer"></span>
 
   <button mat-icon-button matTooltip="Settings" (click)="openSettings()" aria-label="Settings">

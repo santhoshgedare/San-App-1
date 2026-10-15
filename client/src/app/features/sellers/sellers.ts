@@ -1,9 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SellerDto, SellerService } from '../../core/auth/seller.service';
+import { SellerRequestDto, SellerRequestService, SellerRequestStatus } from '../../core/auth/seller-request.service';
 import { ConfirmService } from '../../shared/confirm-dialog/confirm-dialog';
 
 const PAGE_SIZE = 10;
@@ -11,7 +13,7 @@ const PAGE_SIZE = 10;
 @Component({
   selector: 'app-sellers',
   standalone: true,
-  imports: [RouterLink, FormsModule, MatIconModule],
+  imports: [RouterLink, FormsModule, MatIconModule, DatePipe],
   templateUrl: './sellers.html',
   styleUrl: './seller-pages.scss',
 })
@@ -73,6 +75,40 @@ export class Sellers implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadRequests();
+  }
+
+  readonly requests = signal<SellerRequestDto[]>([]);
+  readonly tab = signal<'sellers' | 'requests'>('sellers');
+  readonly openRequests = computed(() => this.requests().filter((r) => r.status === 'New' || r.status === 'Contacted').length);
+  private readonly requestService = inject(SellerRequestService);
+
+  private loadRequests(): void {
+    this.requestService.getAll().subscribe((list) => this.requests.set(list));
+  }
+
+  setRequestStatus(r: SellerRequestDto, status: SellerRequestStatus): void {
+    this.requestService.setStatus(r.id, status).subscribe({
+      next: () => this.loadRequests(),
+      error: (err) => this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Could not update request.', 'Close', { panelClass: ['snack-error'] }),
+    });
+  }
+
+  inviteRequester(r: SellerRequestDto): void {
+    this.service.inviteNew(r.email).subscribe({
+      next: () => {
+        this.snackBar.open(`Invitation emailed to ${r.email}.`, 'Close');
+        this.setRequestStatus(r, 'Invited');
+        this.load();
+      },
+      error: (err) => this.snackBar.open(err?.error?.errors?.join(' ') ?? 'Could not send invitation.', 'Close', { panelClass: ['snack-error'] }),
+    });
+  }
+
+  removeRequest(r: SellerRequestDto): void {
+    this.confirmService
+      .confirm({ title: 'Delete request', message: `Delete the request from ${r.name}?`, confirmText: 'Delete', destructive: true })
+      .subscribe((ok) => ok && this.requestService.delete(r.id).subscribe(() => this.loadRequests()));
   }
 
   onSearch(value: string): void {

@@ -54,6 +54,7 @@ export class AdminShell {
 
   readonly cartCount = this.cartService.totalItemsCount;
 
+
   protected readonly isScreenSmall = toSignal(
     this.breakpointObserver.observe(Breakpoints.Handset).pipe(map((result) => result.matches)),
     { initialValue: false },

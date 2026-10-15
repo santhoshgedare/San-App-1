@@ -27,6 +27,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ItemReview> ItemReviews => Set<ItemReview>();
     public DbSet<SellerProfile> SellerProfiles => Set<SellerProfile>();
     public DbSet<SellerEmployee> SellerEmployees => Set<SellerEmployee>();
+    public DbSet<SellerRequest> SellerRequests => Set<SellerRequest>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PaymentSettings> PaymentSettings => Set<PaymentSettings>();
@@ -317,6 +318,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(s => s.InviteTokenHash).HasMaxLength(128);
             entity.HasIndex(s => s.InviteTokenHash);
             entity.HasIndex(s => s.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+        });
+
+        builder.Entity<SellerRequest>(entity =>
+        {
+            entity.Property(r => r.Name).HasMaxLength(150).IsRequired();
+            entity.Property(r => r.Email).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.Phone).HasMaxLength(32).IsRequired();
+            entity.Property(r => r.BusinessName).HasMaxLength(200);
+            entity.Property(r => r.City).HasMaxLength(100);
+            entity.Property(r => r.CraftType).HasMaxLength(150);
+            entity.Property(r => r.Website).HasMaxLength(300);
+            entity.Property(r => r.Message).HasMaxLength(2000);
+            entity.Property(r => r.Status).HasMaxLength(20).IsRequired();
+            entity.Property(r => r.AdminNote).HasMaxLength(1000);
+            entity.HasIndex(r => r.Status);
+            entity.HasIndex(r => r.Email);
         });
 
         builder.Entity<SellerEmployee>(entity =>
